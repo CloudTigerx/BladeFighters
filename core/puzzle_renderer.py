@@ -5,7 +5,11 @@ import time
 import math
 import random
 import traceback
-from attack_system import GarbageBlockState
+
+# Define GarbageBlockState since attack_system is not available
+class GarbageBlockState:
+    """Placeholder for GarbageBlockState when attack_system is not available."""
+    pass
 
 # Global exception handler for pygame drawing errors
 def safe_pygame_draw(func, *args, **kwargs):

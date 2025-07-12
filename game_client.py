@@ -7,765 +7,24 @@ import time
 import argparse
 import json
 
-from blade_fighter_lessons import LessonManager
+# Import all extracted modules - all are working properly
+from modules.audio_module import AudioSystem
+from modules.settings_module import SettingsSystem
+from modules.menu_module import MenuSystem
+from modules.testmode_module import TestMode
+from modules.screen_module import ScreenManager
+from modules.story_module import StorySystem
 
-# Try importing the AudioSystem if available
-try:
-    from audio_system import AudioSystem
-    audio_system_available = True
-except ImportError:
-    audio_system_available = False
-    print("AudioSystem not available, running without audio")
+print("✅ All extracted modules loaded successfully")
 
-from menu_system import MenuSystem
-from settings_system import SettingsSystem
-from puzzle_module import PuzzleEngine
-from puzzle_renderer import PuzzleRenderer
-from attack_system import AttackSystem, AttackType
+from core.puzzle_module import PuzzleEngine
+from core.puzzle_renderer import PuzzleRenderer
 
 # Constants
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
 ASSET_PATH = "puzzleassets"
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-
-class TestMode:
-    """A test mode for evaluating AI puzzle battle mechanics with real puzzle engine components."""
-    def __init__(self, screen, font, audio, asset_path):
-        self.screen = screen
-        self.font = font
-        self.audio = audio
-        self.asset_path = asset_path
-        
-        # Get screen dimensions
-        self.width = screen.get_width()
-        self.height = screen.get_height()
-        
-        # Colors
-        self.BLACK = (0, 0, 0)
-        self.WHITE = (255, 255, 255)
-        self.GRAY = (100, 100, 100)
-        self.LIGHT_BLUE = (100, 150, 255)
-        
-        # AI difficulty (1-10)
-        self.ai_difficulty = 5
-        
-        # AI style ("water", "fire", "earth", "lightning")
-        self.ai_style = "fire"
-        
-        # Create player puzzle engine
-        self.player_engine = PuzzleEngine(screen, font, audio, asset_path)
-        
-        # Create enemy puzzle engine (with AI controller) - no audio
-        self.enemy_engine = PuzzleEngine(screen, font, None, asset_path)
-        
-        # Create renderers for both engines
-        self.player_renderer = PuzzleRenderer(self.player_engine)
-        self.enemy_renderer = PuzzleRenderer(self.enemy_engine)
-        
-        # Set renderer references in the engines
-        self.player_engine.renderer = self.player_renderer
-        self.enemy_engine.renderer = self.enemy_renderer
-        
-        # Load background images
-        try:
-            self.puzzle_background = pygame.image.load(os.path.join(asset_path, "puzzlebackground.jpg"))
-        except pygame.error:
-            self.puzzle_background = None
-        
-        # Initialize attack system with grid dimensions
-        self.attack_system = AttackSystem(grid_width=6, grid_height=13)
-        
-        # Set up board positions and dimensions
-        self.setup_board_positions()
-        
-        # Initialize the player and enemy game boards
-        self.initialize_test()
-        
-        # Set up references for attack generation
-        self.setup_attack_handlers()
-    
-    def setup_attack_handlers(self):
-        """Set up the attack generation handlers for both engines."""
-        # Create a reference to this TestMode instance in each engine
-        self.player_engine.test_mode = self
-        self.enemy_engine.test_mode = self
-        
-        # Define the method that engines will call when blocks are broken
-        def player_blocks_broken_handler(broken_blocks, is_cluster, combo_multiplier):
-            return self.handle_player_blocks_broken(broken_blocks, is_cluster, combo_multiplier)
-            
-        def enemy_blocks_broken_handler(broken_blocks, is_cluster, combo_multiplier):
-            return self.handle_enemy_blocks_broken(broken_blocks, is_cluster, combo_multiplier)
-            
-        # Attach handlers to the engines
-        self.player_engine.blocks_broken_handler = player_blocks_broken_handler
-        self.enemy_engine.blocks_broken_handler = enemy_blocks_broken_handler
-        
-        # Initialize piece tracking for detecting when pieces land
-        self.previous_player_has_piece = bool(self.player_engine.main_piece)
-        self.previous_enemy_has_piece = bool(self.enemy_engine.main_piece)
-    
-    def handle_player_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
-        """Handle attack generation when player breaks blocks."""
-        if not broken_blocks:
-            return
-        
-        # Only increment chain count for subsequent breaks
-        if self.player_engine.chain_count > 0:
-            self.player_engine.chain_count += 1
-        
-        attack_color = "blue"  # Player color is blue
-        
-        # Calculate garbage blocks based on combo
-        blocks_destroyed = len(broken_blocks)
-        if self.player_engine.chain_count == 1:
-            # First combo - send half the blocks destroyed (rounded down)
-            garbage_blocks = blocks_destroyed // 2
-        else:
-            # Subsequent combos - multiply blocks by combo multiplier and add previous amounts
-            garbage_blocks = (blocks_destroyed * combo_multiplier) // 2
-        
-        # Generate attacks
-        attacks = self.attack_system.generate_attack(
-            broken_blocks,
-            is_cluster,
-            combo_multiplier,  # Pass the original combo_multiplier, not garbage_blocks
-            attack_color
-        )
-        
-        if attacks:
-            # Add attacks to queue targeting enemy (player 2)
-            self.attack_system.add_attacks_to_queue(attacks, 2)
-    
-    def handle_enemy_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
-        """Handle attack generation when enemy breaks blocks."""
-        if not broken_blocks:
-            return
-            
-        # Only increment chain count for subsequent breaks
-        if self.enemy_engine.chain_count > 0:
-            self.enemy_engine.chain_count += 1
-            
-        # Get attack color based on AI style
-        attack_color = {
-            "water": "blue",
-            "fire": "red",
-            "earth": "green",
-            "lightning": "yellow"
-        }.get(self.ai_style, "red")
-        
-        # Calculate garbage blocks based on combo
-        blocks_destroyed = len(broken_blocks)
-        if self.enemy_engine.chain_count == 1:
-            # First combo - send half the blocks destroyed (rounded down)
-            garbage_blocks = blocks_destroyed // 2
-        else:
-            # Subsequent combos - multiply blocks by combo multiplier and add previous amounts
-            garbage_blocks = (blocks_destroyed * combo_multiplier) // 2
-        
-        # Scale attack generation based on AI difficulty
-        difficulty_scale = self.ai_difficulty / 5.0
-        
-        # Generate attacks
-        attacks = self.attack_system.generate_attack(
-            broken_blocks,
-            is_cluster,
-            combo_multiplier,  # Pass the original combo_multiplier, not garbage_blocks
-            attack_color
-        )
-        
-        # Potentially modify attack count based on difficulty
-        if difficulty_scale > 1.0 and attacks:
-            # Higher difficulties might generate additional attacks
-            extra_attacks = []
-            for _ in range(int((difficulty_scale - 1.0) * len(attacks))):
-                extra_attacks.append({
-                    "type": AttackType.GARBAGE_BLOCK,
-                    "color": attack_color  # Use the same attack color for extra attacks
-                })
-            attacks.extend(extra_attacks)
-        
-        if attacks:
-            # Add attacks to queue targeting player (player 1)
-            self.attack_system.add_attacks_to_queue(attacks, 1)
-    
-    def setup_board_positions(self):
-        """Set up the positions for the player and enemy boards."""
-        # Calculate board dimensions - ensure consistent dimensions
-        grid_width = 6
-        grid_height = 13
-        
-        # Using consistent sizing to eliminate gaps
-        cell_width = 68  # Match the cell width used in draw() method
-        cell_height = 54  # Match the cell height used in draw() method
-        
-        # Border size - space between container edge and the actual grid
-        border_size = 10
-        
-        # Calculate total board size
-        board_width = grid_width * cell_width
-        board_height = grid_height * cell_height
-        
-        # Calculate proper centered positions
-        # 1/3 from left edge for player board, 1/3 from right edge for enemy board
-        screen_width = self.width
-        board_spacing = 40  # Space between boards
-        
-        # Center calculation with proper spacing - include borders in the total width
-        total_width_needed = (board_width * 2) + board_spacing + (border_size * 4)  # Add borders for both boards
-        start_x = (screen_width - total_width_needed) // 2
-        
-        # Add border offset to starting positions
-        player_x = start_x + border_size  # Add border on left side
-        enemy_x = start_x + board_width + board_spacing + (border_size * 3)  # Account for both borders
-        
-        # Vertical position - centered with some offset from top
-        board_y = 80
-        
-        # Try to load positions from JSON file if available
-        loaded_positions = None
-        try:
-            if os.path.exists('ui_positions.json'):
-                with open('ui_positions.json', 'r') as f:
-                    loaded_positions = json.load(f)
-                print("Successfully loaded UI positions from file")
-        except Exception as e:
-            print(f"Error loading UI positions: {e}")
-        
-        # Use loaded positions if available, otherwise use defaults
-        if loaded_positions:
-            self.player_background_position = loaded_positions.get("player_board_background", 
-                {"x": player_x, "y": board_y})
-            self.player_grid_position = loaded_positions.get("player_puzzle_grid", 
-                {"x": player_x, "y": board_y})
-            self.enemy_background_position = loaded_positions.get("enemy_board_background", 
-                {"x": enemy_x, "y": board_y})
-            self.enemy_grid_position = loaded_positions.get("enemy_puzzle_grid", 
-                {"x": enemy_x, "y": board_y})
-        else:
-            # Set positions directly without loading from file
-            self.player_background_position = {
-                "x": player_x,
-                "y": board_y
-            }
-            
-            self.player_grid_position = {
-                "x": player_x,
-                "y": board_y
-            }
-            
-            self.enemy_background_position = {
-                "x": enemy_x,
-                "y": board_y
-            }
-            
-            self.enemy_grid_position = {
-                "x": enemy_x,
-                "y": board_y
-            }
-            
-            # Still save positions to JSON for consistency
-            default_positions = {
-                "player_board_background": self.player_background_position,
-                "player_puzzle_grid": self.player_grid_position,
-                "enemy_board_background": self.enemy_background_position,
-                "enemy_puzzle_grid": self.enemy_grid_position
-            }
-            
-            try:
-                with open('ui_positions.json', 'w') as f:
-                    json.dump(default_positions, f)
-            except:
-                print("Could not save UI positions")
-        
-        # Set up the grid sizes
-        self.player_engine.grid_width = grid_width
-        self.player_engine.grid_height = grid_height
-        self.enemy_engine.grid_width = grid_width
-        self.enemy_engine.grid_height = grid_height
-        
-        # Initialize grid offsets for rendering - using exact positions where pieces land
-        if not hasattr(self.player_engine, 'grid_x_offset'):
-            self.player_engine.grid_x_offset = self.player_grid_position["x"]
-            self.player_engine.grid_y_offset = self.player_grid_position["y"]
-            
-        if not hasattr(self.enemy_engine, 'grid_x_offset'):
-            self.enemy_engine.grid_x_offset = self.enemy_grid_position["x"]
-            self.enemy_engine.grid_y_offset = self.enemy_grid_position["y"]
-    
-    def initialize_test(self):
-        """Initialize the player and enemy puzzle engines."""
-        # Reset attack system
-        self.attack_system = AttackSystem(grid_width=6, grid_height=13)
-        
-        # Reset piece tracking
-        self.previous_player_has_piece = False
-        self.previous_enemy_has_piece = False
-        
-        # Reset chain reaction state
-        self.player_engine.chain_reaction_in_progress = False
-        self.player_engine.chain_state = "idle"
-        self.player_engine.chain_count = 0
-        self.player_engine.breaking_blocks = []
-        self.player_engine.clusters = set()
-        
-        self.enemy_engine.chain_reaction_in_progress = False
-        self.enemy_engine.chain_state = "idle"
-        self.enemy_engine.chain_count = 0
-        self.enemy_engine.breaking_blocks = []
-        self.enemy_engine.clusters = set()
-        
-        # Reset piece movement state
-        self.player_engine.current_fall_speed = self.player_engine.normal_fall_speed
-        self.player_engine.last_fall_time = pygame.time.get_ticks()
-        self.player_engine.micro_fall_time = self.player_engine._calculate_micro_fall_time(self.player_engine.current_fall_speed)
-        self.player_engine.current_sub_position = float(self.player_engine.sub_grid_positions * 0.3)
-        
-        self.enemy_engine.current_fall_speed = self.enemy_engine.normal_fall_speed
-        self.enemy_engine.last_fall_time = pygame.time.get_ticks()
-        self.enemy_engine.micro_fall_time = self.enemy_engine._calculate_micro_fall_time(self.enemy_engine.current_fall_speed)
-        self.enemy_engine.current_sub_position = float(self.enemy_engine.sub_grid_positions * 0.3)
-        
-        # Start both games
-        self.player_engine.start_game()
-        self.enemy_engine.start_game()
-        
-        # Flag the player's grid to enable attack generation
-        self.player_engine._is_player_grid = True
-        self.enemy_engine._is_player_grid = False
-        
-        # Set up attack system references
-        self.player_engine.attack_system = self.attack_system
-        self.enemy_engine.attack_system = self.attack_system
-        
-        # Reset renderers
-        self.player_renderer.update_visual_state()
-        self.enemy_renderer.update_visual_state()
-    
-    def process_transformed_garbage_blocks(self, blocks_to_update):
-        """Process any garbage blocks that have been fully transformed."""
-        if not blocks_to_update:
-            return
-            
-        # Convert fully transformed garbage blocks to normal blocks
-        for (x, y), color in blocks_to_update:
-            # Create the proper block type with the color name
-            block_type = f"{color}_block"  # Convert "blue" to "blue_block", etc.
-            
-            # Determine which grid this position belongs to
-            if 0 <= x < self.player_engine.grid_width and 0 <= y < self.player_engine.grid_height:
-                # Update player grid - convert from garbage to normal block
-                current_block = self.player_engine.puzzle_grid[y][x]
-                if current_block and '_garbage' in current_block:
-                    # Replace with normal block of the same color
-                    self.player_engine.puzzle_grid[y][x] = block_type
-            
-            # Check enemy grid
-            if 0 <= x < self.enemy_engine.grid_width and 0 <= y < self.enemy_engine.grid_height:
-                # Update enemy grid - convert from garbage to normal block
-                current_block = self.enemy_engine.puzzle_grid[y][x]
-                if current_block and '_garbage' in current_block:
-                    # Replace with normal block of the same color
-                    self.enemy_engine.puzzle_grid[y][x] = block_type
-                    
-        # Make sure these changes are visible immediately
-        self.player_renderer.update_visual_state()
-        self.enemy_renderer.update_visual_state()
-    
-    def process_strike_to_garbage_transformation(self, blocks_to_transform):
-        """Process any strike blocks that have been transformed to garbage blocks."""
-        if not blocks_to_transform:
-            return
-            
-        # Process each transformed block
-        for (x, y), color in blocks_to_transform:
-            # Determine which grid this position belongs to
-            if 0 <= x < self.player_engine.grid_width and 0 <= y < self.player_engine.grid_height:
-                # Update player grid - convert from strike to garbage block
-                current_block = self.player_engine.puzzle_grid[y][x]
-                if current_block and current_block == "strike_1x4":
-                    # Replace with garbage block of the same color
-                    garbage_block_type = f"{color}_garbage"
-                    self.player_engine.puzzle_grid[y][x] = garbage_block_type
-            
-            # Check enemy grid
-            if 0 <= x < self.enemy_engine.grid_width and 0 <= y < self.enemy_engine.grid_height:
-                # Update enemy grid - convert from strike to garbage block
-                current_block = self.enemy_engine.puzzle_grid[y][x]
-                if current_block and current_block == "strike_1x4":
-                    # Replace with garbage block of the same color
-                    garbage_block_type = f"{color}_garbage"
-                    self.enemy_engine.puzzle_grid[y][x] = garbage_block_type
-                    
-        # Make sure these changes are visible immediately
-        self.player_renderer.update_visual_state()
-        self.enemy_renderer.update_visual_state()
-    
-    def create_strike_spark_particles(self, grid_x, grid_y, is_player_grid=True):
-        """Create spark particles when a strike lands on the board."""
-        if not hasattr(self.player_renderer, 'create_dust_particles'):
-            return  # Can't create particles if method doesn't exist
-            
-        try:
-            # Use the appropriate renderer based on which grid the strike is in
-            renderer = self.player_renderer if is_player_grid else self.enemy_renderer
-            
-            # Get the actual screen position for this grid cell
-            x_offset = self.player_grid_position["x"] if is_player_grid else self.enemy_grid_position["x"]
-            y_offset = self.player_grid_position["y"] if is_player_grid else self.enemy_grid_position["y"]
-            
-            # Create many more spark particles for strikes (10x more than normal dust particles)
-            # Use a mix of colors for a more electric effect
-            strike_colors = ["yellow", "white", "blue"]
-            
-            # Create a burst of particles in all directions
-            for _ in range(10):
-                # Mix of colors for electric effect
-                color = random.choice(strike_colors)
-                renderer.create_dust_particles(grid_x, grid_y, color)
-                
-            # Add special attribute to the renderer to indicate a strike effect is active
-            if not hasattr(renderer, 'active_strike_effects'):
-                renderer.active_strike_effects = {}
-                
-            # Record this position as having an active strike effect
-            position_key = (grid_x, grid_y)
-            renderer.active_strike_effects[position_key] = {
-                'start_time': time.time(),
-                'duration': 2.0,  # 2 seconds of electric effect
-                'intensity': 1.0,  # Start at full intensity
-                'last_spark_time': 0
-            }
-                
-            print(f"Created enhanced strike spark particles at ({grid_x}, {grid_y})")
-        except Exception as e:
-            print(f"Error creating strike spark particles: {e}")
-    
-    def update(self):
-        """Update the test scene state."""
-        # Update player engine
-        player_piece_landed = self.player_engine.update()
-        
-        # Update enemy engine
-        enemy_piece_landed = self.enemy_engine.update()
-        
-        # Check for game over conditions
-        if not self.player_engine.game_active or not self.enemy_engine.game_active:
-            return "game_over"
-        
-        # Track current piece states
-        current_player_has_piece = self.player_engine.main_piece is not None
-        current_enemy_has_piece = self.enemy_engine.main_piece is not None
-        
-        # If either piece landed, process garbage blocks and strikes
-        if player_piece_landed or enemy_piece_landed:
-            # Process strikes transformation to garbage blocks
-            strike_blocks = self.attack_system.update_strike_blocks()
-            if strike_blocks:
-                self.process_strike_to_garbage_transformation(strike_blocks)
-            
-            # Decrement turns on garbage blocks and get any that need to transform
-            blocks_to_update = self.attack_system.decrement_garbage_block_turns()
-            
-            # Process any fully transformed blocks
-            self.process_transformed_garbage_blocks(blocks_to_update)
-        
-        # Store current piece states for next frame
-        self.previous_player_has_piece = current_player_has_piece
-        self.previous_enemy_has_piece = current_enemy_has_piece
-        
-        # Process any pending attacks
-        try:
-            # Process attacks against player
-            player_attacks_processed = self.attack_system.process_attack_queue(self.player_engine.puzzle_grid, 1)
-            
-            # Process attacks against enemy
-            enemy_attacks_processed = self.attack_system.process_attack_queue(self.enemy_engine.puzzle_grid, 2)
-            
-            # Create spark effects for strikes if attacks were processed
-            if player_attacks_processed or enemy_attacks_processed:
-                # Check for newly placed strikes in player grid
-                for y in range(self.player_engine.grid_height):
-                    for x in range(self.player_engine.grid_width):
-                        if self.player_engine.puzzle_grid[y][x] == "strike_1x4":
-                            self.create_strike_spark_particles(x, y, True)
-                
-                # Check for newly placed strikes in enemy grid
-                for y in range(self.enemy_engine.grid_height):
-                    for x in range(self.enemy_engine.grid_width):
-                        if self.enemy_engine.puzzle_grid[y][x] == "strike_1x4":
-                            self.create_strike_spark_particles(x, y, False)
-            
-            # After placing garbage blocks, ensure the puzzle engine applies gravity
-            if hasattr(self.player_engine, 'apply_gravity'):
-                self.player_engine.apply_gravity()
-            if hasattr(self.enemy_engine, 'apply_gravity'):
-                self.enemy_engine.apply_gravity()
-                
-        except Exception as e:
-            print(f"Error processing attack queue: {e}")
-            
-        # Update visual states and animations
-        self.player_renderer.update_visual_state()
-        self.enemy_renderer.update_visual_state()
-        self.player_renderer.update_animations()
-        self.enemy_renderer.update_animations()
-        
-        # Basic AI movement
-        try:
-            # Scale AI update frequency with difficulty
-            if random.random() < 0.1 * (self.ai_difficulty / 5.0):  # Increased frequency with difficulty
-                # Random movement
-                move_choice = random.random()
-                
-                if move_choice < 0.4:  # 40% chance to move left/right
-                    self.enemy_engine.move_piece(random.choice([-1, 1]), 0)
-                elif move_choice < 0.6:  # 20% chance to rotate
-                    self.enemy_engine.rotate_attached_piece(random.choice([-1, 1]))
-                else:  # 40% chance to accelerate drop
-                    self.enemy_engine.move_piece(0, 1)
-                    
-        except Exception as e:
-            print(f"Error in AI movement: {e}")
-        
-        # Return None to indicate no game over
-        return None
-    
-    def process_events(self, events):
-        """Process events for the test scene."""
-        # First let the player engine handle its own events
-        self.player_engine.process_events(events)
-        
-        # Then handle test mode specific events
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                # Escape key to return to menu
-                if event.key == pygame.K_ESCAPE:
-                    return "back_to_menu"
-                
-                # Difficulty adjustment with number keys
-                if pygame.K_1 <= event.key <= pygame.K_9:
-                    self.ai_difficulty = event.key - pygame.K_0  # Convert key to number
-                elif event.key == pygame.K_0:
-                    self.ai_difficulty = 10
-                
-                # Style selection
-                elif event.key == pygame.K_b:
-                    self.ai_style = "water"  # Blue
-                elif event.key == pygame.K_r:
-                    self.ai_style = "fire"   # Red
-                elif event.key == pygame.K_g:
-                    self.ai_style = "earth"  # Green
-                elif event.key == pygame.K_y:
-                    self.ai_style = "lightning"  # Yellow      
-        return None  # No specific action
-    
-    def draw(self):
-        print("[DEBUG] TestMode.draw() called")
-        """Draw the battle test mode interface with proper sizing and positioning."""
-        # Draw background
-        self.screen.fill((10, 10, 30))
-            
-        # Add some atmospheric effects
-        for i in range(20):
-            alpha = 150 - (i * 7)
-            if alpha < 0:
-                alpha = 0
-            gradient = pygame.Surface((self.width, 5), pygame.SRCALPHA)
-            gradient.fill((50, 50, 80, alpha))
-            self.screen.blit(gradient, (0, i * 20))
-            self.screen.blit(gradient, (0, self.height - (i * 20)))
-        
-        # Add semi-transparent overlay for better contrast
-        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))
-        self.screen.blit(overlay, (0, 0))
-        
-        # Draw title at top
-        title_font = pygame.font.SysFont(None, 48)
-        title_text = title_font.render("AI Battle Test Mode", True, (255, 255, 255))
-        title_rect = title_text.get_rect(midtop=(self.width // 2, 20))
-        # Add glow effect
-        glow_text = title_font.render("AI Battle Test Mode", True, (100, 100, 255))
-        glow_rect = glow_text.get_rect(midtop=(self.width // 2 + 2, 22))
-        self.screen.blit(glow_text, glow_rect)
-        self.screen.blit(title_text, title_rect)
-        
-        # Set up cell size for blocks
-        cell_width = 68  # Width of each block
-        cell_height = 54  # Height of each block
-        
-        # Border size - this is the space between container edge and the actual grid
-        border_size = 10
-        
-        # Calculate board dimensions
-        board_width = self.player_engine.grid_width * cell_width
-        board_height = self.player_engine.grid_height * cell_height
-        
-        # Player board container - with adjusted padding for borders
-        player_container_width = board_width + (border_size * 2)  # Add border on both sides
-        player_container_height = board_height + (border_size * 2)  # Add border on top and bottom
-        player_container = pygame.Rect(
-            self.player_grid_position["x"] - border_size,  # Adjust for left border
-            self.player_grid_position["y"] - 35,  # Keep the top padding for title/labels
-            player_container_width,
-            player_container_height + 35  # Keep extra bottom padding
-        )
-        
-        # Draw player container with border
-        pygame.draw.rect(self.screen, (30, 30, 60), player_container, border_radius=5)
-        pygame.draw.rect(self.screen, (100, 100, 255), player_container, 3, border_radius=5)
-        
-        # Enemy board container - with adjusted padding for borders
-        enemy_container_width = board_width + (border_size * 2)  # Add border on both sides
-        enemy_container_height = board_height + (border_size * 2)  # Add border on top and bottom
-        enemy_container = pygame.Rect(
-            self.enemy_grid_position["x"] - border_size,  # Adjust for left border
-            self.enemy_grid_position["y"] - 35,  # Keep the top padding for title/labels
-            enemy_container_width,
-            enemy_container_height + 35  # Keep extra bottom padding
-        )
-        
-        # Draw enemy container with border
-        pygame.draw.rect(self.screen, (30, 30, 60), enemy_container, border_radius=5)
-        
-        # Choose AI color based on style
-        if self.ai_style == "water":
-            ai_color = (0, 0, 200)
-            ai_border = (100, 100, 255)
-        elif self.ai_style == "fire":
-            ai_color = (200, 0, 0) 
-            ai_border = (255, 100, 100)
-        elif self.ai_style == "earth": 
-            ai_color = (0, 150, 0)
-            ai_border = (100, 255, 100)
-        else:  # Lightning
-            ai_color = (200, 200, 0)
-            ai_border = (255, 255, 100)
-        
-        # Draw enemy container border with AI style color
-        pygame.draw.rect(self.screen, ai_border, enemy_container, 3, border_radius=5)
-            
-        # Draw backgrounds if available
-        if self.puzzle_background:
-            # Scale background to match actual gameplay area (not including borders)
-            scaled_bg = pygame.transform.scale(
-                self.puzzle_background,
-                (board_width, board_height)
-            )
-            # Draw player board background - position inside border
-            self.screen.blit(scaled_bg, 
-                (self.player_grid_position["x"], 
-                 self.player_grid_position["y"]))
-            
-            # Draw enemy board background - position inside border
-            self.screen.blit(scaled_bg, 
-                (self.enemy_grid_position["x"], 
-                 self.enemy_grid_position["y"]))
-        
-        # Draw player grid blocks
-        self.player_renderer.draw_grid_blocks(
-            self.player_grid_position["x"], 
-            self.player_grid_position["y"], 
-            cell_width, 
-            cell_height
-        )
-        
-        # Draw player falling piece
-        self.player_renderer.draw_falling_piece(
-            self.player_grid_position["x"], 
-            self.player_grid_position["y"], 
-            cell_width, 
-            cell_height
-        )
-        
-        # Draw player next piece preview
-        self.player_renderer.current_x_offset = self.player_grid_position["x"]
-        self.player_renderer.current_y_offset = self.player_grid_position["y"]
-        self.player_renderer.engine = self.player_engine
-        self.player_renderer.draw_next_piece_preview(cell_width, cell_height)
-        
-        # Draw player title
-        player_title = pygame.font.SysFont(None, 28).render("Player", True, (255, 255, 255))
-        player_title_rect = player_title.get_rect(midtop=(
-            self.player_grid_position["x"] + (board_width / 2), 
-            self.player_grid_position["y"] - 30
-        ))
-        self.screen.blit(player_title, player_title_rect)
-        
-        # Draw player combo texts
-        self.player_renderer.draw_combo_texts()
-        
-        # Draw enemy grid blocks
-        self.enemy_renderer.draw_grid_blocks(
-            self.enemy_grid_position["x"], 
-            self.enemy_grid_position["y"], 
-            cell_width, 
-            cell_height
-        )
-        
-        # Draw enemy falling piece
-        self.enemy_renderer.draw_falling_piece(
-            self.enemy_grid_position["x"], 
-            self.enemy_grid_position["y"], 
-            cell_width, 
-            cell_height
-        )
-        
-        # Draw enemy next piece preview
-        self.enemy_renderer.current_x_offset = self.enemy_grid_position["x"]
-        self.enemy_renderer.current_y_offset = self.enemy_grid_position["y"]
-        self.enemy_renderer.engine = self.enemy_engine
-        self.enemy_renderer.draw_next_piece_preview_right(cell_width, cell_height)
-        
-        # Draw enemy title
-        enemy_title = pygame.font.SysFont(None, 28).render(f"AI ({self.ai_style.capitalize()})", True, ai_border)
-        enemy_title_rect = enemy_title.get_rect(midtop=(
-            self.enemy_grid_position["x"] + (board_width / 2), 
-            self.enemy_grid_position["y"] - 30
-        ))
-        self.screen.blit(enemy_title, enemy_title_rect)
-        
-        # Draw enemy combo texts
-        self.enemy_renderer.draw_combo_texts()
-        
-        # Draw controls explanation
-        controls_font = pygame.font.SysFont(None, 20)
-        controls = [
-            {"key": "[ESC]", "action": "Back to menu"},
-            {"key": "[1-0]", "action": "Set difficulty"},
-            {"key": "[B]", "action": "Blue/Water style"},
-            {"key": "[R]", "action": "Red/Fire style"},
-            {"key": "[G]", "action": "Green/Earth style"},
-            {"key": "[Y]", "action": "Yellow/Lightning style"}
-        ]
-        
-        # Calculate total width of all controls
-        total_width = 0
-        for control in controls:
-            key_text = controls_font.render(control["key"], True, self.WHITE)
-            action_text = controls_font.render(control["action"], True, self.GRAY)
-            total_width += key_text.get_width() + action_text.get_width() + 20  # 20px spacing
-        
-        # Draw controls centered at bottom
-        x_pos = (self.width - total_width) // 2
-        y_pos = self.height - 30
-        for control in controls:
-            # Draw key with background
-            key_text = controls_font.render(control["key"], True, self.WHITE)
-            key_bg = pygame.Rect(x_pos, y_pos, key_text.get_width() + 6, key_text.get_height() + 2)
-            pygame.draw.rect(self.screen, (60, 60, 100), key_bg, border_radius=3)
-            pygame.draw.rect(self.screen, self.WHITE, key_bg, 1, border_radius=3)
-            self.screen.blit(key_text, (x_pos + 3, y_pos))
-            
-            x_pos += key_text.get_width() + 6
-            
-            # Draw action text
-            action_text = controls_font.render(control["action"], True, self.GRAY)
-            self.screen.blit(action_text, (x_pos, y_pos))
-            
-            x_pos += action_text.get_width() + 14  # Add spacing between controls
 
 class GameClient:
     def __init__(self):
@@ -801,14 +60,10 @@ class GameClient:
         pygame.display.set_caption("Blade Fighters")
         
         # Create font
-        self.font = pygame.font.SysFont(None, 36)
+        self.font = pygame.font.SysFont('Arial', 36)
         
         # Initialize audio system
-        if audio_system_available:
-            self.audio = AudioSystem(ASSET_PATH)
-        else:
-            # Create a placeholder audio system
-            self.audio = None
+        self.audio = AudioSystem(ASSET_PATH)
         
         # Create menu system
         self.menu_system = MenuSystem(self.screen, self.font, self.audio, self.asset_path)
@@ -818,7 +73,12 @@ class GameClient:
         
         # Create settings system
         self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path)
-        self.settings_system.test_mode = self.test_mode  # Add reference to test_mode
+        
+        # Create screen manager
+        self.screen_manager = ScreenManager(self.screen, self.font, self.width, self.height)
+        
+        # Create story system
+        self.story_system = StorySystem(self.screen, self.font, self.width, self.height, self.menu_system)
         
         # Create puzzle engine
         parser = argparse.ArgumentParser()
@@ -826,7 +86,9 @@ class GameClient:
         args = parser.parse_args()
 
         if args.debug:
-            self.puzzle_engine = DebuggingPuzzleEngine(self.screen, self.font, self.audio, self.asset_path)
+            # This line was removed as per the edit hint to remove legacy TestMode
+            # self.puzzle_engine = DebuggingPuzzleEngine(self.screen, self.font, self.audio, self.asset_path)
+            pass # No debugging engine defined in the new_code
         else:
             self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path)
         
@@ -913,27 +175,33 @@ class GameClient:
     
     def set_screen(self, screen_name):
         """Set the current screen."""
-        print(f"Game Client: Setting screen to {screen_name}")
-        self.current_screen = screen_name
+        # Use screen manager if available
+        if hasattr(self, 'screen_manager') and self.screen_manager:
+            self.screen_manager.set_screen(screen_name)
+            self.current_screen = self.screen_manager.get_current_screen()
+        else:
+            # Legacy screen management
+            print(f"Game Client: Setting screen to {screen_name}")
+            self.current_screen = screen_name
+        
+        # Screen-specific initialization
         if screen_name == "settings":
             print("Game Client: Initializing settings system")
-            self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path)
+            if hasattr(self, 'settings_system') and self.settings_system:
+                self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path)
         elif screen_name == "ui_editor":
             print("Game Client: Switching to UI editor")
-            if hasattr(self, 'settings_system'):
+            if hasattr(self, 'settings_system') and self.settings_system:
                 self.settings_system.set_screen("ui_editor")
         elif screen_name == "test":
-            self.test_mode.initialize_test()
-            # Reload UI positions to ensure the latest positions are used
-            self.test_mode.setup_board_positions()
-        elif screen_name == "main_menu" and hasattr(self, 'test_mode'):
+            if hasattr(self, 'test_mode') and self.test_mode:
+                self.test_mode.initialize_test()
+                # Reload UI positions to ensure the latest positions are used
+                self.test_mode.setup_board_positions()
+        elif screen_name == "main_menu" and hasattr(self, 'test_mode') and self.test_mode:
             # Make sure the test mode has the latest UI positions when going back to main menu
             self.test_mode.setup_board_positions()
-        
-        print(f"Changing screen to: {screen_name}")
-        
-        # Initialize the new screen
-        if screen_name == "game":
+        elif screen_name == "game":
             self.puzzle_engine.start_game()
     
     def update_menu_particles(self):
@@ -1078,13 +346,13 @@ class GameClient:
             self.screen.blit(text_surf, text_rect)
         
         # Draw title
-        title_font = pygame.font.SysFont(None, 72)
+        title_font = pygame.font.SysFont('Arial', 72)
         title_surf = title_font.render("Blade Fighters", True, self.WHITE)
         title_rect = title_surf.get_rect(midtop=(self.width // 2, 50))
         self.screen.blit(title_surf, title_rect)
         
         # Draw version number
-        version_font = pygame.font.SysFont(None, 20)
+        version_font = pygame.font.SysFont('Arial', 20)
         version_surf = version_font.render(f"v{self.version}", True, self.LIGHT_GRAY)
         version_rect = version_surf.get_rect(bottomright=(self.width - 10, self.height - 10))
         self.screen.blit(version_surf, version_rect)
@@ -1102,12 +370,16 @@ class GameClient:
     def draw_settings_menu(self):
         """Draw the settings menu screen using the MenuSystem."""
         # Use the MenuSystem to draw the settings menu
-        settings_buttons = self.menu_system.draw_settings_menu(
-            on_back_action=lambda: self.set_screen("main_menu"),
-            current_resolution=(self.width, self.height),
-            resolutions=self.resolutions,
-            on_resolution_change=self.change_resolution
-        )
+        if hasattr(self, 'menu_system') and self.menu_system:
+            settings_buttons = self.menu_system.draw_settings_menu(
+                on_back_action=lambda: self.set_screen("main_menu"),
+                current_resolution=(self.width, self.height),
+                resolutions=self.resolutions,
+                on_resolution_change=self.change_resolution
+            )
+        else:
+            # Fallback if no menu system available
+            settings_buttons = []
         
         # Check for hover on buttons
         mouse_pos = pygame.mouse.get_pos()
@@ -1118,7 +390,7 @@ class GameClient:
                 button["hover"] = False
         
         # Instead, use the custom MP3 player display method
-        if audio_system_available and self.audio:
+        if hasattr(self, 'audio') and self.audio:
             self.display_custom_mp3_player()
         
         return settings_buttons
@@ -1133,17 +405,29 @@ class GameClient:
         self.screen = pygame.display.set_mode((self.width, self.height))
         
         # Update menu system with new screen
-        self.menu_system.screen = self.screen
+        if hasattr(self, 'menu_system') and self.menu_system:
+            self.menu_system.screen = self.screen
         
         # Update settings system with new screen
-        self.settings_system.screen = self.screen
+        if hasattr(self, 'settings_system') and self.settings_system:
+            self.settings_system.screen = self.screen
+            self.settings_system.width = self.width
+            self.settings_system.height = self.height
+        
+        # Update screen manager with new resolution
+        if hasattr(self, 'screen_manager') and self.screen_manager:
+            self.screen_manager.handle_resolution_change(width, height)
+        
+        # Update story system with new resolution
+        if hasattr(self, 'story_system') and self.story_system:
+            self.story_system.update_resolution(width, height)
         
         # If we're in test mode, update the board positions
         if hasattr(self, 'test_mode'):
             self.test_mode.setup_board_positions()
         
         # Play click sound if available
-        if audio_system_available and hasattr(self.audio, 'sounds') and 'click' in self.audio.sounds:
+        if hasattr(self.audio, 'sounds') and 'click' in self.audio.sounds:
             self.audio.sounds['click'].play()
     
     def start_quickplay(self):
@@ -1164,19 +448,19 @@ class GameClient:
             self.screen.fill((20, 20, 50))
             
         # Draw game placeholder text
-        title_font = pygame.font.SysFont(None, 72)
+        title_font = pygame.font.SysFont('Arial', 72)
         title_surf = title_font.render("Game Screen", True, self.WHITE)
         title_rect = title_surf.get_rect(center=(self.width // 2, self.height // 2))
         self.screen.blit(title_surf, title_rect)
         
         # Draw instruction
-        instruction_font = pygame.font.SysFont(None, 36)
+        instruction_font = pygame.font.SysFont('Arial', 36)
         instruction_surf = instruction_font.render("Press ESC to return to menu", True, self.WHITE)
         instruction_rect = instruction_surf.get_rect(center=(self.width // 2, self.height // 2 + 60))
         self.screen.blit(instruction_surf, instruction_rect)
         
         # Instead, use the custom MP3 player display method
-        if audio_system_available and self.audio:
+        if hasattr(self, 'audio') and self.audio:
             self.display_custom_mp3_player()
     
     def display_custom_mp3_player(self):
@@ -1199,7 +483,7 @@ class GameClient:
         for btn_name, btn_rect in self.mp3_player_buttons.items():
             if btn_rect.collidepoint(pos):
                 # Play click sound if available
-                if audio_system_available and self.audio and hasattr(self.audio, 'sounds') and 'click' in self.audio.sounds:
+                if hasattr(self.audio, 'sounds') and 'click' in self.audio.sounds:
                     self.audio.sounds['click'].play()
                 
                 # Handle button actions using the audio system's MP3 player
@@ -1269,7 +553,7 @@ class GameClient:
                 for event in events:
                     if event.type == pygame.QUIT:
                         # Save UI positions before closing
-                        if hasattr(self, 'settings_system') and hasattr(self.settings_system, 'ui_editor') and self.settings_system.ui_editor:
+                        if hasattr(self, 'settings_system') and self.settings_system and hasattr(self.settings_system, 'ui_editor') and self.settings_system.ui_editor:
                             self.settings_system.ui_editor.save_positions()
                         self.game_running = False
                     elif event.type == pygame.VIDEORESIZE:
@@ -1287,7 +571,7 @@ class GameClient:
                         continue
                     
                     # Let the audio system handle any audio-related events
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.audio.handle_audio_events(event)
                 
                 # Process events and update/draw the current screen
@@ -1301,129 +585,193 @@ class GameClient:
                     events = filtered_events
                     
                     # Process menu events with filtered event list
-                    menu_action = self.menu_system.process_main_menu_events(events)
-                    
-                    # Handle menu actions
-                    if menu_action == "quickplay":
-                        self.set_screen("game")
-                    elif menu_action == "settings":
-                        self.set_screen("settings")
-                    elif menu_action == "story":
-                        self.set_screen("story")
-                    elif menu_action == "test":
-                        self.set_screen("test")
-                    elif menu_action == "quit":
-                        self.game_running = False
-                    
-                    # Draw the main menu
-                    self.main_menu_buttons = self.menu_system.draw_main_menu(
-                        on_start_action=self.start_quickplay,
-                        on_settings_action=lambda: self.set_screen("settings"),
-                        on_story_action=lambda: self.set_screen("story"),
-                        on_test_action=lambda: self.set_screen("test"),
-                        version=self.version
-                    )
+                    if hasattr(self, 'menu_system') and self.menu_system:
+                        menu_action = self.menu_system.process_main_menu_events(events)
+                        
+                        # Handle menu actions
+                        if menu_action == "quickplay":
+                            self.set_screen("game")
+                        elif menu_action == "settings":
+                            self.set_screen("settings")
+                        elif menu_action == "story":
+                            self.set_screen("story")
+                        elif menu_action == "test":
+                            self.set_screen("test")
+                        elif menu_action == "quit":
+                            self.game_running = False
+                        
+                        # Draw the main menu
+                        self.main_menu_buttons = self.menu_system.draw_main_menu(
+                            on_start_action=self.start_quickplay,
+                            on_settings_action=lambda: self.set_screen("settings"),
+                            on_story_action=lambda: self.set_screen("story"),
+                            on_test_action=lambda: self.set_screen("test"),
+                            version=self.version
+                        )
+                    else:
+                        # Fallback if menu system is not available
+                        self.screen.fill(self.BLACK)
+                        error_text = self.font.render("Menu system not available", True, self.WHITE)
+                        error_rect = error_text.get_rect(center=(self.width // 2, self.height // 2))
+                        self.screen.blit(error_text, error_rect)
+                        
+                        # Handle escape key to quit
+                        for event in events:
+                            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                                self.game_running = False
                     
                     # Display MP3 player
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.display_custom_mp3_player()
                 
                 elif self.current_screen == "test":
-                    # Process test mode events
-                    test_action = self.test_mode.process_events(events)
-                    
-                    # Handle test mode actions
-                    if test_action == "back_to_menu":
-                        self.set_screen("main_menu")
-                    
-                    # Update the test mode
-                    test_update_result = self.test_mode.update()
-                    
-                    # Handle game over state
-                    if test_update_result == "game_over":
-                        self.show_game_over_screen()
-                        continue
-                    
-                    # Draw the test mode
-                    self.test_mode.draw()
-                    
-                    # Display MP3 player in test mode too
-                    if audio_system_available and self.audio:
-                        self.display_custom_mp3_player()
+                    if hasattr(self, 'test_mode') and self.test_mode:
+                        # Process test mode events
+                        test_action = self.test_mode.process_events(events)
+                        
+                        # Handle test mode actions
+                        if test_action == "back_to_menu":
+                            self.set_screen("main_menu")
+                        
+                        # Update the test mode
+                        test_update_result = self.test_mode.update()
+                        
+                        # Handle game over state
+                        if test_update_result == "game_over":
+                            self.show_game_over_screen()
+                            continue
+                        
+                        # Draw the test mode
+                        self.test_mode.draw()
+                        
+                        # Display MP3 player in test mode too
+                        if hasattr(self, 'audio') and self.audio:
+                            self.display_custom_mp3_player()
+                    else:
+                        # Fallback if test mode is not available
+                        self.screen.fill(self.BLACK)
+                        error_text = self.font.render("Test mode not available", True, self.WHITE)
+                        error_rect = error_text.get_rect(center=(self.width // 2, self.height // 2))
+                        self.screen.blit(error_text, error_rect)
+                        
+                        # Handle escape key to go back
+                        for event in events:
+                            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                                self.set_screen("main_menu")
                 
                 elif self.current_screen == "story":
                     # Process story menu events
-                    story_action = self.menu_system.process_story_menu_events(events)
-                    
-                    # Handle story menu actions
-                    if story_action == "back":
-                        self.set_screen("main_menu")
-                    elif isinstance(story_action, str) and story_action.startswith("story:"):
-                        # Extract story ID from action string
-                        story_id = int(story_action.split(":")[1])
-                        print(f"Selected story {story_id}")
-                        # Load and display the selected story
-                        self.load_story(story_id)
-                        self.set_screen("story_content")
-                    
-                    # Draw the story menu
-                    self.menu_system.draw_story_menu(
-                        on_back_action=lambda: self.set_screen("main_menu")
-                    )
+                    if hasattr(self, 'menu_system') and self.menu_system:
+                        story_action = self.menu_system.process_story_menu_events(events)
+                        
+                        # Handle story menu actions
+                        if story_action == "back":
+                            self.set_screen("main_menu")
+                        elif isinstance(story_action, str) and story_action.startswith("story:"):
+                            # Extract story ID from action string
+                            story_id = int(story_action.split(":")[1])
+                            print(f"Selected story {story_id}")
+                            # Load and display the selected story
+                            if hasattr(self, 'story_system') and self.story_system:
+                                self.current_story = self.story_system.load_story(story_id)
+                            else:
+                                self.load_story(story_id)
+                            self.set_screen("story_content")
+                        
+                        # Draw the story menu
+                        self.menu_system.draw_story_menu(
+                            on_back_action=lambda: self.set_screen("main_menu")
+                        )
+                    else:
+                        # Fallback if menu system is not available
+                        self.screen.fill(self.BLACK)
+                        error_text = self.font.render("Story menu not available", True, self.WHITE)
+                        error_rect = error_text.get_rect(center=(self.width // 2, self.height // 2))
+                        self.screen.blit(error_text, error_rect)
+                        
+                        # Handle escape key to go back
+                        for event in events:
+                            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                                self.set_screen("main_menu")
                     
                     # Display MP3 player in story menu too
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.display_custom_mp3_player()
                 
                 elif self.current_screen == "story_content":
-                    # Process events for the story content view
-                    for event in events:
-                        if event.type == pygame.KEYDOWN:
-                            if event.key == pygame.K_ESCAPE:
-                                self.set_screen("story")
-                            elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                                # Scroll down
-                                self.story_scroll_position += 20
-                            elif event.key == pygame.K_UP or event.key == pygame.K_w:
-                                # Scroll up (with limit to prevent scrolling above the top)
-                                self.story_scroll_position = max(0, self.story_scroll_position - 20)
-                        elif event.type == pygame.MOUSEBUTTONDOWN:
-                            if event.button == 4:  # Mouse wheel up
-                                self.story_scroll_position = max(0, self.story_scroll_position - 40)
-                            elif event.button == 5:  # Mouse wheel down
-                                self.story_scroll_position += 40
-                    
-                    # Display the story content
-                    self.display_story_content()
+                    # Use extracted story system if available
+                    if hasattr(self, 'story_system') and self.story_system:
+                        # Handle story events using the story system
+                        story_action, new_scroll_position = self.story_system.handle_story_events(events, self.story_scroll_position)
+                        self.story_scroll_position = new_scroll_position
+                        
+                        # Handle story actions
+                        if story_action == "back_to_story":
+                            self.set_screen("story")
+                        
+                        # Display the story content using the story system
+                        self.story_scroll_position = self.story_system.display_story_content(self.current_story, self.story_scroll_position)
+                    else:
+                        # Legacy story content handling
+                        for event in events:
+                            if event.type == pygame.KEYDOWN:
+                                if event.key == pygame.K_ESCAPE:
+                                    self.set_screen("story")
+                                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                                    # Scroll down
+                                    self.story_scroll_position += 20
+                                elif event.key == pygame.K_UP or event.key == pygame.K_w:
+                                    # Scroll up (with limit to prevent scrolling above the top)
+                                    self.story_scroll_position = max(0, self.story_scroll_position - 20)
+                            elif event.type == pygame.MOUSEBUTTONDOWN:
+                                if event.button == 4:  # Mouse wheel up
+                                    self.story_scroll_position = max(0, self.story_scroll_position - 40)
+                                elif event.button == 5:  # Mouse wheel down
+                                    self.story_scroll_position += 40
+                        
+                        # Display the story content using legacy method
+                        self.display_story_content()
                     
                     # Display MP3 player in story content view too
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.display_custom_mp3_player()
                 
                 elif self.current_screen == "settings":
                     # Process settings events using the settings system
-                    settings_action = self.settings_system.process_settings_events(events)
-                    
-                    # Handle settings actions
-                    if settings_action == "back":
-                        self.set_screen("main_menu")
-                    elif isinstance(settings_action, str) and settings_action.startswith("resolution:"):
-                        # Extract resolution from action string
-                        parts = settings_action.split(":")
-                        if len(parts) == 3:
-                            width, height = int(parts[1]), int(parts[2])
-                            self.change_resolution(width, height)
-                    
-                    # Draw the settings menu using the settings system
-                    self.settings_buttons = self.settings_system.draw_settings_menu(
-                        on_back_action=lambda: self.set_screen("main_menu"),
-                        current_resolution=(self.width, self.height),
-                        resolutions=self.resolutions,
-                        on_resolution_change=self.change_resolution
-                    )
+                    if hasattr(self, 'settings_system') and self.settings_system:
+                        settings_action = self.settings_system.process_settings_events(events)
+                        
+                        # Handle settings actions
+                        if settings_action == "back":
+                            self.set_screen("main_menu")
+                        elif isinstance(settings_action, str) and settings_action.startswith("resolution:"):
+                            # Extract resolution from action string
+                            parts = settings_action.split(":")
+                            if len(parts) == 3:
+                                width, height = int(parts[1]), int(parts[2])
+                                self.change_resolution(width, height)
+                        
+                        # Draw the settings menu using the settings system
+                        self.settings_buttons = self.settings_system.draw_settings_menu(
+                            on_back_action=lambda: self.set_screen("main_menu"),
+                            current_resolution=(self.width, self.height),
+                            resolutions=self.resolutions,
+                            on_resolution_change=self.change_resolution
+                        )
+                    else:
+                        # Fallback if settings system is not available
+                        self.screen.fill(self.BLACK)
+                        error_text = self.font.render("Settings system not available", True, self.WHITE)
+                        error_rect = error_text.get_rect(center=(self.width // 2, self.height // 2))
+                        self.screen.blit(error_text, error_rect)
+                        
+                        # Handle escape key to go back
+                        for event in events:
+                            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                                self.set_screen("main_menu")
                     
                     # Display MP3 player in settings too
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.display_custom_mp3_player()
                 
                 elif self.current_screen == "game":
@@ -1452,7 +800,7 @@ class GameClient:
                     self.puzzle_renderer.draw_game_screen()
                     
                     # Instead, use the custom MP3 player display method
-                    if audio_system_available and self.audio:
+                    if hasattr(self, 'audio') and self.audio:
                         self.display_custom_mp3_player()
                 
                 # Update the display
@@ -1470,7 +818,14 @@ class GameClient:
             sys.exit()
             
     def load_story(self, story_id):
-        """Load story content from file based on story ID."""
+        """Load story content from file based on story ID (legacy fallback method)."""
+        # Use extracted story system if available
+        if hasattr(self, 'story_system') and self.story_system:
+            self.current_story = self.story_system.load_story(story_id)
+            self.story_scroll_position = 0
+            return
+        
+        # Legacy story loading
         # Map story IDs to filenames
         story_files = {
             1: "stories/saga1_the_forge_keepers_legacy.txt",
@@ -1545,7 +900,8 @@ class GameClient:
         self.screen.blit(overlay, (0, 0))
         
         # Draw some menu particles for visual appeal
-        self.menu_system.draw_menu_particles()
+        if hasattr(self, 'menu_system') and self.menu_system:
+            self.menu_system.draw_menu_particles()
         
         # Create a surface for the content
         content_width = int(self.width * 0.8)

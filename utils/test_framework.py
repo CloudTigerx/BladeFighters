@@ -80,8 +80,8 @@ class PuzzleEngineTests(BladeFightersTestSuite):
             
             # Check that essential attributes are initialized
             self.assertIsNotNone(engine)
-            self.assertIsNotNone(engine.grid)
-            self.assertIsInstance(engine.grid, list)
+            self.assertIsNotNone(engine.puzzle_grid)  # Fixed: actual attribute name
+            self.assertIsInstance(engine.puzzle_grid, list)
             
         except Exception as e:
             self.fail(f"PuzzleEngine initialization failed: {e}")
@@ -96,9 +96,9 @@ class PuzzleEngineTests(BladeFightersTestSuite):
                 self.test_config['asset_path']
             )
             
-            # Check grid dimensions (assuming 6x13 based on game_client.py)
-            self.assertEqual(len(engine.grid), 13)  # Height
-            self.assertEqual(len(engine.grid[0]), 6)  # Width
+            # Check grid dimensions (actual dimensions from PuzzleEngine)
+            self.assertEqual(len(engine.puzzle_grid), 16)  # Fixed: total_grid_height = 16
+            self.assertEqual(len(engine.puzzle_grid[0]), 6)  # Width = 6
             
         except Exception as e:
             self.fail(f"Grid creation test failed: {e}")
@@ -177,20 +177,165 @@ class AudioSystemTests(BladeFightersTestSuite):
     def setUp(self):
         super().setUp()
         try:
-            from audio_system import AudioSystem
+            # Try extracted module first
+            from audio_module import AudioSystem
             self.AudioSystem = AudioSystem
+            print("✅ Testing extracted AudioSystem module")
         except ImportError:
-            self.skipTest("AudioSystem not available")
+            try:
+                # Fallback to legacy module
+                from audio_system import AudioSystem
+                self.AudioSystem = AudioSystem
+                print("⚠️  Testing legacy AudioSystem (fallback)")
+            except ImportError:
+                self.skipTest("AudioSystem not available")
     
     def test_audio_system_initialization(self):
         """Test that audio system initializes correctly."""
         try:
-            audio_system = self.AudioSystem()
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
             
             self.assertIsNotNone(audio_system)
+            self.assertIsNotNone(audio_system.sounds)
+            self.assertIsInstance(audio_system.sounds, dict)
+            self.assertIsNotNone(audio_system.songs)
+            self.assertIsInstance(audio_system.songs, list)
             
         except Exception as e:
             self.fail(f"AudioSystem initialization failed: {e}")
+    
+    def test_sound_loading(self):
+        """Test that sound files are loaded correctly."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Check that expected sound types are loaded
+            expected_sounds = ['hover', 'click', 'placed', 'singlebreak', 'double', 'triple', 'tripormore']
+            
+            for sound_name in expected_sounds:
+                self.assertIn(sound_name, audio_system.sounds, f"Sound '{sound_name}' not loaded")
+                self.assertIsNotNone(audio_system.sounds[sound_name], f"Sound '{sound_name}' is None")
+            
+        except Exception as e:
+            self.fail(f"Sound loading test failed: {e}")
+    
+    def test_sound_playback(self):
+        """Test that sounds can be played without errors."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Test playing each sound type
+            test_sounds = ['hover', 'click', 'placed', 'singlebreak']
+            
+            for sound_name in test_sounds:
+                if sound_name in audio_system.sounds:
+                    # Should not raise an exception
+                    audio_system.play_sound(sound_name)
+                    
+            # Test playing non-existent sound (should handle gracefully)
+            audio_system.play_sound('nonexistent_sound')
+            
+        except Exception as e:
+            self.fail(f"Sound playback test failed: {e}")
+    
+    def test_mp3_player_integration(self):
+        """Test that MP3 player is properly integrated."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Check MP3 player exists
+            self.assertTrue(hasattr(audio_system, 'mp3_player'))
+            self.assertIsNotNone(audio_system.mp3_player)
+            
+            # Check songs are loaded
+            if audio_system.songs:
+                self.assertGreater(len(audio_system.songs), 0)
+                
+                # Check first song has required attributes
+                first_song = audio_system.songs[0]
+                self.assertIn('path', first_song)
+                self.assertIn('title', first_song)
+                self.assertIn('artist', first_song)
+            
+        except Exception as e:
+            self.fail(f"MP3 player integration test failed: {e}")
+    
+    def test_volume_control(self):
+        """Test that volume controls work correctly."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Test that sounds have volume attributes
+            for sound_name, sound_obj in audio_system.sounds.items():
+                if hasattr(sound_obj, 'set_volume'):
+                    # Should not raise an exception
+                    sound_obj.set_volume(0.5)
+                    
+        except Exception as e:
+            self.fail(f"Volume control test failed: {e}")
+    
+    def test_fallback_behavior(self):
+        """Test that audio system handles missing files gracefully."""
+        try:
+            # Create audio system with non-existent path
+            audio_system = self.AudioSystem('nonexistent_path')
+            
+            # Should still initialize without crashing
+            self.assertIsNotNone(audio_system)
+            self.assertIsNotNone(audio_system.sounds)
+            
+            # Should be able to play sounds (even if they're dummy sounds)
+            audio_system.play_sound('hover')
+            audio_system.play_sound('click')
+            
+        except Exception as e:
+            self.fail(f"Fallback behavior test failed: {e}")
+    
+    def test_audio_event_handling(self):
+        """Test that audio system can handle pygame events."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Create a mock pygame event
+            import pygame
+            mock_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'button': 1, 'pos': (100, 100)})
+            
+            # Should handle event without crashing
+            result = audio_system.handle_audio_events(mock_event)
+            self.assertIsInstance(result, bool)
+            
+        except Exception as e:
+            self.fail(f"Audio event handling test failed: {e}")
+    
+    def test_audio_integration_with_menu(self):
+        """Test that audio system integrates correctly with menu system."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            from menu_system import MenuSystem
+            
+            # Create menu system with audio
+            menu_system = MenuSystem(self.test_screen, self.test_font, audio_system, self.test_config['asset_path'])
+            
+            # Check that menu system has audio reference
+            self.assertIsNotNone(menu_system.audio)
+            
+        except Exception as e:
+            self.fail(f"Audio-menu integration test failed: {e}")
+    
+    def test_audio_integration_with_puzzle(self):
+        """Test that audio system integrates correctly with puzzle engine."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            from puzzle_module import PuzzleEngine
+            
+            # Create puzzle engine with audio
+            puzzle_engine = PuzzleEngine(self.test_screen, self.test_font, audio_system, self.test_config['asset_path'])
+            
+            # Check that puzzle engine has audio reference
+            self.assertIsNotNone(puzzle_engine.audio)
+            
+        except Exception as e:
+            self.fail(f"Audio-puzzle integration test failed: {e}")
 
 
 class IntegrationTests(BladeFightersTestSuite):
@@ -284,7 +429,7 @@ class TestRunner:
             'errors': []
         }
     
-    def run_tests(self, test_classes: List[type] = None) -> Dict[str, Any]:
+    def run_tests(self, test_classes: Optional[List[type]] = None) -> Dict[str, Any]:
         """Run all tests and return detailed results."""
         if test_classes is None:
             test_classes = [
@@ -318,11 +463,12 @@ class TestRunner:
         # Compile results
         self.results['passed'] = result.testsRun - len(result.failures) - len(result.errors)
         self.results['failed'] = len(result.failures)
-        self.results['errors'] = len(result.errors)
+        self.results['errors'] = len(result.errors)  # Fixed: store count, not list
         
-        # Store detailed error information
+        # Store detailed error information - Fixed: initialize as list
+        self.results['error_details'] = []
         for test, traceback in result.failures + result.errors:
-            self.results['errors'].append({
+            self.results['error_details'].append({
                 'test': str(test),
                 'traceback': traceback
             })
@@ -339,9 +485,9 @@ class TestRunner:
         print(f"❌ Failed: {self.results['failed']}")
         print(f"⚠️  Errors: {self.results['errors']}")
         
-        if self.results['errors']:
+        if self.results.get('error_details'):
             print(f"\n🔍 DETAILED ERRORS:")
-            for error in self.results['errors']:
+            for error in self.results['error_details']:
                 print(f"   {error['test']}")
                 print(f"   {error['traceback'][:200]}...")
         

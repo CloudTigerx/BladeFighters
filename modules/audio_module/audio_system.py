@@ -1,12 +1,51 @@
+"""
+AudioSystem Implementation
+=========================
+
+Extracted audio system providing sound effects and music playback functionality.
+This implementation adheres to the AudioSystemInterface contract.
+
+Author: Blade Fighters Refactoring Team
+Created: During Phase 1 refactoring
+"""
+
 import pygame
 import os
 import random
 import time
-from mp3_player import MP3Player
+from typing import Dict, Optional
 
-class AudioSystem:
-    def __init__(self, asset_path):
-        """Initialize audio system with support for sound effects and music."""
+# Import the interface contract for validation
+try:
+    from ..audio_interface_contract import AudioSystemInterface
+    USE_INTERFACE_CONTRACT = True
+except ImportError:
+    # Fallback for when running standalone
+    USE_INTERFACE_CONTRACT = False
+    class AudioSystemInterface:
+        pass
+
+from .mp3_player import MP3Player
+
+
+class AudioSystem(AudioSystemInterface):
+    """
+    Extracted AudioSystem implementation.
+    
+    Provides sound effects and music playback functionality with graceful
+    error handling and fallback behavior.
+    
+    This class implements the AudioSystemInterface contract to ensure
+    compatibility during the refactoring process.
+    """
+    
+    def __init__(self, asset_path: str):
+        """
+        Initialize audio system with support for sound effects and music.
+        
+        Args:
+            asset_path (str): Path to the game assets directory
+        """
         # Initialize paths
         self.asset_path = asset_path
         self.root_path = os.path.dirname(asset_path)
@@ -26,19 +65,82 @@ class AudioSystem:
         self.hover_sound_cooldown = 300  # Minimum time (ms) between hover sounds
         
         # Load custom background image for MP3 player
-        self.mp3_player_background = self.load_mp3_player_background()
+        self.mp3_player_background = self._load_mp3_player_background()
         
         # Load sounds
-        self.load_sounds()
+        self._load_sounds()
         
         # Load songs
-        self.load_songs()
+        self._load_songs()
         
         # Initialize the MP3 player
         self.mp3_player = MP3Player(self.songs, self.mp3_player_background)
         self.mp3_player.set_sounds(self.sounds)
+    
+    def play_sound(self, sound_name: str) -> None:
+        """
+        Play a sound effect by name.
         
-    def load_mp3_player_background(self):
+        Args:
+            sound_name (str): Name of the sound to play
+        """
+        print(f"Attempting to play sound: {sound_name}")
+        print(f"Available sounds: {list(self.sounds.keys())}")
+        
+        if sound_name in self.sounds:
+            try:
+                self.sounds[sound_name].play()
+                print(f"Successfully played sound: {sound_name}")
+            except Exception as e:
+                print(f"Error playing sound {sound_name}: {e}")
+        else:
+            print(f"Sound not found: {sound_name}")
+    
+    def play_music(self, music_name: str) -> None:
+        """
+        Play background music.
+        
+        Args:
+            music_name (str): Name of music to play
+        """
+        if music_name == 'music' and hasattr(self, 'mp3_player') and self.mp3_player.songs:
+            self.mp3_player.play_song()
+    
+    def handle_audio_events(self, event: pygame.event.Event) -> bool:
+        """
+        Handle pygame events related to audio.
+        
+        Args:
+            event (pygame.event.Event): Pygame event to process
+            
+        Returns:
+            bool: True if event was handled, False otherwise
+        """
+        # First let the MP3 player try to handle the event
+        if hasattr(self, 'mp3_player') and self.mp3_player.handle_events(event):
+            return True
+            
+        return False  # Event wasn't handled
+    
+    def draw_mp3_player(self, screen: pygame.Surface, width: int, height: int) -> Dict[str, pygame.Rect]:
+        """
+        Draw the MP3 player interface on screen.
+        
+        Args:
+            screen (pygame.Surface): Surface to draw on
+            width (int): Screen width
+            height (int): Screen height
+            
+        Returns:
+            Dict[str, pygame.Rect]: Dictionary of button names to their rects
+        """
+        if hasattr(self, 'mp3_player'):
+            return self.mp3_player.draw(screen, width, height)
+        return {}
+    
+    # Private implementation methods
+    
+    def _load_mp3_player_background(self) -> Optional[pygame.Surface]:
         """Load custom background image for the MP3 player."""
         background_image = None
         
@@ -75,7 +177,7 @@ class AudioSystem:
         print("No custom MP3 player background image found, using default style")
         return None
     
-    def load_sounds(self):
+    def _load_sounds(self) -> None:
         """Load sound effects from sound files."""
         # Define sound files to look for in order of preference (.mp3 files first)
         sound_files = {
@@ -124,7 +226,7 @@ class AudioSystem:
                             # Load the sound file with proper error handling
                             sound = pygame.mixer.Sound(file_path)
                             
-                            # Set volume
+                            # Set volume based on sound type
                             if 'hover' in sound_name:
                                 sound.set_volume(0.3)
                             elif 'click' in sound_name:
@@ -147,9 +249,9 @@ class AudioSystem:
             # Create dummy sounds as fallback for essential effects if they couldn't be loaded
             if not sound_loaded:
                 print(f"No sound file found for '{sound_name}', using silent dummy sound")
-                self.create_silent_dummy_sound(sound_name)
-        
-    def create_silent_dummy_sound(self, name):
+                self._create_silent_dummy_sound(sound_name)
+    
+    def _create_silent_dummy_sound(self, name: str) -> None:
         """Create a silent dummy sound as a fallback."""
         print(f"Creating silent dummy sound for {name}")
         try:
@@ -167,7 +269,7 @@ class AudioSystem:
                 def set_volume(self, volume): pass
             self.sounds[name] = DummySound()
     
-    def load_songs(self):
+    def _load_songs(self) -> None:
         """Load MP3 files from the songs directory."""
         try:
             # Define songs directories to check - prioritize ROOT_PATH/sounds/songs
@@ -235,36 +337,14 @@ class AudioSystem:
                 
         except Exception as e:
             print(f"Error loading songs: {e}")
+
+
+# Validate interface compliance at module load time
+if USE_INTERFACE_CONTRACT:
+    # Verify that AudioSystem implements all required methods
+    required_methods = ['__init__', 'play_sound', 'play_music', 'handle_audio_events', 'draw_mp3_player']
+    for method in required_methods:
+        if not hasattr(AudioSystem, method):
+            raise NotImplementedError(f"AudioSystem missing required method: {method}")
     
-    def play_music(self, music_name):
-        """Play background music."""
-        if music_name == 'music' and hasattr(self, 'mp3_player') and self.mp3_player.songs:
-            self.mp3_player.play_song()
-    
-    def draw_mp3_player(self, screen, width, height):
-        """Draw the MP3 player on screen (delegates to MP3Player)."""
-        if hasattr(self, 'mp3_player'):
-            return self.mp3_player.draw(screen, width, height)
-        return {}
-    
-    def handle_audio_events(self, event):
-        """Handle pygame events related to audio."""
-        # First let the MP3 player try to handle the event
-        if hasattr(self, 'mp3_player') and self.mp3_player.handle_events(event):
-            return True
-            
-        return False  # Event wasn't handled
-        
-    def play_sound(self, sound_name):
-        """Play a sound by name."""
-        print(f"Attempting to play sound: {sound_name}")
-        print(f"Available sounds: {list(self.sounds.keys())}")
-        
-        if sound_name in self.sounds:
-            try:
-                self.sounds[sound_name].play()
-                print(f"Successfully played sound: {sound_name}")
-            except Exception as e:
-                print(f"Error playing sound {sound_name}: {e}")
-        else:
-            print(f"Sound not found: {sound_name}") 
+    print("✅ AudioSystem implementation validated against interface contract") 

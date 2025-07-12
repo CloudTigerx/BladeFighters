@@ -1,17 +1,36 @@
+"""
+Extracted Menu System Module
+Provides menu functionality including main menu, story menu, and button creation.
+Simplified to focus on core functionality: buttons, backgrounds, and basic interaction.
+"""
+
 import pygame
 import sys
 import math
 import random
 import os
+from typing import List, Dict, Optional, Any, Tuple
 
-# This module handles menu-related functionality including:
-# - Main menu
-# - Settings menu
-# - Button creation and interaction
-# - Menu particles
+# Try to import the interface contract
+try:
+    from contracts.menu_interface_contract import MenuSystemInterface, validate_menu_interface
+    interface_available = True
+except ImportError:
+    # Create a dummy interface if not available
+    class MenuSystemInterface:
+        pass
+    
+    def validate_menu_interface(cls):
+        return cls
+    
+    interface_available = False
+    print("⚠️  MenuSystem interface contract not found, running without validation")
 
-class MenuSystem:
-    def __init__(self, screen, font, audio, asset_path):
+@validate_menu_interface
+class MenuSystem(MenuSystemInterface):
+    """Extracted MenuSystem class with interface validation."""
+    
+    def __init__(self, screen, font, audio, asset_path: str):
         """Initialize the menu system."""
         self.screen = screen
         self.font = font
@@ -21,9 +40,6 @@ class MenuSystem:
         # Get screen dimensions
         self.width = screen.get_width()
         self.height = screen.get_height()
-        
-        # Menu particles
-        self.menu_particles = []
         
         # Track button states
         self.main_menu_buttons = []
@@ -65,71 +81,26 @@ class MenuSystem:
         self.button_normal = self.load_image("banner.png")
         self.button_hover = self.load_image("banner.png")
         
-        # Load draggable images
-        self.mellow_image = self.load_image("Enemys/mellow.png")
-        if self.mellow_image:
-            self.mellow_image = pygame.transform.scale(self.mellow_image, (300, 300))
+        # Initialize story container states for story menu
+        self.story_containers = []
+        for i in range(10):
+            self.story_containers.append({
+                "rect": pygame.Rect(0, 0, 0, 0),  # Will be set properly below
+                "original_size": (200, 300),  # Default size
+                "hover_size": (240, 360),     # Expanded size when hovered
+                "current_size": (200, 300),   # Current size (will be animated)
+                "hover": False,
+                "id": f"story_{i}",
+                "action": None,  # Could be set to open specific story
+                "transition_progress": 0.0    # For smooth size transitions
+            })
         
-        self.fox_image = self.load_image("magic/fox.png")
-        if self.fox_image:
-            self.fox_image = pygame.transform.scale(self.fox_image, (300, 300))
+        # Load story saga image
+        self.saga_image = self.load_image("saga.png")
         
-        self.smither_image = self.load_image("smither.png")
-        if self.smither_image:
-            self.smither_image = pygame.transform.scale(self.smither_image, (300, 300))
-            
-        self.firemon_image = self.load_image("magic/firemon.png")
-        if self.firemon_image:
-            self.firemon_image = pygame.transform.scale(self.firemon_image, (300, 300))
-            
-        self.blaze_image = self.load_image("magic/blaze.png")
-        if self.blaze_image:
-            self.blaze_image = pygame.transform.scale(self.blaze_image, (300, 300))
-            
-        self.skeleton_image = self.load_image("Enemys/skeleton.png")
-        if self.skeleton_image:
-            self.skeleton_image = pygame.transform.scale(self.skeleton_image, (300, 300))
-        
-        # Initialize dragging states
-        self.mellow_dragging = False
-        self.fox_dragging = False
-        self.smither_dragging = False
-        self.firemon_dragging = False
-        self.blaze_dragging = False
-        self.skeleton_dragging = False
-        self.mellow_drag_offset = [0, 0]
-        self.fox_drag_offset = [0, 0]
-        self.smither_drag_offset = [0, 0]
-        self.firemon_drag_offset = [0, 0]
-        self.blaze_drag_offset = [0, 0]
-        self.skeleton_drag_offset = [0, 0]
-        
-        # Load saved positions or use defaults
-        self.mellow_pos = self.load_saved_position("mellow")
-        if not self.mellow_pos:
-            self.mellow_pos = [self.width - 350, self.height - 350]  # Default bottom right corner
-            
-        self.fox_pos = self.load_saved_position("fox")
-        if not self.fox_pos:
-            self.fox_pos = [100, self.height - 350]  # Default bottom left corner, moved further left
-            
-        self.smither_pos = self.load_saved_position("smither")
-        if not self.smither_pos:
-            self.smither_pos = [self.width // 2 - 150, self.height - 350]  # Default bottom center
-            
-        self.firemon_pos = self.load_saved_position("firemon")
-        if not self.firemon_pos:
-            self.firemon_pos = [350, self.height - 350]  # Default bottom left, between fox and smither
-            
-        self.blaze_pos = self.load_saved_position("blaze")
-        if not self.blaze_pos:
-            self.blaze_pos = [self.width - 650, self.height - 350]  # Default bottom right, between mellow and smither
-            
-        self.skeleton_pos = self.load_saved_position("skeleton")
-        if not self.skeleton_pos:
-            self.skeleton_pos = [200, self.height - 350]  # Default bottom left, between fox and firemon
+        print("✅ MenuSystem initialized with core functionality")
     
-    def load_background(self, filename):
+    def load_background(self, filename: str):
         """Load a background image from the asset path."""
         try:
             return pygame.image.load(os.path.join(self.asset_path, filename))
@@ -137,7 +108,7 @@ class MenuSystem:
             print(f"Error loading background {filename}: {e}")
             return None
             
-    def load_image(self, filename):
+    def load_image(self, filename: str):
         """Load an image from the asset path."""
         try:
             full_path = os.path.join(self.asset_path, filename)
@@ -152,7 +123,8 @@ class MenuSystem:
     # Add a class variable to track which buttons we've already logged
     _logged_buttons = set()
 
-    def create_button(self, x, y, width, height, text, action=None, params=None):
+    def create_button(self, x: int, y: int, width: int, height: int, 
+                     text: str, action=None, params=None) -> Dict:
         """Create a button with text and optional action."""
         # Try to load custom button image if not already loaded
         if text not in self._logged_buttons:
@@ -164,7 +136,7 @@ class MenuSystem:
             except:
                 pass
 
-        # Rest of the method remains unchanged
+        # Create button dictionary
         button = {
             "rect": pygame.Rect(x, y, width, height),
             "text": text,
@@ -267,7 +239,8 @@ class MenuSystem:
         clicked = False
         if button["hover"] and pygame.mouse.get_pressed()[0]:
             # Play click sound
-            self.audio.play_sound('click')
+            if self.audio:
+                self.audio.play_sound('click')
             clicked = True
         
         # Add hover/click logic to button object
@@ -275,57 +248,8 @@ class MenuSystem:
         
         return button
     
-    def update_menu_particles(self):
-        """Update the menu particles position and life."""
-        # Create new particles occasionally
-        if random.random() < 0.1 and len(self.menu_particles) < 50:
-            # Use static colors for particles
-            particle_colors = [
-                (100, 150, 255),  # Light blue
-                (150, 200, 255),  # Lighter blue
-                (255, 255, 255)   # White
-            ]
-            particle = {
-                "x": random.randint(0, self.width),
-                "y": random.randint(0, self.height),
-                "size": random.randint(2, 5),
-                "speed": random.uniform(0.5, 2.0),
-                "angle": random.uniform(0, 2 * math.pi),
-                "color": random.choice(particle_colors),
-                "life": random.randint(60, 180)  # Frames of life
-            }
-            self.menu_particles.append(particle)
-        
-        # Update existing particles
-        for particle in self.menu_particles[:]:
-            # Move the particle
-            particle["x"] += math.cos(particle["angle"]) * particle["speed"]
-            particle["y"] += math.sin(particle["angle"]) * particle["speed"]
-            
-            # Reduce life
-            particle["life"] -= 1
-            
-            # Remove if it's off-screen or dead
-            if (particle["x"] < 0 or particle["x"] > self.width or
-                particle["y"] < 0 or particle["y"] > self.height or
-                particle["life"] <= 0):
-                self.menu_particles.remove(particle)
-    
-    def draw_menu_particles(self):
-        """Draw menu particles on the screen."""
-        for particle in self.menu_particles:
-            # Calculate opacity based on remaining life
-            alpha = int(255 * (particle["life"] / 180.0))
-            color = list(particle["color"])
-            
-            # Create a surface with per-pixel alpha
-            surf = pygame.Surface((particle["size"], particle["size"]), pygame.SRCALPHA)
-            surf.fill((color[0], color[1], color[2], alpha))
-            
-            # Draw the particle
-            self.screen.blit(surf, (int(particle["x"]), int(particle["y"])))
-    
-    def draw_main_menu(self, on_start_action=None, on_settings_action=None, on_story_action=None, on_test_action=None, version=None):
+    def draw_main_menu(self, on_start_action=None, on_settings_action=None, 
+                      on_story_action=None, on_test_action=None, version=None) -> List:
         """Draw the main menu screen."""
         # Draw background
         if hasattr(self, 'main_background') and self.main_background:
@@ -358,9 +282,6 @@ class MenuSystem:
             # Use a solid color if no background image
             gradient_rect = pygame.Rect(0, 0, self.width, self.height)
             pygame.draw.rect(self.screen, (20, 20, 50), gradient_rect)
-        
-        # Draw menu particles
-        self.draw_menu_particles()
         
         # Calculate button positions based on screen size
         button_width = 300
@@ -416,7 +337,7 @@ class MenuSystem:
         # Return the current buttons for interaction
         return self.main_menu_buttons
     
-    def process_main_menu_events(self, events):
+    def process_main_menu_events(self, events: List) -> Optional[str]:
         """Process events for the main menu.
         Returns action string if an action is triggered, None otherwise."""
         for event in events:
@@ -449,37 +370,8 @@ class MenuSystem:
         
         return None
     
-    def draw_story_menu(self, on_back_action=None):
+    def draw_story_menu(self, on_back_action=None) -> List:
         """Draw the story menu screen with 10 saga containers that expand on hover."""
-        # Initialize story container states if they don't exist
-        if not hasattr(self, 'story_containers'):
-            self.story_containers = []
-            for i in range(10):
-                self.story_containers.append({
-                    "rect": pygame.Rect(0, 0, 0, 0),  # Will be set properly below
-                    "original_size": (200, 300),  # Default size
-                    "hover_size": (240, 360),     # Expanded size when hovered
-                    "current_size": (200, 300),   # Current size (will be animated)
-                    "hover": False,
-                    "id": f"story_{i}",
-                    "action": None,  # Could be set to open specific story
-                    "transition_progress": 0.0    # For smooth size transitions
-                })
-                
-        # Try to load the story background if not already loaded
-        if not hasattr(self, 'story_background'):
-            try:
-                self.story_background = pygame.image.load(os.path.join("puzzleassets", "storybackground.png"))
-            except pygame.error:
-                self.story_background = None
-                
-        # Try to load the placeholder saga image if not already loaded
-        if not hasattr(self, 'saga_image'):
-            try:
-                self.saga_image = pygame.image.load(os.path.join("puzzleassets", "saga.png"))
-            except pygame.error:
-                self.saga_image = None
-        
         # Draw background
         if self.story_background:
             # Scale background to fill screen while maintaining aspect ratio
@@ -510,9 +402,6 @@ class MenuSystem:
         else:
             # Use a solid color if no background image
             self.screen.fill((30, 30, 60))
-        
-        # Draw menu particles
-        self.draw_menu_particles()
         
         # Draw title
         title_font = pygame.font.SysFont(None, 72)
@@ -651,7 +540,7 @@ class MenuSystem:
         # Return all interactive elements
         return self.story_containers + [self.story_back_button]
     
-    def process_story_menu_events(self, events):
+    def process_story_menu_events(self, events: List) -> Optional[str]:
         """Process events for the story menu.
         Returns action string if an action is triggered, None otherwise."""
         for event in events:
@@ -681,45 +570,4 @@ class MenuSystem:
                 if event.key == pygame.K_ESCAPE:
                     return "back"
         
-        return None
-    
-    def save_saved_position(self, element_name):
-        """Save the position of a draggable element to a file."""
-        try:
-            import json
-            position = getattr(self, f"{element_name}_pos")
-            save_data = {
-                "x": position[0],
-                "y": position[1],
-                "screen_width": self.width,
-                "screen_height": self.height
-            }
-            
-            # Save to a file in the asset path
-            save_path = os.path.join(self.asset_path, f"{element_name}_position.json")
-            with open(save_path, "w") as f:
-                json.dump(save_data, f)
-            print(f"Saved {element_name} position to {save_path}")
-        except Exception as e:
-            print(f"Error saving {element_name} position: {e}")
-    
-    def load_saved_position(self, element_name):
-        """Load the position of a draggable element from file."""
-        try:
-            import json
-            save_path = os.path.join(self.asset_path, f"{element_name}_position.json")
-            
-            if os.path.exists(save_path):
-                with open(save_path, "r") as f:
-                    save_data = json.load(f)
-                
-                # Check if the saved screen dimensions match current screen
-                if (save_data["screen_width"] == self.width and 
-                    save_data["screen_height"] == self.height):
-                    return [save_data["x"], save_data["y"]]
-                else:
-                    print(f"Screen dimensions changed, using default position for {element_name}")
-            return None
-        except Exception as e:
-            print(f"Error loading {element_name} position: {e}")
-            return None 
+        return None 

@@ -1,10 +1,73 @@
+"""
+Extracted Settings System Module
+Provides settings management functionality including resolution, UI editor, and configuration.
+"""
+
 import pygame
 import os
-from ui_editor import UIEditor
+from typing import List, Tuple, Optional, Any, Dict
 
-class SettingsSystem:
-    def __init__(self, screen, font, audio, asset_path):
-        """Initialize the settings system."""
+# Import the interface contract
+import sys
+import importlib.util
+
+# Try to import the interface contract
+try:
+    from contracts.settings_interface_contract import SettingsSystemInterface, validate_settings_interface
+    interface_available = True
+except ImportError:
+    # Create a dummy interface if not available
+    class SettingsSystemInterface:
+        pass
+    
+    def validate_settings_interface(cls):
+        return cls
+    
+    interface_available = False
+    print("⚠️  Settings interface contract not available, running without validation")
+
+# Try to import UIEditor
+try:
+    from ui_editor import UIEditor
+    ui_editor_available = True
+except ImportError:
+    ui_editor_available = False
+    print("⚠️  UIEditor not available, settings will run without UI editor functionality")
+    
+    # Create a dummy UIEditor class
+    class UIEditor:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        def draw(self):
+            pass
+        
+        def load_positions(self):
+            pass
+        
+        def save_positions(self):
+            pass
+        
+        def process_events(self, events):
+            return None
+        
+        def handle_events(self, event):
+            return False
+
+
+@validate_settings_interface
+class SettingsSystem(SettingsSystemInterface):
+    """Settings System - Manages game settings, resolution, and UI editor."""
+    
+    def __init__(self, screen, font, audio, asset_path: str):
+        """Initialize the settings system.
+        
+        Args:
+            screen: Pygame screen surface
+            font: Font for rendering text
+            audio: Audio system instance
+            asset_path: Path to game assets
+        """
         self.screen = screen
         self.font = font
         self.audio = audio
@@ -46,9 +109,26 @@ class SettingsSystem:
         # Initialize UI Editor
         self.ui_editor = None
         self.current_screen = "settings"  # Can be "settings" or "ui_editor"
+        
+        # Test mode reference (will be set externally)
+        self.test_mode = None
     
-    def create_button(self, x, y, width, height, text, action=None, params=None):
-        """Create a button with text and optional action."""
+    def create_button(self, x: int, y: int, width: int, height: int, text: str, 
+                     action=None, params=None) -> Dict[str, Any]:
+        """Create a button with text and optional action.
+        
+        Args:
+            x: Button x position
+            y: Button y position
+            width: Button width
+            height: Button height
+            text: Button text
+            action: Optional action callback
+            params: Optional parameters for action
+            
+        Returns:
+            Dictionary containing button properties
+        """
         button = {
             "rect": pygame.Rect(x, y, width, height),
             "text": text,
@@ -58,8 +138,19 @@ class SettingsSystem:
         }
         return button
     
-    def draw_settings_menu(self, on_back_action, current_resolution, resolutions, on_resolution_change):
-        """Draw the settings menu screen with resolution options."""
+    def draw_settings_menu(self, on_back_action, current_resolution: Tuple[int, int], 
+                          resolutions: List[Tuple[int, int]], on_resolution_change) -> List[Dict[str, Any]]:
+        """Draw the settings menu screen with resolution options.
+        
+        Args:
+            on_back_action: Callback for back button
+            current_resolution: Current screen resolution tuple
+            resolutions: List of available resolution tuples
+            on_resolution_change: Callback for resolution changes
+            
+        Returns:
+            List of button dictionaries for interaction
+        """
         # If we're in the UI Editor, draw that instead
         if self.current_screen == "ui_editor":
             print("Drawing UI Editor screen")
@@ -201,8 +292,12 @@ class SettingsSystem:
         # Return all settings buttons
         return self.settings_buttons
     
-    def set_screen(self, screen_name):
-        """Set the current screen."""
+    def set_screen(self, screen_name: str) -> None:
+        """Set the current screen.
+        
+        Args:
+            screen_name: Name of screen to switch to ("settings" or "ui_editor")
+        """
         print(f"Setting screen to: {screen_name}")
         self.current_screen = screen_name
         if screen_name == "ui_editor":
@@ -210,9 +305,15 @@ class SettingsSystem:
             self.ui_editor = UIEditor(self.screen, self.font, self.audio, self.asset_path)
             self.ui_editor.load_positions()
     
-    def process_settings_events(self, events):
+    def process_settings_events(self, events: List[Any]) -> Optional[str]:
         """Process events for the settings menu.
-        Returns action string if an action is triggered, None otherwise."""
+        
+        Args:
+            events: List of pygame events
+            
+        Returns:
+            Action string if an action is triggered, None otherwise
+        """
         # If we're in the UI Editor, process its events
         if self.current_screen == "ui_editor":
             if not self.ui_editor:
@@ -227,7 +328,7 @@ class SettingsSystem:
                 self.current_screen = "settings"
                 self.ui_editor = None
                 # Reload UI positions when returning from UI editor
-                if hasattr(self, 'test_mode'):
+                if hasattr(self, 'test_mode') and self.test_mode:
                     self.test_mode.setup_board_positions()
             return None
         
