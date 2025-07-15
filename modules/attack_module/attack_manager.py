@@ -124,8 +124,9 @@ class AttackManager:
                 cluster.combo_level = combo_multiplier  # Set combo level
                 
                 # Calculate what the strike should be
-                expected_strike = AttackCalculator.calculate_cluster_strike(cluster)
-                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} level {combo_multiplier} → {expected_strike['pattern']}")
+                calculator = AttackCalculator()
+                expected_strike = calculator.calculate_cluster_strike(cluster.cluster_type.value, cluster.combo_level)
+                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} level {combo_multiplier} → {expected_strike[0]}")
                 
                 strike_attack = self._create_cluster_strike(
                     cluster, player_id, combo_multiplier
