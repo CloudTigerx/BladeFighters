@@ -101,7 +101,7 @@ class AttackManager:
         if clusters:
             print(f"   Clusters detected: {len(clusters)}")
             for i, cluster in enumerate(clusters):
-                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} ({cluster.type.name})")
+                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} ({cluster.cluster_type.name})")
         else:
             print(f"   No clusters detected (non-cluster combo)")
         
