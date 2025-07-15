@@ -196,7 +196,22 @@ class TestMode(TestModeInterface):
     
     def handle_player_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
         """Handle blocks broken by player - generate attacks"""
-        print(f"🎯 Player broke {len(broken_blocks)} blocks (cluster: {is_cluster}, combo: {combo_multiplier})")
+        print(f"\n🎯 PLAYER COMBO DETECTED:")
+        print(f"   Blocks broken: {len(broken_blocks)}")
+        print(f"   Is cluster: {is_cluster}")
+        print(f"   Combo multiplier: {combo_multiplier}")
+        
+        # Show block positions for cluster analysis
+        if broken_blocks:
+            print(f"   Block positions: {[(x, y) for x, y, _ in broken_blocks]}")
+            
+            # Try to determine cluster dimensions
+            if is_cluster and len(broken_blocks) > 1:
+                x_coords = [x for x, y, _ in broken_blocks]
+                y_coords = [y for x, y, _ in broken_blocks]
+                width = max(x_coords) - min(x_coords) + 1
+                height = max(y_coords) - min(y_coords) + 1
+                print(f"   Cluster dimensions: {width}x{height}")
         
         # Generate attacks using the attack manager
         result = self.attack_manager.process_combo(
@@ -206,7 +221,13 @@ class TestMode(TestModeInterface):
             player_id=1  # Player 1
         )
         
-        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks, {result['cluster_strikes']} cluster strikes")
+        print(f"🎯 ATTACK RESULT:")
+        print(f"   Garbage blocks: {result['garbage_blocks']}")
+        print(f"   Cluster strikes: {result['cluster_strikes']}")
+        if result['cluster_strikes'] > 0:
+            print(f"   Strike details: {result.get('strike_details', 'No details')}")
+        print(f"   Total attacks queued: {result['attacks_generated']}")
+        
         return result
     
     def handle_enemy_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):

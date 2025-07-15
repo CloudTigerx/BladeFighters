@@ -82,19 +82,28 @@ class AttackManager:
         Returns:
             Dictionary with attack generation results
         """
-        print(f"🎯 Processing combo: {len(broken_blocks)} blocks, "
-              f"cluster={is_cluster}, multiplier={combo_multiplier}, player={player_id}")
+        print(f"🔍 ATTACK CALCULATION:")
+        print(f"   Input: {len(broken_blocks)} blocks, cluster={is_cluster}, multiplier={combo_multiplier}")
         
         # Update statistics
         self.attack_stats['chains_processed'] += 1
         
-        # Calculate garbage block attack
+        # Calculate garbage block attack with detailed logging
         garbage_count = AttackCalculator.calculate_garbage_blocks(
             len(broken_blocks), combo_multiplier
         )
+        print(f"   Garbage formula: {len(broken_blocks)} blocks × {combo_multiplier} combo = {garbage_count} garbage blocks")
         
         # Detect clusters in broken blocks
         clusters = self._detect_clusters_in_broken_blocks(broken_blocks)
+        
+        # Log cluster detection results
+        if clusters:
+            print(f"   Clusters detected: {len(clusters)}")
+            for i, cluster in enumerate(clusters):
+                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} ({cluster.type.name})")
+        else:
+            print(f"   No clusters detected (non-cluster combo)")
         
         # Generate attacks
         attacks_generated = []
@@ -109,9 +118,15 @@ class AttackManager:
         
         # Generate cluster strikes if we have clusters
         if clusters:
+            print(f"   Generating cluster strikes:")
             for i, cluster in enumerate(clusters):
                 cluster.position_in_chain = i + 1  # Set position in cluster chain
                 cluster.combo_level = combo_multiplier  # Set combo level
+                
+                # Calculate what the strike should be
+                expected_strike = AttackCalculator.calculate_cluster_strike(cluster)
+                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} level {combo_multiplier} → {expected_strike['pattern']}")
+                
                 strike_attack = self._create_cluster_strike(
                     cluster, player_id, combo_multiplier
                 )
