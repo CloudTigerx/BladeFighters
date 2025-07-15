@@ -151,10 +151,7 @@ class AttackManager:
     
     def _detect_clusters_in_broken_blocks(self, broken_blocks: List[Tuple[int, int, str]]) -> List[ClusterData]:
         """
-        Detect clusters in the broken blocks.
-        
-        This is a simplified cluster detection for now. In a full implementation,
-        this would analyze the spatial arrangement of blocks.
+        Detect clusters in the broken blocks using proper spatial analysis.
         
         Args:
             broken_blocks: List of (x, y, color) tuples
@@ -164,24 +161,69 @@ class AttackManager:
         """
         clusters = []
         
-        # Simple cluster detection based on block count
-        # In a full implementation, this would analyze spatial patterns
-        block_count = len(broken_blocks)
+        if len(broken_blocks) < 4:
+            return clusters
         
-        if block_count >= 4:
-            # Determine cluster type based on block count
-            if block_count == 4:
+        # Extract positions and analyze spatial arrangement
+        positions = [(x, y) for x, y, _ in broken_blocks]
+        
+        # Find bounding box
+        min_x = min(pos[0] for pos in positions)
+        max_x = max(pos[0] for pos in positions)
+        min_y = min(pos[1] for pos in positions)
+        max_y = max(pos[1] for pos in positions)
+        
+        # Calculate actual dimensions
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+        
+        # Check if all positions within bounding box are filled (true rectangular cluster)
+        expected_blocks = width * height
+        position_set = set(positions)
+        
+        # Generate all positions in the bounding box
+        all_positions_in_box = set()
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                all_positions_in_box.add((x, y))
+        
+        # Verify it's a complete rectangular cluster
+        if position_set == all_positions_in_box and len(positions) == expected_blocks:
+            # Determine cluster type based on actual dimensions
+            if width == 2 and height == 2:
                 cluster_type = ClusterType.CLUSTER_2x2
-                width, height = 2, 2
-            elif block_count >= 9:
+            elif width == 3 and height == 3:
                 cluster_type = ClusterType.CLUSTER_3x3
-                width, height = 3, 3
-            elif block_count >= 6:
+            elif (width == 3 and height == 2) or (width == 2 and height == 3):
                 cluster_type = ClusterType.CLUSTER_3x2
-                width, height = 3, 2
+                # Normalize to width x height format
+                if width == 2 and height == 3:
+                    width, height = 3, 2
+            elif width == 4 and height == 4:
+                cluster_type = ClusterType.CLUSTER_4x4
+            elif (width == 5 and height == 2) or (width == 2 and height == 5):
+                cluster_type = ClusterType.CLUSTER_5x2
+                # Normalize to width x height format
+                if width == 2 and height == 5:
+                    width, height = 5, 2
+            elif (width == 6 and height == 2) or (width == 2 and height == 6):
+                cluster_type = ClusterType.CLUSTER_6x2
+                # Normalize to width x height format
+                if width == 2 and height == 6:
+                    width, height = 6, 2
             else:
-                cluster_type = ClusterType.CLUSTER_2x2
-                width, height = 2, 2
+                # For other dimensions, classify as closest match
+                if width * height == 4:
+                    cluster_type = ClusterType.CLUSTER_2x2
+                    width, height = 2, 2
+                elif width * height >= 9:
+                    cluster_type = ClusterType.CLUSTER_3x3
+                    width, height = 3, 3
+                elif width * height >= 6:
+                    cluster_type = ClusterType.CLUSTER_3x2
+                    width, height = 3, 2
+                else:
+                    return clusters  # Don't create cluster for unrecognized patterns
             
             cluster = ClusterData(
                 cluster_type=cluster_type,
@@ -189,9 +231,13 @@ class AttackManager:
                 height=height,
                 position_in_chain=1,
                 combo_level=1,
-                blocks_broken=block_count
+                blocks_broken=len(broken_blocks)
             )
             clusters.append(cluster)
+            
+            print(f"   Spatial analysis: {min_x},{min_y} to {max_x},{max_y} = {width}x{height} cluster")
+        else:
+            print(f"   Spatial analysis: Not a complete rectangular cluster (scattered blocks)")
         
         return clusters
     
