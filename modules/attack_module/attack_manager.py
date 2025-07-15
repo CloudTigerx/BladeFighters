@@ -94,8 +94,16 @@ class AttackManager:
         )
         print(f"   Garbage formula: {len(broken_blocks)} blocks × {combo_multiplier} combo = {garbage_count} garbage blocks")
         
-        # Detect clusters in broken blocks
-        clusters = self._detect_clusters_in_broken_blocks(broken_blocks)
+        # Use game engine's cluster detection result instead of our own spatial analysis
+        clusters = []
+        if is_cluster:
+            # Trust the game engine's cluster detection and create cluster from spatial analysis
+            clusters = self._detect_clusters_in_broken_blocks(broken_blocks)
+            
+            # If our spatial analysis fails but game engine says it's a cluster, create a fallback cluster
+            if not clusters:
+                print(f"   Game engine detected cluster, creating fallback cluster analysis")
+                clusters = self._create_fallback_cluster(broken_blocks)
         
         # Log cluster detection results
         if clusters:
@@ -293,6 +301,74 @@ class AttackManager:
             source_cluster=cluster
         )
     
+    def _create_fallback_cluster(self, broken_blocks: List[Tuple[int, int, str]]) -> List[ClusterData]:
+        """
+        Create a fallback cluster when game engine detects cluster but spatial analysis fails.
+        
+        Args:
+            broken_blocks: List of (x, y, color) tuples
+            
+        Returns:
+            List with one fallback cluster
+        """
+        positions = [(x, y) for x, y, _ in broken_blocks]
+        
+        # Find approximate dimensions
+        min_x = min(pos[0] for pos in positions)
+        max_x = max(pos[0] for pos in positions)
+        min_y = min(pos[1] for pos in positions)
+        max_y = max(pos[1] for pos in positions)
+        
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+        block_count = len(broken_blocks)
+        
+        # Determine cluster type based on approximate dimensions and block count
+        if block_count == 4 and width == 2 and height == 2:
+            cluster_type = ClusterType.CLUSTER_2x2
+        elif block_count >= 9 and width == 3 and height == 3:
+            cluster_type = ClusterType.CLUSTER_3x3
+        elif block_count >= 6 and ((width == 3 and height == 2) or (width == 2 and height == 3)):
+            cluster_type = ClusterType.CLUSTER_3x2
+            # Normalize to 3x2 format
+            if width == 2 and height == 3:
+                width, height = 3, 2
+        elif block_count >= 16 and width == 4 and height == 4:
+            cluster_type = ClusterType.CLUSTER_4x4
+        elif block_count >= 10 and ((width == 5 and height == 2) or (width == 2 and height == 5)):
+            cluster_type = ClusterType.CLUSTER_5x2
+            # Normalize to 5x2 format
+            if width == 2 and height == 5:
+                width, height = 5, 2
+        elif block_count >= 12 and ((width == 6 and height == 2) or (width == 2 and height == 6)):
+            cluster_type = ClusterType.CLUSTER_6x2
+            # Normalize to 6x2 format
+            if width == 2 and height == 6:
+                width, height = 6, 2
+        else:
+            # Default fallback based on block count
+            if block_count >= 9:
+                cluster_type = ClusterType.CLUSTER_3x3
+                width, height = 3, 3
+            elif block_count >= 6:
+                cluster_type = ClusterType.CLUSTER_3x2
+                width, height = 3, 2
+            else:
+                cluster_type = ClusterType.CLUSTER_2x2
+                width, height = 2, 2
+        
+        cluster = ClusterData(
+            cluster_type=cluster_type,
+            width=width,
+            height=height,
+            position_in_chain=1,
+            combo_level=1,
+            blocks_broken=block_count
+        )
+        
+        print(f"   Fallback cluster: {width}x{height} ({cluster_type.name}) from {block_count} blocks")
+        return [cluster]
+
     def _add_attacks_to_queue(self, attacks: List[AttackPayload], target_player: int):
         """Add attacks to the appropriate player's queue."""
         if target_player == 1:
