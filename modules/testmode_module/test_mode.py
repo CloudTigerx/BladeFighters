@@ -27,6 +27,7 @@ except ImportError:
 # Import required game components
 from core.puzzle_module import PuzzleEngine
 from core.puzzle_renderer import PuzzleRenderer
+from modules.attack_module.attack_manager import AttackManager
 
 @validate_testmode_interface
 class TestMode(TestModeInterface):
@@ -59,6 +60,13 @@ class TestMode(TestModeInterface):
         self.player_renderer = PuzzleRenderer(self.player_engine)
         self.enemy_renderer = PuzzleRenderer(self.enemy_engine)
         
+        # Initialize attack system
+        self.attack_manager = AttackManager()
+        
+        # Connect attack system handlers
+        self.player_engine.blocks_broken_handler = self.handle_player_blocks_broken
+        self.enemy_engine.blocks_broken_handler = self.handle_enemy_blocks_broken
+        
         # Load background images
         try:
             self.puzzle_background = pygame.image.load(os.path.join(asset_path, "puzzlebackground.jpg"))
@@ -78,8 +86,10 @@ class TestMode(TestModeInterface):
         # Grid specifications
         grid_width = 6
         grid_height = 13
-        cell_width = 68  # Match the cell width used in draw() method
-        cell_height = 54  # Match the cell height used in draw() method
+        
+        # Use the actual block sizes from the engines instead of hardcoded values
+        cell_width = self.player_engine.block_size
+        cell_height = self.player_engine.block_size
         border_size = 10  # Space between container edge and the actual grid
         
         # Calculate board dimensions
@@ -115,6 +125,12 @@ class TestMode(TestModeInterface):
         # Update renderer coordinate offsets to match the new positions
         self.player_renderer.update_coordinate_offsets()
         self.enemy_renderer.update_coordinate_offsets()
+        
+        # Store cell dimensions for use in drawing
+        self.cell_width = cell_width
+        self.cell_height = cell_height
+        self.board_width = board_width
+        self.board_height = board_height
     
     def initialize_test(self):
         """Initialize or reset the test mode game state."""
@@ -178,6 +194,36 @@ class TestMode(TestModeInterface):
         
         return None
     
+    def handle_player_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
+        """Handle blocks broken by player - generate attacks"""
+        print(f"🎯 Player broke {len(broken_blocks)} blocks (cluster: {is_cluster}, combo: {combo_multiplier})")
+        
+        # Generate attacks using the attack manager
+        result = self.attack_manager.process_combo(
+            broken_blocks=broken_blocks,
+            is_cluster=is_cluster,
+            combo_multiplier=combo_multiplier,
+            player_id=1  # Player 1
+        )
+        
+        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks, {result['cluster_strikes']} cluster strikes")
+        return result
+    
+    def handle_enemy_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
+        """Handle blocks broken by enemy - generate attacks"""
+        print(f"🎯 Enemy broke {len(broken_blocks)} blocks (cluster: {is_cluster}, combo: {combo_multiplier})")
+        
+        # Generate attacks using the attack manager
+        result = self.attack_manager.process_combo(
+            broken_blocks=broken_blocks,
+            is_cluster=is_cluster,
+            combo_multiplier=combo_multiplier,
+            player_id=2  # Enemy is player 2
+        )
+        
+        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks, {result['cluster_strikes']} cluster strikes")
+        return result
+    
     def _create_player_engine(self):
         """Creates a puzzle engine instance for the player."""
         engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path)
@@ -217,12 +263,12 @@ class TestMode(TestModeInterface):
         self.screen.blit(glow_text, glow_rect)
         self.screen.blit(title_text, title_rect)
         
-        # Calculate dimensions
-        cell_width = 68
-        cell_height = 54
+        # Use stored dimensions from setup_board_positions
+        cell_width = self.cell_width
+        cell_height = self.cell_height
         border_size = 10
-        board_width = 6 * cell_width
-        board_height = 13 * cell_height
+        board_width = self.board_width
+        board_height = self.board_height
         
         # Draw player board container
         player_container = pygame.Rect(
