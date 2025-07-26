@@ -7,6 +7,7 @@ Stripped of attack system complexity to focus on essential gameplay.
 import pygame
 import os
 import random
+import time
 from typing import List, Dict, Optional, Any
 
 # Try to import the interface contract
@@ -52,9 +53,17 @@ class TestMode(TestModeInterface):
         
         # Create player puzzle engine
         self.player_engine = PuzzleEngine(screen, font, audio, asset_path)
-        
         # Create enemy puzzle engine (no audio to avoid conflicts)
         self.enemy_engine = PuzzleEngine(screen, font, None, asset_path)
+        
+        # Set test_mode attribute so puzzle module knows to use landing-based transformation
+        self.player_engine.test_mode = self
+        self.enemy_engine.test_mode = self
+        
+        # Set player-specific on_piece_landed callbacks
+        self.player_engine.on_piece_landed = lambda: self.on_piece_landed(1)
+        self.enemy_engine.on_piece_landed = lambda: self.on_piece_landed(2)
+        # Ensure both engines can call back to TestMode
         
         # Create renderers for both engines
         self.player_renderer = PuzzleRenderer(self.player_engine)
@@ -75,6 +84,9 @@ class TestMode(TestModeInterface):
         
         # Set up board positions and dimensions
         self.setup_board_positions()
+        
+        # Garbage block tracking for transformation system
+        self.garbage_block_brightness = {}  # Format: {(x, y, player): {'landings': 0, 'color': 'red'}}
         
         # Initialize the puzzle battle
         self.initialize_test()
@@ -138,11 +150,9 @@ class TestMode(TestModeInterface):
         self.player_engine.current_fall_speed = self.player_engine.normal_fall_speed
         self.player_engine.last_fall_time = pygame.time.get_ticks()
         self.player_engine.micro_fall_time = self.player_engine._calculate_micro_fall_time(self.player_engine.current_fall_speed)
-        
         self.enemy_engine.current_fall_speed = self.enemy_engine.normal_fall_speed
         self.enemy_engine.last_fall_time = pygame.time.get_ticks()
         self.enemy_engine.micro_fall_time = self.enemy_engine._calculate_micro_fall_time(self.enemy_engine.current_fall_speed)
-        
         # Start both games
         self.player_engine.start_game()
         self.enemy_engine.start_game()
@@ -150,7 +160,13 @@ class TestMode(TestModeInterface):
         # Update renderers
         self.player_renderer.update_visual_state()
         self.enemy_renderer.update_visual_state()
-    
+        # Reset garbage block state
+        self.reset_garbage_block_state()
+
+    def reset_garbage_block_state(self):
+        """Reset all garbage block transformation state."""
+        self.garbage_block_brightness.clear()
+
     def update(self) -> Optional[str]:
         """Update the test mode state."""
         # Update player engine
@@ -174,6 +190,21 @@ class TestMode(TestModeInterface):
                 # Ignore AI movement errors - not critical
                 pass
         
+        # ATTACK DELIVERY SYSTEM
+        # Process attack queues and deliver ready attacks
+        current_time = time.time()
+        ready_attacks = self.attack_manager.process_attack_queue(current_time)
+        
+        # Apply ready attacks to player 1
+        if ready_attacks['player1']:
+            for attack in ready_attacks['player1']:
+                self.apply_attack_to_player(attack, 1)
+        
+        # Apply ready attacks to player 2  
+        if ready_attacks['player2']:
+            for attack in ready_attacks['player2']:
+                self.apply_attack_to_player(attack, 2)
+        
         # Check for game over conditions
         if not self.player_engine.game_active or not self.enemy_engine.game_active:
             return "game_over"
@@ -196,39 +227,32 @@ class TestMode(TestModeInterface):
     
     def handle_player_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
         """Handle blocks broken by player - generate attacks"""
-        print(f"\n🎯 PLAYER COMBO DETECTED:")
+        print(f"🎯 PLAYER COMBO DETECTED:")
         print(f"   Blocks broken: {len(broken_blocks)}")
         print(f"   Is cluster: {is_cluster}")
         print(f"   Combo multiplier: {combo_multiplier}")
-        
-        # Show block positions for cluster analysis
-        if broken_blocks:
-            print(f"   Block positions: {[(x, y) for x, y, _ in broken_blocks]}")
-            
-            # Try to determine cluster dimensions
-            if is_cluster and len(broken_blocks) > 1:
-                x_coords = [x for x, y, _ in broken_blocks]
-                y_coords = [y for x, y, _ in broken_blocks]
-                width = max(x_coords) - min(x_coords) + 1
-                height = max(y_coords) - min(y_coords) + 1
-                print(f"   Cluster dimensions: {width}x{height}")
         
         # Generate attacks using the attack manager
         result = self.attack_manager.process_combo(
             broken_blocks=broken_blocks,
             is_cluster=is_cluster,
             combo_multiplier=combo_multiplier,
-            player_id=1  # Player 1
+            player_id=1  # Player is player 1
         )
         
-        print(f"🎯 ATTACK RESULT:")
-        print(f"   Garbage blocks: {result['garbage_blocks']}")
-        print(f"   Cluster strikes: {result['cluster_strikes']}")
-        if result['cluster_strikes'] > 0:
-            print(f"   Strike details: {result.get('strike_details', 'No details')}")
-        print(f"   Total attacks queued: {result['attacks_generated']}")
+        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks")
+        print(f"🎯 Attack result: {result}")
         
-        return result
+        # If we have garbage blocks, place them immediately for testing
+        if result['garbage_blocks'] > 0:
+            print(f"🎯 PLACING GARBAGE BLOCKS: {result['garbage_blocks']} blocks")
+            # Get a random column for placement
+            column = random.randint(0, 5)  # 6 columns (0-5)
+            print(f"🎯 Using column: {column}")
+            self.place_garbage_blocks(self.enemy_engine, column, result['garbage_blocks'])
+            print(f"🎯 Garbage blocks placed successfully!")
+        else:
+            print(f"🎯 No garbage blocks to place")
     
     def handle_enemy_blocks_broken(self, broken_blocks, is_cluster, combo_multiplier):
         """Handle blocks broken by enemy - generate attacks"""
@@ -242,9 +266,137 @@ class TestMode(TestModeInterface):
             player_id=2  # Enemy is player 2
         )
         
-        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks, {result['cluster_strikes']} cluster strikes")
-        return result
+        print(f"🎯 Generated attack: {result['garbage_blocks']} garbage blocks")
+        print(f"🎯 Attack result: {result}")
+        
+        # If we have garbage blocks, place them immediately for testing
+        if result['garbage_blocks'] > 0:
+            print(f"🎯 PLACING GARBAGE BLOCKS: {result['garbage_blocks']} blocks")
+            # Get a random column for placement
+            column = random.randint(0, 5)  # 6 columns (0-5)
+            print(f"🎯 Using column: {column}")
+            self.place_garbage_blocks(self.player_engine, column, result['garbage_blocks'])
+            print(f"🎯 Garbage blocks placed successfully!")
+        else:
+            print(f"🎯 No garbage blocks to place")
     
+    def apply_attack_to_player(self, attack_payload, target_player: int):
+        """Apply an attack to the specified player's puzzle grid."""
+        engine = self.player_engine if target_player == 1 else self.enemy_engine
+        print(f"🎯 DELIVERING ATTACK to Player {target_player}:")
+        print(f"   Attack type: {attack_payload.attack_type.name}")
+        if attack_payload.attack_type.name == "GARBAGE_BLOCKS":
+            block_count = attack_payload.block_count
+            # Place each garbage block in the next column in rotation
+            for _ in range(block_count):
+                column = self.attack_manager.get_next_column_for_attack(target_player)
+                self.place_garbage_blocks(engine, column, 1)
+        elif attack_payload.attack_type.name == "CLUSTER_STRIKE":
+            # CLUSTER STRIKE SYSTEM DISABLED - Convert to garbage blocks instead
+            print(f"   Cluster strike disabled - converting to garbage blocks")
+            # Convert cluster strike to garbage blocks for simplicity
+            block_count = 2  # Default conversion
+            for _ in range(block_count):
+                column = self.attack_manager.get_next_column_for_attack(target_player)
+                self.place_garbage_blocks(engine, column, 1)
+        print(f"   Attack delivered successfully!")
+    
+    def place_garbage_blocks(self, engine, column: int, count: int):
+        """Place garbage blocks on the puzzle grid with landing-based transformation tracking."""
+        grid = engine.puzzle_grid
+        player = 1 if engine == self.player_engine else 2
+        
+        # Find the actual landing position (bottom-up search)
+        # Use grid_height (15) instead of total_grid_height (16) to stay in visible area
+        placement_row = engine.grid_height - 1  # Start at row 14 (bottom)
+        
+        # Find the first empty row from bottom up
+        # Check for both 'empty' and None values (None is what the grid actually contains)
+        while placement_row >= 0 and grid[placement_row][column] not in ['empty', None]:
+            placement_row -= 1
+        
+        if placement_row < 0:
+            print(f"[PLACEMENT DEBUG] Column {column} is full, cannot place garbage blocks")
+            return
+        
+        # Place the garbage blocks
+        colors = ['red', 'blue', 'green', 'yellow']
+        for i in range(count):
+            if placement_row - i >= 0:
+                color = colors[i % len(colors)]
+                block_type = f"{color}_garbage"
+                grid[placement_row - i][column] = block_type
+                
+                # Track this garbage block for transformation
+                tracking_key = (column, placement_row - i, player)
+                self.garbage_block_brightness[tracking_key] = {
+                    'landings': 0,
+                    'color': color
+                }
+        
+        print(f"[PLACEMENT DEBUG] Successfully placed {count} garbage blocks starting at row {placement_row}")
+
+    def on_piece_landed(self, player):
+        """Called when a piece lands - increment landing counters for nearby garbage blocks."""
+        print(f"[CALLBACK DEBUG] on_piece_landed called for player {player}")
+        
+        # Get the engine for this player
+        engine = self.player_engine if player == 1 else self.enemy_engine
+        grid = engine.puzzle_grid
+        
+        # Find all garbage blocks for this player and increment their landing counters
+        blocks_to_increment = []
+        for pos_key, data in self.garbage_block_brightness.items():
+            x, y, block_player = pos_key
+            if block_player == player:
+                # Check if this garbage block is still in the grid
+                if 0 <= y < len(grid) and 0 <= x < len(grid[0]) and grid[y][x] and '_garbage' in grid[y][x]:
+                    blocks_to_increment.append(pos_key)
+        
+        print(f"[VISUAL DEBUG] on_piece_landed called for player {player}. Tracked blocks: {len(blocks_to_increment)}")
+        
+        # Increment landing counters
+        for pos_key in blocks_to_increment:
+            self.garbage_block_brightness[pos_key]['landings'] += 1
+            print(f"[VISUAL DEBUG] Incremented landing counter for {pos_key}: {self.garbage_block_brightness[pos_key]['landings']} landings")
+        
+        # Check for transformations
+        to_transform = []
+        for pos_key, data in self.garbage_block_brightness.items():
+            x, y, block_player = pos_key
+            if block_player == player and data['landings'] >= 2:
+                # This garbage block should transform
+                color = data['color']
+                to_transform.append((pos_key, f"{color}_block"))
+        
+        if to_transform:
+            print(f"[VISUAL DEBUG] Transforming {len(to_transform)} garbage blocks for player {player}")
+            self.transform_garbage_blocks(to_transform)
+        
+        # Debug: Show all tracked blocks
+        print(f"[VISUAL DEBUG] All tracked garbage blocks:")
+        for pos_key, data in self.garbage_block_brightness.items():
+            print(f"    {pos_key} for player {pos_key[2]}: landings={data['landings']}, color={data['color']}")
+    
+    # place_cluster_strike method removed - cluster strike system disabled
+
+    def transform_garbage_blocks(self, to_transform):
+        """Transform garbage blocks to normal colored blocks."""
+        for pos_key, new_block_type in to_transform:
+            x, y, player = pos_key
+            engine = self.player_engine if player == 1 else self.enemy_engine
+            grid = engine.puzzle_grid
+            
+            # Transform the block
+            if y < len(grid) and x < len(grid[0]):
+                old_block_type = grid[y][x]
+                grid[y][x] = new_block_type
+                print(f"[VISUAL DEBUG] TRANSFORMED: ({x}, {y}) from {old_block_type} to {new_block_type} for player {player}")
+                
+                # Remove from tracking
+                if pos_key in self.garbage_block_brightness:
+                    del self.garbage_block_brightness[pos_key]
+
     def _create_player_engine(self):
         """Creates a puzzle engine instance for the player."""
         engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path)

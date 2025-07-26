@@ -386,36 +386,63 @@ class AnimationRenderer:
             color = (*particle['color'][:3], alpha)
             self._draw_particle(x, y, size, color)
     
-    def _draw_block(self, x: float, y: float, width: int, height: int, block_type: str):
+    def _draw_block(self, x: float, y: float, width: int, height: int, block_type: str, brightness: float = 1.0):
         """Draws a single block to the screen."""
         if not block_type or block_type == 'empty':
             return
-            
-        # Map the logical block type to the asset key stored in the engine
         asset_key = ''
-        if '_garbage' in block_type:
-            asset_key = 'grayblock'
-        elif '_breaker' in block_type:
-            # e.g., 'red_breaker' -> 'redbreaker'
-            asset_key = block_type.replace('_', '')
-        else:
-            # e.g., 'red' -> 'redblock'
-            asset_key = block_type + 'block'
+        block_image = None
         
-        # Get the block image from the engine's cache
-        block_image = self.engine.puzzle_pieces.get(asset_key)
+        if '_garbage' in block_type:
+            # Use the colored garbage block images for better visual distinction
+            asset_key = block_type  # e.g., 'red_garbage', 'blue_garbage'
+            block_image = self.engine.puzzle_pieces.get(asset_key)
+        elif '_breaker' in block_type:
+            asset_key = block_type.replace('_breaker', 'breaker')
+            block_image = self.engine.puzzle_pieces.get(asset_key)
+        else:
+            # Normal blocks
+            asset_key = block_type.replace('_block', 'block')
+            block_image = self.engine.puzzle_pieces.get(asset_key)
         
         if block_image:
-            # Scale the image if necessary
-            if block_image.get_width() != width or block_image.get_height() != height:
-                block_image = pygame.transform.scale(block_image, (width, height))
-            
-            # Blit the image
-            self.screen.blit(block_image, (x, y))
+            # Scale the image to fit the block size
+            scaled_image = pygame.transform.scale(block_image, (width, height))
+            self.screen.blit(scaled_image, (x, y))
         else:
-            # Fallback for missing images
-            # You might want to log this or draw a placeholder
-            pass
+            # Fallback: draw colored rectangle
+            color_map = {
+                'red_block': (255, 0, 0),
+                'blue_block': (0, 0, 255),
+                'green_block': (0, 255, 0),
+                'yellow_block': (255, 255, 0),
+                'red_garbage': (255, 100, 100),
+                'blue_garbage': (100, 100, 255),
+                'green_garbage': (100, 255, 100),
+                'yellow_garbage': (255, 255, 100)
+            }
+            color = color_map.get(block_type, (128, 128, 128))
+            pygame.draw.rect(self.screen, color, (x, y, width, height))
+    
+    def _apply_brightness(self, surface: pygame.Surface, brightness: float) -> pygame.Surface:
+        """Apply brightness adjustment to a surface."""
+        # Create a copy of the surface to avoid modifying the original
+        darkened_surface = surface.copy()
+        
+        # Create a brightness overlay
+        brightness_overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        
+        # Calculate the darkness level (1.0 = no change, 0.0 = completely black)
+        darkness = 1.0 - brightness
+        alpha = int(255 * darkness)
+        
+        # Fill with black with appropriate alpha for darkening
+        brightness_overlay.fill((0, 0, 0, alpha))
+        
+        # Apply the overlay using BLEND_MULT for darkening effect
+        darkened_surface.blit(brightness_overlay, (0, 0), special_flags=pygame.BLEND_MULT)
+        
+        return darkened_surface
     
     def _draw_particle(self, x: int, y: int, size: int, color: Tuple[int, int, int, int]):
         """Draw a single particle."""
@@ -433,9 +460,19 @@ class AnimationRenderer:
         return -progress * (progress - 2)
     
     def manage_particle_cache(self):
-        """Manage particle surface cache to prevent memory leaks."""
-        if len(self.particle_surfaces) > 100:
-            # Keep only the first 50 entries
-            keys_to_remove = list(self.particle_surfaces.keys())[50:]
+        """Manage the particle surface cache to prevent memory leaks."""
+        # Limit cache size to prevent memory issues
+        max_cache_size = 50
+        if len(self.particle_surfaces) > max_cache_size:
+            # Remove oldest entries
+            keys_to_remove = list(self.particle_surfaces.keys())[:len(self.particle_surfaces) - max_cache_size]
             for key in keys_to_remove:
                 del self.particle_surfaces[key]
+    
+    def update_animations(self):
+        """Update all animations."""
+        # Update animation references
+        self.update_animation_refs()
+        
+        # Manage particle cache
+        self.manage_particle_cache()

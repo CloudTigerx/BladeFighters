@@ -415,11 +415,14 @@ class AnimationStateManager:
         return bool(self.breaking_blocks_animations or self.visual_falling_blocks)
                 
     def clear_animations_if_no_piece(self):
-        """Clear animations if no active piece and no chain reaction."""
-        if not self.engine.main_piece and not self.engine.chain_reaction_in_progress:
-            # Only clear animations if there's no chain reaction in progress
-            # This allows animations to complete properly
-            if hasattr(self, 'visual_falling_blocks'):
-                self.visual_falling_blocks.clear()
-            if hasattr(self, 'breaking_blocks_animations'):
-                self.breaking_blocks_animations.clear()
+        """Clear animations if there's no active piece (for debugging)."""
+        if not self.engine.main_piece:
+            self.breaking_blocks_animations.clear()
+            self.visual_falling_blocks.clear()
+            self.animated_garbage_blocks.clear()
+    
+    def update_animations(self):
+        """Update all animations."""
+        current_time = time.time()
+        self.update_breaking_animations(current_time)
+        self.cleanup_expired_animations(current_time)

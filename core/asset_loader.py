@@ -40,7 +40,7 @@ class AssetLoader:
             'blue_block': self.load_block("blueblock.png"),
             'green_block': self.load_block("greenblock.png"),
             'yellow_block': self.load_block("yellowblock.png"),
-            'gray_block': self.load_block("grayblock.png"),
+            'garbage_block': self.load_block("strikes/garbage_block.png"),
             'strike_block': self.load_block("strikes/1x4.png")
         })
         
@@ -52,13 +52,26 @@ class AssetLoader:
             'yellow_breaker': self.load_block("yellowbreaker.png", "yellowblock.png", False)
         })
         
+        # Create colored garbage blocks for better visual distinction
+        # These will be tinted versions of the garbage block texture
+        self.block_images.update({
+            'red_garbage': self._create_colored_garbage_block("red"),
+            'blue_garbage': self._create_colored_garbage_block("blue"), 
+            'green_garbage': self._create_colored_garbage_block("green"),
+            'yellow_garbage': self._create_colored_garbage_block("yellow")
+        })
+        
         # Populate puzzle_pieces dictionary for compatibility
         self.puzzle_pieces = {
             'redblock': self.block_images.get('red_block'),
             'blueblock': self.block_images.get('blue_block'),
             'greenblock': self.block_images.get('green_block'),
             'yellowblock': self.block_images.get('yellow_block'),
-            'grayblock': self.block_images.get('gray_block'),
+            'garbage_block': self.block_images.get('garbage_block'),
+            'red_garbage': self.block_images.get('red_garbage'),
+            'blue_garbage': self.block_images.get('blue_garbage'),
+            'green_garbage': self.block_images.get('green_garbage'),
+            'yellow_garbage': self.block_images.get('yellow_garbage'),
             'redbreaker': self.block_images.get('red_breaker'),
             'bluebreaker': self.block_images.get('blue_breaker'),
             'greenbreaker': self.block_images.get('green_breaker'),
@@ -114,33 +127,51 @@ class AssetLoader:
         raise ValueError(f"Could not load block image: {filename}")
     
     def _add_breaker_indicator(self, surface: pygame.Surface) -> pygame.Surface:
-        """
-        Add an X indicator to a breaker block.
+        """Add a visual indicator to breaker blocks."""
+        # Create a copy of the surface
+        result = surface.copy()
         
-        Args:
-            surface: The surface to add the indicator to
-            
-        Returns:
-            Modified surface with breaker indicator
-        """
-        # Create a copy to avoid modifying the original
-        breaker_surface = surface.copy()
+        # Add a simple X overlay
+        width, height = result.get_size()
+        pygame.draw.line(result, (255, 255, 255), (width//4, height//4), (3*width//4, 3*height//4), 3)
+        pygame.draw.line(result, (255, 255, 255), (width//4, 3*height//4), (3*width//4, height//4), 3)
         
-        # Add white X to indicate it's a breaker
-        margin = 5
-        line_width = 3
+        return result
+    
+    def _create_colored_garbage_block(self, color: str) -> pygame.Surface:
+        """Create a colored garbage block by tinting the base garbage block texture."""
+        base_garbage = self.block_images.get('garbage_block')
+        if base_garbage is None:
+            # Fallback to a colored rectangle if no base texture
+            surface = pygame.Surface((self.block_size, self.block_size))
+            color_map = {
+                'red': (255, 100, 100),
+                'blue': (100, 100, 255), 
+                'green': (100, 255, 100),
+                'yellow': (255, 255, 100)
+            }
+            surface.fill(color_map.get(color, (128, 128, 128)))
+            return surface
         
-        # Draw X lines
-        pygame.draw.line(breaker_surface, self.WHITE, 
-                        (margin, margin), 
-                        (self.block_size - margin, self.block_size - margin), 
-                        line_width)
-        pygame.draw.line(breaker_surface, self.WHITE, 
-                        (self.block_size - margin, margin), 
-                        (margin, self.block_size - margin), 
-                        line_width)
+        # Create a copy and tint it
+        result = base_garbage.copy()
         
-        return breaker_surface
+        # Define color tints (RGB values)
+        color_tints = {
+            'red': (255, 150, 150),
+            'blue': (150, 150, 255),
+            'green': (150, 255, 150), 
+            'yellow': (255, 255, 150)
+        }
+        
+        tint_color = color_tints.get(color, (255, 255, 255))
+        
+        # Apply tint by blending with the tint color
+        tint_surface = pygame.Surface(result.get_size())
+        tint_surface.fill(tint_color)
+        result.blit(tint_surface, (0, 0), special_flags=pygame.BLEND_MULT)
+        
+        return result
     
     def load_background(self, filename: str, target_size: Optional[Tuple[int, int]] = None) -> Optional[pygame.Surface]:
         """

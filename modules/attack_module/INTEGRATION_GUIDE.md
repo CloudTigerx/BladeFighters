@@ -36,6 +36,7 @@ Replace the old attack system with the new modular one:
 # self.attack_system = AttackSystem(...)
 
 # NEW (Add this)
+
 from modules.attack_module.attack_manager import AttackManager
 from modules.attack_module.payload_tracker import PayloadTracker
 

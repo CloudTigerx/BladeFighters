@@ -89,9 +89,7 @@ class AttackManager:
         self.attack_stats['chains_processed'] += 1
         
         # Calculate garbage block attack with detailed logging
-        garbage_count = AttackCalculator.calculate_garbage_blocks(
-            len(broken_blocks), combo_multiplier
-        )
+        garbage_count = (len(broken_blocks) * combo_multiplier) // 2
         print(f"   Garbage formula: {len(broken_blocks)} blocks × {combo_multiplier} combo = {garbage_count} garbage blocks")
         
         # Use game engine's cluster detection result instead of our own spatial analysis

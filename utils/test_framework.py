@@ -123,54 +123,7 @@ class PuzzleEngineTests(BladeFightersTestSuite):
             self.fail(f"Piece creation test failed: {e}")
 
 
-class AttackSystemTests(BladeFightersTestSuite):
-    """Tests for the attack system functionality."""
-    
-    def setUp(self):
-        super().setUp()
-        try:
-            from attack_system import AttackSystem, AttackType
-            self.AttackSystem = AttackSystem
-            self.AttackType = AttackType
-        except ImportError:
-            self.skipTest("AttackSystem not available")
-    
-    def test_attack_system_initialization(self):
-        """Test that attack system initializes correctly."""
-        try:
-            attack_system = self.AttackSystem(grid_width=6, grid_height=13)
-            
-            self.assertIsNotNone(attack_system)
-            self.assertEqual(attack_system.grid_width, 6)
-            self.assertEqual(attack_system.grid_height, 13)
-            
-        except Exception as e:
-            self.fail(f"AttackSystem initialization failed: {e}")
-    
-    def test_attack_generation(self):
-        """Test that attacks are generated correctly."""
-        try:
-            attack_system = self.AttackSystem(grid_width=6, grid_height=13)
-            
-            # Mock broken blocks
-            broken_blocks = [(0, 0), (1, 0), (2, 0)]  # 3 blocks in a row
-            is_cluster = True
-            combo_multiplier = 2
-            
-            attacks = attack_system.generate_attack(
-                broken_blocks, 
-                is_cluster, 
-                combo_multiplier, 
-                "blue"
-            )
-            
-            # Check that attacks were generated
-            self.assertIsInstance(attacks, list)
-            
-        except Exception as e:
-            self.fail(f"Attack generation test failed: {e}")
-
-
+# AttackSystemTests removed - old attack system no longer exists
 class AudioSystemTests(BladeFightersTestSuite):
     """Tests for the audio system functionality."""
     
@@ -338,33 +291,7 @@ class AudioSystemTests(BladeFightersTestSuite):
             self.fail(f"Audio-puzzle integration test failed: {e}")
 
 
-class IntegrationTests(BladeFightersTestSuite):
-    """Integration tests for component interactions."""
-    
-    def test_puzzle_attack_integration(self):
-        """Test that puzzle engine and attack system work together."""
-        try:
-            from puzzle_module import PuzzleEngine
-            from attack_system import AttackSystem
-            
-            # Create both systems
-            engine = PuzzleEngine(
-                self.test_screen, 
-                self.test_font, 
-                None,
-                self.test_config['asset_path']
-            )
-            
-            attack_system = AttackSystem(grid_width=6, grid_height=13)
-            
-            # Test that they can coexist
-            self.assertIsNotNone(engine)
-            self.assertIsNotNone(attack_system)
-            
-        except Exception as e:
-            self.fail(f"Integration test failed: {e}")
-
-
+# IntegrationTests removed - old attack system no longer exists
 class PerformanceTests(BladeFightersTestSuite):
     """Performance tests to ensure refactoring doesn't degrade performance."""
     
@@ -434,9 +361,7 @@ class TestRunner:
         if test_classes is None:
             test_classes = [
                 PuzzleEngineTests,
-                AttackSystemTests,
                 AudioSystemTests,
-                IntegrationTests,
                 PerformanceTests,
                 RegressionTests
             ]
@@ -525,9 +450,7 @@ def run_specific_test(test_class_name: str):
     """Run tests from a specific test class."""
     test_classes = {
         'puzzle': PuzzleEngineTests,
-        'attack': AttackSystemTests,
         'audio': AudioSystemTests,
-        'integration': IntegrationTests,
         'performance': PerformanceTests,
         'regression': RegressionTests
     }

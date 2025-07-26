@@ -5,15 +5,13 @@ import time
 import math
 import random
 import traceback
+from typing import Dict
 
 # Import animation modules
 from .Animations.Animation_Rendering import AnimationRenderer
 from .Animations.AnimationStateManagement import AnimationStateManager
 
-# Define GarbageBlockState since attack_system is not available
-class GarbageBlockState:
-    """Placeholder for GarbageBlockState when attack_system is not available."""
-    pass
+# GarbageBlockState removed - no longer needed
 
 # Global exception handler for pygame drawing errors
 def safe_pygame_draw(func, *args, **kwargs):
@@ -49,11 +47,37 @@ class PuzzleRenderer:
     Handles rendering and visual effects for the puzzle game.
     This class separates rendering logic from game mechanics.
     """
-    def __init__(self, puzzle_engine):
-        print(f"[DEBUG] PuzzleRenderer initialized for engine: {puzzle_engine}")
-        self.engine = puzzle_engine
-        self.screen = puzzle_engine.screen
+    def __init__(self, engine):
+        """Initialize the puzzle renderer with an engine."""
+        self.engine = engine
+        self.screen = engine.screen
         print(f"[DEBUG] Renderer screen size: {self.screen.get_width()}x{self.screen.get_height()}")
+        
+        # Visual state tracking
+        self.visual_state = {
+            'grid_blocks': {},
+            'falling_pieces': {},
+            'breaking_animations': {},
+            'last_update_time': 0
+        }
+        
+        # Initialize animation manager
+        self.animation_state_manager = AnimationStateManager(engine)
+        self.animation_renderer = AnimationRenderer(self.screen, engine, self.animation_state_manager)
+        
+        # Get dimensions from engine
+        self.block_width = self.engine.block_size
+        self.block_height = self.engine.block_size
+        
+        # Initialize coordinate offsets
+        self.current_x_offset = 0
+        self.current_y_offset = 0
+        
+        # Update coordinate offsets based on engine settings
+        self.update_coordinate_offsets()
+        
+        print(f"[DEBUG] PuzzleRenderer initialized with block size: {self.block_width}x{self.block_height}")
+        print(f"[DEBUG] PuzzleRenderer offset: ({self.current_x_offset}, {self.current_y_offset})")
         
         # Set a reference to this renderer in the engine
         self.engine.renderer = self
@@ -99,11 +123,7 @@ class PuzzleRenderer:
             self.current_y_offset = (self.screen.get_height() - grid_height_pixels) // 2
         
         # Ensure we can access the attack system through the engine
-        if not hasattr(self.engine, 'attack_system'):
-            print("DEBUG: No attack system found during renderer initialization")
-            self.engine.attack_system = None
-        else:
-            print(f"DEBUG: Attack system found during renderer initialization with transformation time {self.engine.attack_system.transformation_time}s")
+        # Attack system reference removed - no longer needed
         
         # Optimized animation settings - reduced from 120 to 60 fps
         self.enable_animation = True
@@ -159,8 +179,8 @@ class PuzzleRenderer:
         self.clock = pygame.time.Clock()
         
         # Initialize modular animation system
-        self.animation_state_manager = AnimationStateManager(puzzle_engine)
-        self.animation_renderer = AnimationRenderer(self.screen, puzzle_engine, self.animation_state_manager)
+        self.animation_state_manager = AnimationStateManager(engine)
+        self.animation_renderer = AnimationRenderer(self.screen, engine, self.animation_state_manager)
         
         # Initialize piece visuals now that the animation system is ready
         self.update_visual_state()
@@ -307,6 +327,18 @@ class PuzzleRenderer:
             glow_data = self.cluster_glow_effects[cluster_id]
             cluster_blocks = glow_data['blocks']
             
+            # IMMEDIATE FIX: Remove glow effect if any block is currently breaking
+            cluster_has_breaking_blocks = False
+            for block_pos in cluster_blocks:
+                if block_pos in self.animation_state_manager.breaking_blocks_animations:
+                    cluster_has_breaking_blocks = True
+                    break
+            
+            # Remove glow immediately when blocks start breaking
+            if cluster_has_breaking_blocks:
+                self.cluster_glow_effects.pop(cluster_id, None)
+                continue  # Skip to next cluster
+            
             # Check if this cluster still exists
             cluster_still_exists = False
             for current_cluster in current_clusters:
@@ -448,12 +480,10 @@ class PuzzleRenderer:
                             self.animation_state_manager.visual_falling_blocks.pop(current_pos, None)
     
     def update_animations(self):
-        """Update all animations for the puzzle grid."""
-        current_time = time.time()
-        
-        # Update breaking block animations
-        self.animation_state_manager.update_breaking_animations(current_time)
-        
+        """Update all animations."""
+        self.animation_state_manager.update_animations()
+        self.animation_renderer.update_animations()
+    
     def draw_game_screen(self):
         """Draw the complete game screen with display management (for standalone use)."""
         print(f"[DEBUG] draw_game_screen called for engine: {self.engine}")
@@ -571,11 +601,9 @@ class PuzzleRenderer:
         """
         Draw the currently falling piece with pixel-perfect positioning and its attached piece.
         """
-        # Calculate grid offset
-        grid_width_pixels = self.engine.grid_width * self.block_width
-        grid_height_pixels = self.engine.grid_height * self.block_height
-        x_offset = (self.screen.get_width() - grid_width_pixels) // 2
-        y_offset = (self.screen.get_height() - grid_height_pixels) // 2
+        # Use the same offsets as grid background and blocks for consistency
+        x_offset = self.current_x_offset
+        y_offset = self.current_y_offset
         
         # Delegate rendering to the animation renderer
         self.animation_renderer.render_player_piece(x_offset, y_offset, self.block_width, self.block_height)

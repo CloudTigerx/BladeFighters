@@ -7,7 +7,7 @@ import time
 
 # Import all extracted modules - all are working properly
 from modules.audio_module import AudioSystem
-from modules.settings_module import SettingsSystem
+# from modules.settings_module import SettingsSystem  # REMOVED: Settings system being stripped out
 from modules.menu_module import MenuSystem
 from modules.testmode_module import TestMode
 from modules.screen_module import ScreenManager
@@ -68,7 +68,7 @@ class GameClient:
         self.test_mode = TestMode(self.screen, self.font, self.audio, self.asset_path)
         
         # Create settings system
-        self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path)
+        # self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path) # REMOVED: Settings system being stripped out
         
         # Create screen manager
         self.screen_manager = ScreenManager(self.screen, self.font, self.width, self.height)
@@ -101,11 +101,8 @@ class GameClient:
         except pygame.error:
             self.main_background = None
             
-        try:
-            self.settings_background = pygame.image.load(os.path.join(ROOT_PATH, "settingsbcg.jfif"))
-        except pygame.error:
-            self.settings_background = None
-            
+        # Settings background removed - no longer needed
+        
         try:
             self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "bkg.png"))
         except pygame.error:
@@ -140,12 +137,12 @@ class GameClient:
         # Screen-specific initialization
         if screen_name == "settings":
             print("Game Client: Initializing settings system")
-            if hasattr(self, 'settings_system') and self.settings_system:
-                self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path)
+            # if hasattr(self, 'settings_system') and self.settings_system: # REMOVED: Settings system being stripped out
+            #     self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path) # REMOVED: Settings system being stripped out
         elif screen_name == "ui_editor":
             print("Game Client: Switching to UI editor")
-            if hasattr(self, 'settings_system') and self.settings_system:
-                self.settings_system.set_screen("ui_editor")
+            # if hasattr(self, 'settings_system') and self.settings_system: # REMOVED: Settings system being stripped out
+            #     self.settings_system.set_screen("ui_editor") # REMOVED: Settings system being stripped out
         elif screen_name == "test":
             if hasattr(self, 'test_mode') and self.test_mode:
                 self.test_mode.initialize_test()
@@ -160,33 +157,36 @@ class GameClient:
 
 
     
-    def draw_settings_menu(self):
-        """Draw the settings menu screen using the MenuSystem."""
-        # Use the MenuSystem to draw the settings menu
-        if hasattr(self, 'menu_system') and self.menu_system:
-            settings_buttons = self.menu_system.draw_settings_menu(
-                on_back_action=lambda: self.set_screen("main_menu"),
-                current_resolution=(self.width, self.height),
-                resolutions=self.resolutions,
-                on_resolution_change=self.change_resolution
-            )
-        else:
-            # Fallback if no menu system available
-            settings_buttons = []
+    def draw_placeholder_settings(self):
+        """Draw a placeholder 'Coming Soon' settings screen."""
+        # Fill with dark gradient background
+        self.screen.fill((20, 20, 50))
         
-        # Check for hover on buttons
-        mouse_pos = pygame.mouse.get_pos()
-        for button in settings_buttons:
-            if button["rect"].collidepoint(mouse_pos):
-                button["hover"] = True
-            else:
-                button["hover"] = False
+        # Draw "Settings Coming Soon" message
+        title_font = pygame.font.SysFont('Arial', 64, bold=True)
+        title_text = title_font.render("Settings Coming Soon", True, (255, 255, 255))
+        title_rect = title_text.get_rect(center=(self.width//2, self.height//2 - 100))
+        self.screen.blit(title_text, title_rect)
         
-        # Instead, use the custom MP3 player display method
-        if hasattr(self, 'audio') and self.audio:
-            self.display_custom_mp3_player()
+        # Draw subtitle
+        subtitle_font = pygame.font.SysFont('Arial', 32)
+        subtitle_text = subtitle_font.render("The settings system is being redesigned", True, (200, 200, 200))
+        subtitle_rect = subtitle_text.get_rect(center=(self.width//2, self.height//2 - 40))
+        self.screen.blit(subtitle_text, subtitle_rect)
         
-        return settings_buttons
+        # Draw instructions
+        instruction_font = pygame.font.SysFont('Arial', 28)
+        instruction_text = instruction_font.render("Press ESC or click anywhere to return to main menu", True, (150, 150, 150))
+        instruction_rect = instruction_text.get_rect(center=(self.width//2, self.height//2 + 50))
+        self.screen.blit(instruction_text, instruction_rect)
+        
+        # Draw a nice border around the whole message
+        border_rect = pygame.Rect(self.width//2 - 400, self.height//2 - 150, 800, 250)
+        pygame.draw.rect(self.screen, (100, 100, 255), border_rect, 3, border_radius=10)
+        
+        # Add some visual flair with a subtle glow effect
+        glow_rect = pygame.Rect(self.width//2 - 405, self.height//2 - 155, 810, 260)
+        pygame.draw.rect(self.screen, (50, 50, 150), glow_rect, 2, border_radius=12)
     
     def change_resolution(self, width, height):
         """Change the game's resolution."""
@@ -202,10 +202,10 @@ class GameClient:
             self.menu_system.screen = self.screen
         
         # Update settings system with new screen
-        if hasattr(self, 'settings_system') and self.settings_system:
-            self.settings_system.screen = self.screen
-            self.settings_system.width = self.width
-            self.settings_system.height = self.height
+        # if hasattr(self, 'settings_system') and self.settings_system: # REMOVED: Settings system being stripped out
+        #     self.settings_system.screen = self.screen # REMOVED: Settings system being stripped out
+        #     self.settings_system.width = self.width # REMOVED: Settings system being stripped out
+        #     self.settings_system.height = self.height # REMOVED: Settings system being stripped out
         
         # Update screen manager with new resolution
         if hasattr(self, 'screen_manager') and self.screen_manager:
@@ -364,8 +364,8 @@ class GameClient:
                 for event in events:
                     if event.type == pygame.QUIT:
                         # Save UI positions before closing
-                        if hasattr(self, 'settings_system') and self.settings_system and hasattr(self.settings_system, 'ui_editor') and self.settings_system.ui_editor:
-                            self.settings_system.ui_editor.save_positions()
+                        # if hasattr(self, 'settings_system') and self.settings_system and hasattr(self.settings_system, 'ui_editor') and self.settings_system.ui_editor: # REMOVED: Settings system being stripped out
+                        #     self.settings_system.ui_editor.save_positions() # REMOVED: Settings system being stripped out
                         self.game_running = False
                     elif event.type == pygame.VIDEORESIZE:
                         # Update resolution if the window is resized
@@ -551,38 +551,15 @@ class GameClient:
                         self.display_custom_mp3_player()
                 
                 elif self.current_screen == "settings":
-                    # Process settings events using the settings system
-                    if hasattr(self, 'settings_system') and self.settings_system:
-                        settings_action = self.settings_system.process_settings_events(events)
-                        
-                        # Handle settings actions
-                        if settings_action == "back":
+                    # PLACEHOLDER: Settings system removed - showing 'Coming Soon' screen
+                    self.draw_placeholder_settings()
+                    
+                    # Handle events for placeholder screen
+                    for event in events:
+                        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                             self.set_screen("main_menu")
-                        elif isinstance(settings_action, str) and settings_action.startswith("resolution:"):
-                            # Extract resolution from action string
-                            parts = settings_action.split(":")
-                            if len(parts) == 3:
-                                width, height = int(parts[1]), int(parts[2])
-                                self.change_resolution(width, height)
-                        
-                        # Draw the settings menu using the settings system
-                        self.settings_buttons = self.settings_system.draw_settings_menu(
-                            on_back_action=lambda: self.set_screen("main_menu"),
-                            current_resolution=(self.width, self.height),
-                            resolutions=self.resolutions,
-                            on_resolution_change=self.change_resolution
-                        )
-                    else:
-                        # Fallback if settings system is not available
-                        self.screen.fill(self.BLACK)
-                        error_text = self.font.render("Settings system not available", True, self.WHITE)
-                        error_rect = error_text.get_rect(center=(self.width // 2, self.height // 2))
-                        self.screen.blit(error_text, error_rect)
-                        
-                        # Handle escape key to go back
-                        for event in events:
-                            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                                self.set_screen("main_menu")
+                        elif event.type == pygame.MOUSEBUTTONDOWN:
+                            self.set_screen("main_menu")
                     
                     # Display MP3 player in settings too
                     if hasattr(self, 'audio') and self.audio:

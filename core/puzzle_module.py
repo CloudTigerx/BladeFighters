@@ -90,7 +90,7 @@ class PuzzleEngine:
         self.blue_block = self.asset_loader.get_block_image('blue_block')
         self.green_block = self.asset_loader.get_block_image('green_block')
         self.yellow_block = self.asset_loader.get_block_image('yellow_block')
-        self.gray_block = self.asset_loader.get_block_image('gray_block')
+        self.garbage_block = self.asset_loader.get_block_image('garbage_block')
         self.strike_block = self.asset_loader.get_block_image('strike_block')
         self.red_breaker = self.asset_loader.get_block_image('red_breaker')
         self.blue_breaker = self.asset_loader.get_block_image('blue_breaker')
@@ -183,10 +183,11 @@ class PuzzleEngine:
     def create_test_grid(self, width, height):
         """Create a test grid with random colors and breakers."""
         # Regular colors and breaker colors (for better distribution)
-        regular_colors = ['red', 'blue', 'green', 'yellow']
+        regular_colors = ['red_block', 'blue_block', 'green_block', 'yellow_block']
         breaker_colors = ['red_breaker', 'blue_breaker', 'green_breaker', 'yellow_breaker']
         
         grid = []
+        breaker_count = 0
         for y in range(height):
             row = []
             for x in range(width):
@@ -194,11 +195,15 @@ class PuzzleEngine:
                 if random.random() < 0.25:
                     # Choose a random breaker color
                     piece = random.choice(breaker_colors)
+                    breaker_count += 1
+                    print(f"[GRID DEBUG] Created breaker block at ({x}, {y}): {piece}")
                 else:
                     # Choose a random regular color
                     piece = random.choice(regular_colors)
                 row.append(piece)
             grid.append(row)
+        
+        print(f"[GRID DEBUG] Created test grid with {breaker_count} breaker blocks")
         return grid
         
     # Core game mechanics methods
@@ -420,15 +425,12 @@ class PuzzleEngine:
             if hasattr(self.test_mode, 'player_engine') and self.test_mode.player_engine != self:
                 player_number = 2
             
-            # Decrement turns for garbage blocks when a piece is placed
-            updated_blocks = self.test_mode.attack_system.decrement_garbage_block_turns(player_number)
-            
-            # Update any transformed blocks
-            if updated_blocks:
-                for (x, y), color in updated_blocks:
-                    if 0 <= y < self.grid_height and 0 <= x < self.grid_width:
-                        # Update the block to its normal color
-                        self.puzzle_grid[y][x] = color
+            # OLD SYSTEM REMOVED: The new landing-based transformation system handles this
+            # updated_blocks = self.test_mode.attack_system.decrement_garbage_block_turns(player_number)
+            # if updated_blocks:
+            #     for (x, y), color in updated_blocks:
+            #         if 0 <= y < self.grid_height and 0 <= x < self.grid_width:
+            #             self.puzzle_grid[y][x] = color
         
         # Always start the chain reaction process
         self.chain_reaction_in_progress = True
@@ -446,7 +448,14 @@ class PuzzleEngine:
         
         # Reset piece movement tracking when piece is placed
         self.piece_movement.reset_wall_kick_tracking()
-        
+
+        # Trigger garbage block transformation based on landings
+        if hasattr(self, 'on_piece_landed'):
+            print(f"[PUZZLE DEBUG] Calling on_piece_landed callback for engine")
+            self.on_piece_landed()
+        else:
+            print(f"[PUZZLE DEBUG] No on_piece_landed callback found for engine")
+
         # Clear the current piece (but don't generate a new one yet - will happen in update_falling_piece)
         self.main_piece = None
         self.attached_piece = None
@@ -505,10 +514,21 @@ class PuzzleEngine:
                             # Clear the old position
                             self.puzzle_grid[y][x] = None
                         
-                        # Then place all blocks in their new positions
+                        # Then place all blocks in their new positions WITH SMOOTH FALLING ANIMATION
                         for (x, y), block_type in cluster_data.items():
                             new_y = y + min_fall_distance
                             if 0 <= new_y < self.grid_height:
+                                # Add falling animation for cluster blocks
+                                if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                                    current_time = time.time()
+                                    self.renderer.animation_state_manager.visual_falling_blocks[(x, new_y)] = {
+                                        'start_time': current_time,
+                                        'duration': self.renderer.animation_state_manager.fall_animation_duration * min_fall_distance,
+                                        'start_y': y,
+                                        'block_type': block_type
+                                    }
+                                
+                                # Move block to final position in grid (for logic)
                                 self.puzzle_grid[new_y][x] = block_type
                                 blocks_moved = True
                                 
@@ -530,15 +550,28 @@ class PuzzleEngine:
                         break
                 
                 if fall_distance > 0:
-                    # Move the block down
-                    new_y = fall_distance
-                    self.puzzle_grid[new_y][x] = self.puzzle_grid[0][x]
+                    # SMOOTH FALLING: Use animation system instead of instant teleportation
+                    block_type = self.puzzle_grid[0][x]
+                    target_y = fall_distance
+                    
+                    # Add falling animation to renderer if available
+                    if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                        current_time = time.time()
+                        self.renderer.animation_state_manager.visual_falling_blocks[(x, target_y)] = {
+                            'start_time': current_time,
+                            'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
+                            'start_y': 0,
+                            'block_type': block_type
+                        }
+                    
+                    # Move the block to final position in grid (for logic)
+                    self.puzzle_grid[target_y][x] = block_type
                     self.puzzle_grid[0][x] = None
                     blocks_moved = True
                     
                     # If this is a garbage block, track its movement
-                    if '_garbage' in self.puzzle_grid[new_y][x]:
-                        garbage_movements[(x, 0)] = (x, new_y)
+                    if '_garbage' in block_type:
+                        garbage_movements[(x, 0)] = (x, target_y)
         
         # Then apply gravity to the rest of the grid from bottom to top
         for y in range(self.grid_height - 2, 0, -1):  # Start from second-to-last row
@@ -554,25 +587,39 @@ class PuzzleEngine:
                             break
                     
                     if fall_distance > 0:
-                        # Move the block down
-                        new_y = y + fall_distance
-                        self.puzzle_grid[new_y][x] = self.puzzle_grid[y][x]
+                        # SMOOTH FALLING: Use animation system instead of instant teleportation
+                        block_type = self.puzzle_grid[y][x]
+                        target_y = y + fall_distance
+                        
+                        # Add falling animation to renderer if available
+                        if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                            current_time = time.time()
+                            self.renderer.animation_state_manager.visual_falling_blocks[(x, target_y)] = {
+                                'start_time': current_time,
+                                'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
+                                'start_y': y,
+                                'block_type': block_type
+                            }
+                        
+                        # Move the block to final position in grid (for logic)
+                        self.puzzle_grid[target_y][x] = block_type
                         self.puzzle_grid[y][x] = None
                         blocks_moved = True
                         
                         # If this is a garbage block, track its movement
-                        if '_garbage' in self.puzzle_grid[new_y][x]:
-                            garbage_movements[(x, y)] = (x, new_y)
+                        if '_garbage' in block_type:
+                            garbage_movements[(x, y)] = (x, target_y)
         
+        # OLD SYSTEM REMOVED: The new landing-based transformation system handles this
         # STEP 3: Notify attack system of garbage block movements (if available)
-        if garbage_movements and hasattr(self, 'test_mode') and hasattr(self.test_mode, 'attack_system'):
-            # Determine which player's grid this is (1 or 2)
-            player_number = 1
-            if hasattr(self.test_mode, 'player_engine') and self.test_mode.player_engine != self:
-                player_number = 2
-            
-            # Notify the attack system of the movements
-            self.test_mode.attack_system.handle_garbage_block_movement(player_number, garbage_movements)
+        # if garbage_movements and hasattr(self, 'test_mode') and hasattr(self.test_mode, 'attack_system'):
+        #     # Determine which player's grid this is (1 or 2)
+        #     player_number = 1
+        #     if hasattr(self.test_mode, 'player_engine') and self.test_mode.player_engine != self:
+        #         player_number = 2
+        #     
+        #     # Notify the attack system of the movements
+        #     self.test_mode.attack_system.handle_garbage_block_movement(player_number, garbage_movements)
         
         return blocks_moved
     
@@ -633,8 +680,9 @@ class PuzzleEngine:
             color = random.choice(['red', 'blue', 'green', 'yellow'])
             return f"{color}_breaker"
         else:
-            # Generate a regular piece
-            return random.choice(['red', 'blue', 'green', 'yellow'])
+            # Generate a regular piece with correct naming convention
+            color = random.choice(['red', 'blue', 'green', 'yellow'])
+            return f"{color}_block"
             
     def get_attached_position_coords(self):
         """Get the grid coordinates of the attached piece based on its position."""
@@ -1197,90 +1245,52 @@ class PuzzleEngine:
     def find_breakers_to_activate(self):
         """
         Find breaker blocks to activate and add them to the breaking_blocks list.
-        Returns True if any breakers were found, False otherwise.
+        Returns True if any breakers were found and activated.
         """
-        # Track if any activation occurred this cycle
-        activation_occurred = False
-        
-        # Collect all breakers to activate in this cycle
-        breakers_to_activate = []
+        activated_breakers = []
         
         # Scan the entire grid for breaker blocks
         for y in range(self.grid_height):
             for x in range(self.grid_width):
                 # Check if current position contains a breaker block
                 if self.puzzle_grid[y][x] is not None and "_breaker" in self.puzzle_grid[y][x]:
-                    breaker_color = self.puzzle_grid[y][x].split('_')[0]
+                    print(f"[BREAKER DEBUG] Found breaker block at ({x}, {y}): {self.puzzle_grid[y][x]}")
                     
-                    # Check adjacent positions (up, right, down, left)
-                    adjacent_positions = [
-                        (x, y - 1),  # up
-                        (x + 1, y),  # right
-                        (x, y + 1),  # down
-                        (x - 1, y)   # left
-                    ]
+                    # Check if this breaker is adjacent to a block of the same color
+                    breaker_color = self.puzzle_grid[y][x].replace('_breaker', '')
                     
-                    # Check if any adjacent position has matching color
-                    breaker_activated = False
+                    # Check all 4 adjacent positions
+                    adjacent_positions = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
                     for adj_x, adj_y in adjacent_positions:
-                        if (0 <= adj_x < self.grid_width and 0 <= adj_y < self.grid_height and
-                                self.puzzle_grid[adj_y][adj_x] is not None):
-                            # Get the color without any suffix
-                            adjacent_block = self.puzzle_grid[adj_y][adj_x]
-                            adjacent_color = adjacent_block.split('_')[0]
+                        if (0 <= adj_x < self.grid_width and 
+                            0 <= adj_y < self.grid_height and 
+                            self.puzzle_grid[adj_y][adj_x] is not None):
                             
-                            # Skip if this is a garbage block (gray block in transformation)
-                            if '_garbage' in adjacent_block:
-                                continue
+                            adjacent_color = self.puzzle_grid[adj_y][adj_x]
+                            # Remove any suffixes for color comparison
+                            clean_adjacent = adjacent_color.replace('_breaker', '').replace('_garbage', '').replace('_block', '')
                             
-                            # Check if colors match and it's not a breaker of the same color
-                            if adjacent_color == breaker_color:
-                                breaker_activated = True
-                                print(f"DEBUG: Breaker at ({x},{y}) [{breaker_color}] activated by adjacent block at ({adj_x},{adj_y}) [{adjacent_color}]")
-                                break
+                            if clean_adjacent == breaker_color:
+                                print(f"[BREAKER DEBUG] Breaker at ({x},{y}) [{breaker_color}] activated by adjacent block at ({adj_x},{adj_y}) [{adjacent_color}]")
+                                activated_breakers.append((x, y, breaker_color))
+                                break  # Only need one adjacent block to activate
                     
-                    # If the breaker is activated, add it to list of breakers to activate
-                    if breaker_activated:
-                        breakers_to_activate.append((x, y, self.puzzle_grid[y][x]))
+        # Process all activated breakers and find connected blocks of the same color
+        for x, y, breaker_color in activated_breakers:
+            # Add the breaker itself to breaking blocks
+            self.breaking_blocks.append((x, y, pygame.time.get_ticks(), 0, breaker_color, True))
+            print(f"[BREAKER DEBUG] Added breaker to breaking_blocks: ({x}, {y}) {breaker_color}")
+            
+            # The breaker will destroy all connected blocks of the same color
+            connected_blocks = self.find_connected_pieces(x, y, breaker_color)
+            print(f"[BREAKER DEBUG] Found {len(connected_blocks)} connected blocks for breaker at ({x}, {y})")
+            
+            for cx, cy in connected_blocks:
+                if (cx, cy) != (x, y):  # Don't add the breaker twice
+                    self.breaking_blocks.append((cx, cy, pygame.time.get_ticks(), 0, breaker_color, False))
+                    print(f"[BREAKER DEBUG] Added connected block to breaking_blocks: ({cx}, {cy}) {breaker_color}")
         
-        # If any breakers were activated, start the breaking animation
-        if breakers_to_activate:
-            activation_occurred = True
-            current_time = pygame.time.get_ticks()
-            self.breaking_animation_start = current_time
-            print(f"DEBUG: Found {len(breakers_to_activate)} breakers to activate")
-            
-            # Process all activated breakers and find connected blocks of the same color
-            for x, y, breaker_type in breakers_to_activate:
-                # Add the breaker itself to breaking blocks
-                self.breaking_blocks.append((x, y, current_time, 0, breaker_type, True))
-                
-                # The breaker will destroy all connected blocks of the same color
-                breaker_color = breaker_type.split('_')[0]
-                connected_blocks = self.find_connected_pieces(x, y, breaker_color)
-                
-                # Add all connected blocks to breaking blocks with a small delay for cascade effect
-                delay = 0
-                for block_x, block_y in connected_blocks:
-                    delay += self.chain_delay
-                    # Check if the position is still valid and not already in breaking blocks
-                    if (0 <= block_y < self.grid_height and 0 <= block_x < self.grid_width and
-                            self.puzzle_grid[block_y][block_x] is not None):
-                        
-                        # Skip if this block is already in breaking_blocks
-                        already_breaking = False
-                        for bx, by, _, _, _, _ in self.breaking_blocks:
-                            if bx == block_x and by == block_y:
-                                already_breaking = True
-                                break
-                        
-                        if not already_breaking:
-                            block_type = self.puzzle_grid[block_y][block_x]
-                            self.breaking_blocks.append((block_x, block_y, current_time, delay, block_type, False))
-        else:
-            print("DEBUG: No breakers found to activate")
-            
-        return activation_occurred
+        return len(activated_breakers) > 0
 
     def clear_breaking_blocks(self):
         """Clear breaking blocks from the grid."""
