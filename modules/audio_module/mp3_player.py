@@ -29,8 +29,8 @@ class MP3Player:
                 'source': self.songs[0].get('source', ''),
                 'license': self.songs[0].get('license', '')
             }
-            # Start playing the first song automatically
-            self.play_song()
+            # Load the first song but don't start playing automatically (paused on start)
+            self._load_song_without_playing()
         
         # UI tracking
         self.mp3_player_buttons = {}
@@ -55,8 +55,8 @@ class MP3Player:
                 'source': songs[0].get('source', ''),
                 'license': songs[0].get('license', '')
             }
-            # Start playing the first song
-            self.play_song()
+            # Load the first song but don't start playing (paused on start)
+            self._load_song_without_playing()
         else:
             self.current_song_index = -1
             self.song_info = None
@@ -69,6 +69,50 @@ class MP3Player:
     def set_background_image(self, image):
         """Set a custom background image for the MP3 player."""
         self.background_image = image
+    
+    def _load_song_without_playing(self):
+        """Load the current song without starting playback (for paused start)."""
+        if not self.songs:
+            print("No songs available to load")
+            return
+            
+        try:
+            # Load the current song without playing it
+            current_song = self.songs[self.current_song_index]
+            print(f"Loading song (paused): {current_song['path']}")
+            
+            # Make sure the file exists
+            if not os.path.exists(current_song['path']):
+                print(f"Error: Song file not found: {current_song['path']}")
+                return
+                
+            # Load the song but don't play it
+            try:
+                pygame.mixer.music.load(current_song['path'])
+                pygame.mixer.music.set_volume(0.5)  # Set to 50% volume
+                
+                # Update song info with attribution
+                self.song_info = {
+                    'title': current_song['title'],
+                    'artist': current_song['artist'],
+                    'source': current_song.get('source', ''),
+                    'license': current_song.get('license', '')
+                }
+                
+                self.is_playing = False  # Keep it paused
+                print(f"Song loaded (paused): {current_song['artist']} - {current_song['title']}")
+                print("🎵 Music is paused. Press 'P' or click the pause/play button to start music!")
+                
+                # Print attribution
+                if current_song.get('source') and current_song.get('license'):
+                    print(f"Attribution: {current_song['source']} | License: {current_song['license']}")
+                    
+            except pygame.error as e:
+                print(f"Pygame error loading music: {e}")
+                
+        except Exception as e:
+            print(f"Error loading song: {e}")
+            self.is_playing = False
     
     def play_song(self):
         """Play the current song."""
@@ -147,7 +191,10 @@ class MP3Player:
             
         # Move to next song
         self.current_song_index = (self.current_song_index + 1) % len(self.songs)
-        self.play_song()
+        if self.is_playing:
+            self.play_song()
+        else:
+            self._load_song_without_playing()
     
     def prev_song(self):
         """Play the previous song in the playlist."""
@@ -156,7 +203,10 @@ class MP3Player:
             
         # Move to previous song
         self.current_song_index = (self.current_song_index - 1) % len(self.songs)
-        self.play_song()
+        if self.is_playing:
+            self.play_song()
+        else:
+            self._load_song_without_playing()
     
     def volume_up(self):
         """Increase the volume of the music."""
@@ -294,17 +344,13 @@ class MP3Player:
                     (button_size//2, button_size - 8)
                 ])
             elif btn_type == 'volume_up':
-                # Draw a plus symbol
-                # Horizontal line
-                pygame.draw.rect(btn_surface, (200, 200, 255), 
-                              (7, button_size//2 - 2, button_size - 14, 4))
-                # Vertical line
-                pygame.draw.rect(btn_surface, (200, 200, 255), 
-                              (button_size//2 - 2, 7, 4, button_size - 14))
+                # Volume up button - invisible but functional
+                # No visual representation needed
+                pass
             elif btn_type == 'volume_down':
-                # Draw a minus symbol
-                pygame.draw.rect(btn_surface, (200, 200, 255), 
-                              (7, button_size//2 - 2, button_size - 14, 4))
+                # Volume down button - invisible but functional
+                # No visual representation needed
+                pass
             
             # Draw the transparent button surface
             screen.blit(btn_surface, (button_x, button_y))
@@ -321,8 +367,30 @@ class MP3Player:
         return self.mp3_player_buttons
     
     def handle_events(self, event):
-        """Handle pygame events related to the MP3 player (button clicks, etc.)"""
-        if not self.songs or not self.mp3_player_buttons:
+        """Handle pygame events related to the MP3 player (button clicks and keyboard controls)"""
+        if not self.songs:
+            return False
+            
+        # Handle keyboard controls (work on all screens)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:  # P key for pause/play
+                self.pause_song()
+                return True
+            elif event.key == pygame.K_RIGHTBRACKET:  # ] key for next song
+                self.next_song()
+                return True
+            elif event.key == pygame.K_LEFTBRACKET:  # [ key for previous song
+                self.prev_song()
+                return True
+            elif event.key == pygame.K_PLUS or event.key == pygame.K_EQUALS:  # + or = for volume up
+                self.volume_up()
+                return True
+            elif event.key == pygame.K_MINUS:  # - for volume down
+                self.volume_down()
+                return True
+            
+        # Handle mouse events (only if buttons are available)
+        if not self.mp3_player_buttons:
             return False
             
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click

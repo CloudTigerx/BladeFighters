@@ -302,7 +302,6 @@ class MenuSystem(MenuSystemInterface):
             ("Quickplay", on_start_action),
             ("Story Mode", on_story_action),
             ("Test Mode", on_test_action),
-            ("Test Laboratory", on_test_lab_action),  # Add Test Laboratory button
             ("Settings", on_settings_action),
             ("Quit", sys.exit)
         ]
@@ -359,8 +358,6 @@ class MenuSystem(MenuSystemInterface):
                             return "story"
                         elif button["text"] == "Test Mode":
                             return "test"
-                        elif button["text"] == "Test Laboratory":
-                            return "test_lab"
                         elif button["text"] == "Settings":
                             return "settings"
                         elif button["text"] == "Quit":

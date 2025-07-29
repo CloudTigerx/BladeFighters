@@ -1,0 +1,13 @@
+{
+  "audio_volume": 0.6771428571428572,
+  "music_volume": 0.19714285714285715,
+  "screen_resolution": [
+    1600,
+    900
+  ],
+  "fullscreen": true,
+  "vsync": true,
+  "particle_effects": true,
+  "brightness": 0.72,
+  "sensitivity": 0.48271428571428565
+}

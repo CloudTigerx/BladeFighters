@@ -5,9 +5,12 @@ import math
 import random
 import time
 
+# Import loading screen first
+from modules.loading_module.loading_screen import LoadingScreen
+
 # Import all extracted modules - all are working properly
 from modules.audio_module import AudioSystem
-# from modules.settings_module import SettingsSystem  # REMOVED: Settings system being stripped out
+from modules.settings_module import SettingsSystem
 from modules.menu_module import MenuSystem
 from modules.testmode_module import TestMode
 from modules.screen_module import ScreenManager
@@ -27,6 +30,9 @@ class GameClient:
         """Initialize the game client."""
         # Initialize pygame
         pygame.init()
+        
+        # Set V-Sync environment variable at startup
+        os.environ['SDL_VIDEO_VSYNC'] = '1'  # Default to V-Sync enabled
         
         # Set the asset path
         self.asset_path = ASSET_PATH
@@ -55,63 +61,20 @@ class GameClient:
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Blade Fighters")
         
-        # Create font
-        self.font = pygame.font.SysFont('Arial', 36)
-        
-        # Initialize audio system
-        self.audio = AudioSystem(ASSET_PATH)
-        
-        # Create menu system
-        self.menu_system = MenuSystem(self.screen, self.font, self.audio, self.asset_path)
-        
-        # Create test mode first
-        self.test_mode = TestMode(self.screen, self.font, self.audio, self.asset_path)
-        
-        # Create settings system
-        # self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path) # REMOVED: Settings system being stripped out
-        
-        # Create screen manager
-        self.screen_manager = ScreenManager(self.screen, self.font, self.width, self.height)
-        
-        # Create story system
-        self.story_system = StorySystem(self.screen, self.font, self.width, self.height, self.menu_system)
-        
-        # Create puzzle engine
-        self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path)
-        
-        # Create puzzle renderer
-        self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine)
-        
-        # Current screen (main_menu, settings, game)
-        self.current_screen = "main_menu"
+        # Initialize basic attributes
+        self.font = None
+        self.audio = None
+        self.menu_system = None
+        self.settings_system = None
+        self.test_mode = None
+        self.screen_manager = None
+        self.story_system = None
+        self.puzzle_engine = None
+        self.puzzle_renderer = None
         
         # Game state
         self.game_running = True
-        
-        # Game version
         self.version = "1.0.0"
-        
-        # Story content view variables
-        self.story_scroll_position = 0
-        self.current_story = {"title": "No Story Selected", "content": []}
-        
-        # Load background images
-        try:
-            self.main_background = pygame.image.load(os.path.join(ASSET_PATH, "colorful.png"))
-        except pygame.error:
-            self.main_background = None
-            
-        # Settings background removed - no longer needed
-        
-        try:
-            self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "bkg.png"))
-        except pygame.error:
-            self.puzzle_background = None
-            
-        try:
-            self.story_background = pygame.image.load(os.path.join(ASSET_PATH, "storybackground.png"))
-        except pygame.error:
-            self.story_background = None
         
         # Colors
         self.BLACK = (0, 0, 0)
@@ -121,6 +84,102 @@ class GameClient:
         self.BLUE = (0, 100, 255)
         self.LIGHT_BLUE = (100, 150, 255)
         
+        # Story content view variables
+        self.story_scroll_position = 0
+        self.current_story = {"title": "No Story Selected", "content": []}
+        
+        # Background images (will be loaded during initialization)
+        self.main_background = None
+        self.puzzle_background = None
+        self.story_background = None
+        
+        # Current screen (will be set after loading)
+        self.current_screen = "loading"
+        
+        # Initialize brightness setting
+        self.brightness = 1.0  # Default brightness
+    
+    def _initialize_font(self):
+        """Initialize the font system."""
+        try:
+            font_path = os.path.join(ASSET_PATH, "fonts", "PermanentMarker-Regular.ttf")
+            if os.path.exists(font_path):
+                self.font = pygame.font.Font(font_path, 36)
+                print(f"✅ Loaded PermanentMarker font from: {font_path}")
+            else:
+                self.font = pygame.font.SysFont('Arial', 36)
+                print("⚠️ PermanentMarker font not found, using Arial fallback")
+        except Exception as e:
+            self.font = pygame.font.SysFont('Arial', 36)
+            print(f"⚠️ Error loading PermanentMarker font: {e}, using Arial fallback")
+    
+    def _initialize_audio_system(self):
+        """Initialize the audio system."""
+        self.audio = AudioSystem(ASSET_PATH)
+        print("✅ Audio system initialized")
+    
+    def _initialize_menu_system(self):
+        """Initialize the menu system."""
+        self.menu_system = MenuSystem(self.screen, self.font, self.audio, self.asset_path)
+        print("✅ Menu system initialized")
+    
+    def _initialize_settings_system(self):
+        """Initialize the settings system."""
+        self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path, self)
+        print("✅ Settings system initialized")
+    
+    def _initialize_test_mode(self):
+        """Initialize the test mode."""
+        self.test_mode = TestMode(self.screen, self.font, self.audio, self.asset_path, self.settings_system)
+        print("✅ Test mode initialized")
+    
+    def _initialize_screen_manager(self):
+        """Initialize the screen manager."""
+        self.screen_manager = ScreenManager(self.screen, self.font, self.width, self.height)
+        print("✅ Screen manager initialized")
+    
+    def _initialize_story_system(self):
+        """Initialize the story system."""
+        self.story_system = StorySystem(self.screen, self.font, self.width, self.height, self.menu_system)
+        print("✅ Story system initialized")
+    
+    def _initialize_puzzle_engine(self):
+        """Initialize the puzzle engine."""
+        self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_system)
+        print("✅ Puzzle engine initialized")
+    
+    def _initialize_puzzle_renderer(self):
+        """Initialize the puzzle renderer."""
+        self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine)
+        print("✅ Puzzle renderer initialized")
+    
+    def _load_background_images(self):
+        """Load background images."""
+        try:
+            self.main_background = pygame.image.load(os.path.join(ASSET_PATH, "colorful.png"))
+            print("✅ Loaded main background")
+        except pygame.error:
+            self.main_background = None
+            print("⚠️ Failed to load main background")
+        
+        try:
+            self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "bkg.png"))
+            print("✅ Loaded puzzle background")
+        except pygame.error:
+            self.puzzle_background = None
+            print("⚠️ Failed to load puzzle background")
+        
+        try:
+            self.story_background = pygame.image.load(os.path.join(ASSET_PATH, "storybackground.png"))
+            print("✅ Loaded story background")
+        except pygame.error:
+            self.story_background = None
+            print("⚠️ Failed to load story background")
+    
+    def _complete_initialization(self):
+        """Complete the initialization process."""
+        self.current_screen = "main_menu"
+        print("✅ Game initialization complete!")
 
     
     def set_screen(self, screen_name):
@@ -137,8 +196,8 @@ class GameClient:
         # Screen-specific initialization
         if screen_name == "settings":
             print("Game Client: Initializing settings system")
-            # if hasattr(self, 'settings_system') and self.settings_system: # REMOVED: Settings system being stripped out
-            #     self.settings_system = SettingsSystem(self.screen, self.font, self.audio, self.asset_path) # REMOVED: Settings system being stripped out
+            if hasattr(self, 'settings_system') and self.settings_system:
+                self.settings_system.show()
         elif screen_name == "ui_editor":
             print("Game Client: Switching to UI editor")
             # if hasattr(self, 'settings_system') and self.settings_system: # REMOVED: Settings system being stripped out
@@ -230,49 +289,9 @@ class GameClient:
         self.puzzle_renderer.preview_side = 'left' # Configure for single player
         self.puzzle_engine.start_game()
     
-    def launch_test_laboratory(self):
-        """Launch the Test Laboratory in a separate process."""
-        import subprocess
-        
-        try:
-            # Get the path to the test laboratory
-            test_lab_path = os.path.join(os.path.dirname(__file__), "test_laboratory")
-            
-            # Check if test laboratory exists
-            if not os.path.exists(test_lab_path):
-                print("Error: Test Laboratory not found!")
-                return
-            
-            # Launch test laboratory
-            print("🧪 Launching Test Laboratory...")
-            
-            # Use subprocess to launch the test laboratory
-            if os.name == 'nt':  # Windows
-                subprocess.Popen([
-                    'python', 'run_tests.py'
-                ], cwd=test_lab_path, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            else:  # Linux/Mac
-                subprocess.Popen([
-                    'python', 'run_tests.py'
-                ], cwd=test_lab_path)
-                
-            print("✅ Test Laboratory launched successfully!")
-            
-        except Exception as e:
-            print(f"Error launching Test Laboratory: {e}")
-            print("You can manually run it from: test_laboratory/run_tests.py")
+
     
-    def draw_game_screen(self):
-        """Draw the game screen using the main puzzle renderer."""
-        # Clear the screen to prevent artifacts from previous screens
-        self.screen.fill(self.BLACK)
-        
-        # Update renderer animations and visual state
-        self.puzzle_renderer.update_visual_state()
-        self.puzzle_renderer.update_animations()
-        
-        # Draw the game using our renderer
-        self.puzzle_renderer.draw_game_screen()
+
     
     def display_custom_mp3_player(self):
         """Display only the custom MP3 player image with functional buttons."""
@@ -284,6 +303,125 @@ class GameClient:
         self.mp3_player_buttons = self.audio.mp3_player.draw(self.screen, self.width, self.height)
         
         return self.mp3_player_buttons
+    
+    def get_brightness(self) -> float:
+        """Get the current brightness setting."""
+        if hasattr(self, 'settings_system') and self.settings_system:
+            return self.settings_system.get_setting('brightness')
+        return 1.0  # Default brightness
+    
+    def apply_brightness_to_surface(self, surface: pygame.Surface) -> pygame.Surface:
+        """Apply brightness adjustment to a surface."""
+        brightness = self.get_brightness()
+        if brightness == 1.0:
+            return surface  # No adjustment needed
+        
+        # Create a copy of the surface to avoid modifying the original
+        adjusted_surface = surface.copy()
+        
+        # Create a brightness overlay
+        brightness_overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        
+        # Calculate the darkness level (1.0 = no change, 0.0 = completely black)
+        darkness = 1.0 - brightness
+        alpha = int(255 * darkness)
+        
+        # Fill with black with appropriate alpha for darkening
+        brightness_overlay.fill((0, 0, 0, alpha))
+        
+        # Apply the overlay using BLEND_MULT for darkening effect
+        adjusted_surface.blit(brightness_overlay, (0, 0), special_flags=pygame.BLEND_MULT)
+        
+        return adjusted_surface
+    
+    def toggle_fullscreen(self):
+        """Toggle fullscreen mode."""
+        try:
+            # Get current display info
+            info = pygame.display.Info()
+            
+            # Toggle fullscreen flag
+            if pygame.display.get_surface().get_flags() & pygame.FULLSCREEN:
+                # Currently fullscreen, switch to windowed
+                self.screen = pygame.display.set_mode((self.width, self.height))
+                print("🖥️ Switched to windowed mode")
+            else:
+                # Currently windowed, switch to fullscreen
+                self.screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+                print("🖥️ Switched to fullscreen mode")
+            
+            # Update screen references in other systems
+            if hasattr(self, 'settings_system') and self.settings_system:
+                self.settings_system.screen = self.screen
+            if hasattr(self, 'menu_system') and self.menu_system:
+                self.menu_system.screen = self.screen
+            if hasattr(self, 'puzzle_engine') and self.puzzle_engine:
+                self.puzzle_engine.screen = self.screen
+            if hasattr(self, 'puzzle_renderer') and self.puzzle_renderer:
+                self.puzzle_renderer.screen = self.screen
+            
+        except Exception as e:
+            print(f"❌ Error toggling fullscreen: {e}")
+    
+    def get_mouse_sensitivity(self) -> float:
+        """Get the current mouse sensitivity setting."""
+        if hasattr(self, 'settings_system') and self.settings_system:
+            return self.settings_system.get_setting('sensitivity')
+        return 1.0  # Default sensitivity
+    
+    def toggle_vsync(self):
+        """Toggle V-Sync mode using environment variables and display flags."""
+        try:
+            # Get current V-Sync state from settings
+            current_vsync = self.settings_system.get_setting('vsync') if hasattr(self, 'settings_system') else True
+            
+            if current_vsync:
+                # Disable V-Sync
+                os.environ['SDL_VIDEO_VSYNC'] = '0'
+                # Recreate display without V-Sync flags
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.HWSURFACE)
+                print("🔄 V-Sync disabled")
+            else:
+                # Enable V-Sync
+                os.environ['SDL_VIDEO_VSYNC'] = '1'
+                # Recreate display with V-Sync flags
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+                print("🔄 V-Sync enabled")
+            
+            # Update screen references in other systems
+            if hasattr(self, 'settings_system') and self.settings_system:
+                self.settings_system.screen = self.screen
+            if hasattr(self, 'menu_system') and self.menu_system:
+                self.menu_system.screen = self.screen
+            if hasattr(self, 'puzzle_engine') and self.puzzle_engine:
+                self.puzzle_engine.screen = self.screen
+            if hasattr(self, 'puzzle_renderer') and self.puzzle_renderer:
+                self.puzzle_renderer.screen = self.screen
+                
+        except Exception as e:
+            print(f"❌ Error toggling V-Sync: {e}")
+            print("💡 Note: V-Sync control may be limited by your graphics driver")
+    
+    def check_vsync_status(self) -> bool:
+        """Check if V-Sync is currently enabled."""
+        try:
+            # Check environment variable
+            vsync_env = os.environ.get('SDL_VIDEO_VSYNC', '0')
+            return vsync_env == '1'
+        except:
+            return False
+    
+    def set_particle_effects(self, enabled: bool):
+        """Enable or disable particle effects."""
+        try:
+            # Set particle effects in the puzzle renderer if available
+            if hasattr(self, 'puzzle_renderer') and self.puzzle_renderer:
+                if hasattr(self.puzzle_renderer, 'animation_renderer'):
+                    # Store the setting for the renderer to use
+                    self.puzzle_renderer.animation_renderer.particle_effects_enabled = enabled
+                    print(f"✨ Particle effects {'enabled' if enabled else 'disabled'}")
+        except Exception as e:
+            print(f"❌ Error setting particle effects: {e}")
     
     def handle_mp3_player_click(self, pos):
         """Handle clicks on the custom MP3 player buttons."""
@@ -354,6 +492,27 @@ class GameClient:
         # Set up the clock
         clock = pygame.time.Clock()
         
+        # Create loading screen
+        loading_screen = LoadingScreen(self.screen, self.asset_path)
+        
+        # Define loading tasks
+        loading_tasks = [
+            ("Loading Font System", self._initialize_font),
+            ("Initializing Audio System", self._initialize_audio_system),
+            ("Loading Background Images", self._load_background_images),
+            ("Initializing Menu System", self._initialize_menu_system),
+            ("Initializing Settings System", self._initialize_settings_system),
+            ("Initializing Test Mode", self._initialize_test_mode),
+            ("Initializing Screen Manager", self._initialize_screen_manager),
+            ("Initializing Story System", self._initialize_story_system),
+            ("Initializing Puzzle Engine", self._initialize_puzzle_engine),
+            ("Initializing Puzzle Renderer", self._initialize_puzzle_renderer),
+            ("Finalizing Setup", self._complete_initialization)
+        ]
+        
+        # Start loading process
+        loading_screen.start_loading(loading_tasks, on_complete=lambda: None)
+        
         try:
             # Main game loop
             while self.game_running:
@@ -408,8 +567,6 @@ class GameClient:
                             self.set_screen("story")
                         elif menu_action == "test":
                             self.set_screen("test")
-                        elif menu_action == "test_lab":
-                            self.launch_test_laboratory()
                         elif menu_action == "quit":
                             self.game_running = False
                         
@@ -419,7 +576,6 @@ class GameClient:
                             on_settings_action=lambda: self.set_screen("settings"),
                             on_story_action=lambda: self.set_screen("story"),
                             on_test_action=lambda: self.set_screen("test"),
-                            on_test_lab_action=self.launch_test_laboratory,
                             version=self.version
                         )
                     else:
@@ -434,9 +590,7 @@ class GameClient:
                             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                                 self.game_running = False
                     
-                    # Display MP3 player
-                    if hasattr(self, 'audio') and self.audio:
-                        self.display_custom_mp3_player()
+
                 
                 elif self.current_screen == "test":
                     if hasattr(self, 'test_mode') and self.test_mode:
@@ -458,9 +612,7 @@ class GameClient:
                         # Draw the test mode screen
                         self.test_mode.draw()
                         
-                        # Display MP3 player in test mode too
-                        if hasattr(self, 'audio') and self.audio:
-                            self.display_custom_mp3_player()
+
                     else:
                         # Fallback if test mode is not available
                         self.screen.fill(self.BLACK)
@@ -508,9 +660,7 @@ class GameClient:
                             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                                 self.set_screen("main_menu")
                     
-                    # Display MP3 player in story menu too
-                    if hasattr(self, 'audio') and self.audio:
-                        self.display_custom_mp3_player()
+
                 
                 elif self.current_screen == "story_content":
                     # Use extracted story system if available
@@ -546,24 +696,68 @@ class GameClient:
                         # Display the story content using legacy method
                         self.display_story_content()
                     
-                    # Display MP3 player in story content view too
-                    if hasattr(self, 'audio') and self.audio:
-                        self.display_custom_mp3_player()
+
                 
                 elif self.current_screen == "settings":
-                    # PLACEHOLDER: Settings system removed - showing 'Coming Soon' screen
-                    self.draw_placeholder_settings()
+                    # Update settings system
+                    current_time = time.time()
+                    delta_time = current_time - getattr(self, 'last_settings_time', current_time)
+                    self.last_settings_time = current_time
                     
-                    # Handle events for placeholder screen
+                    if hasattr(self, 'settings_system') and self.settings_system:
+                        self.settings_system.update(delta_time)
+                        self.settings_system.draw()
+                    
+                    # Handle events for settings screen
                     for event in events:
-                        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                            self.set_screen("main_menu")
-                        elif event.type == pygame.MOUSEBUTTONDOWN:
-                            self.set_screen("main_menu")
-                    
-                    # Display MP3 player in settings too
-                    if hasattr(self, 'audio') and self.audio:
-                        self.display_custom_mp3_player()
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            # Handle UI interactions
+                            if hasattr(self, 'settings_system') and self.settings_system:
+                                self.settings_system.handle_click(event.pos)
+                        elif event.type == pygame.MOUSEBUTTONUP:
+                            if hasattr(self, 'settings_system') and self.settings_system:
+                                self.settings_system.handle_mouse_release()
+                        elif event.type == pygame.MOUSEMOTION:
+                            if hasattr(self, 'settings_system') and self.settings_system:
+                                self.settings_system.handle_mouse_move(event.pos)
+                                if event.buttons[0]:  # Left mouse button is pressed
+                                    self.settings_system.handle_mouse_drag(event.pos)
+                                # Handle control screen mouse movement
+                                if self.settings_system.showing_controls:
+                                    self.settings_system.handle_control_mouse_move(event.pos)
+                        elif event.type == pygame.KEYDOWN:
+                            # Handle control rebinding
+                            if hasattr(self, 'settings_system') and self.settings_system:
+                                if self.settings_system.showing_controls and self.settings_system.waiting_for_key:
+                                    self.settings_system.handle_key_input(event.key)
+                                elif event.key == pygame.K_ESCAPE:
+                                    # Return from control screen to settings
+                                    if self.settings_system.showing_controls:
+                                        self.settings_system.hide_controls_screen()
+                                        # Don't continue to other checks - stay in settings
+                                    # Return from settings to main menu
+                                    elif self.current_screen == "settings":
+                                        self.set_screen("main_menu")
+                                    # Return from main menu (exit game)
+                                    elif self.current_screen == "main_menu":
+                                        self.game_running = False
+                            
+                            # Handle music controls using custom mappings
+                            if hasattr(self, 'settings_system') and self.settings_system and hasattr(self, 'audio') and self.audio:
+                                if event.key == self.settings_system.get_control('music_next'):
+                                    if hasattr(self.audio, 'mp3_player'):
+                                        self.audio.mp3_player.next_song()
+                                        print("⏭️ Next song")
+                                elif event.key == self.settings_system.get_control('music_prev'):
+                                    if hasattr(self.audio, 'mp3_player'):
+                                        self.audio.mp3_player.prev_song()
+                                        print("⏮️ Previous song")
+                                elif event.key == self.settings_system.get_control('music_pause'):
+                                    if hasattr(self.audio, 'mp3_player'):
+                                        self.audio.mp3_player.pause_song()
+                                        print("⏸️ Music pause/play")
+                
+
                 
                 elif self.current_screen == "game":
                     # Process game events
@@ -589,9 +783,11 @@ class GameClient:
                     # Draw the game using our renderer
                     self.puzzle_renderer.draw_game_screen()
                     
-                    # Instead, use the custom MP3 player display method
-                    if hasattr(self, 'audio') and self.audio:
-                        self.display_custom_mp3_player()
+
+                
+                # Display MP3 player on all screens
+                if hasattr(self, 'audio') and self.audio:
+                    self.display_custom_mp3_player()
                 
                 # Update the display
                 pygame.display.flip()

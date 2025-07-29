@@ -28,7 +28,7 @@ class PuzzleEngine:
     Puzzle game engine for the Blade Fighters game.
     This module handles the puzzle game mechanics and rendering.
     """
-    def __init__(self, screen, font, audio=None, asset_path="puzzleassets"):
+    def __init__(self, screen, font, audio=None, asset_path="puzzleassets", settings_system=None):
         """
         Initialize the puzzle engine.
         
@@ -37,11 +37,13 @@ class PuzzleEngine:
             font: Pygame font for text rendering
             audio: Audio system for sound effects (optional)
             asset_path: Path to puzzle assets directory
+            settings_system: Settings system for custom controls (optional)
         """
         self.screen = screen
         self.font = font
         self.audio = audio
         self.asset_path = asset_path
+        self.settings_system = settings_system
         
         # Get screen dimensions
         self.width = screen.get_width()
@@ -155,7 +157,7 @@ class PuzzleEngine:
         self.game_buttons = []
         
         # Initialize input handler
-        self.input_handler = InputHandler(self)
+        self.input_handler = InputHandler(self, settings_system)
         
         # Initialize piece movement (physics already initialized above)
         self.piece_movement = PieceMovement(self)

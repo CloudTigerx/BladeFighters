@@ -269,6 +269,36 @@ class AudioSystem(AudioSystemInterface):
                 def set_volume(self, volume): pass
             self.sounds[name] = DummySound()
     
+    def set_volume(self, volume: float) -> None:
+        """
+        Set the volume for sound effects.
+        
+        Args:
+            volume (float): Volume level between 0.0 and 1.0
+        """
+        volume = max(0.0, min(1.0, volume))  # Clamp between 0.0 and 1.0
+        
+        # Set volume for all loaded sounds
+        for sound_name, sound in self.sounds.items():
+            if hasattr(sound, 'set_volume'):
+                sound.set_volume(volume)
+        
+        print(f"🔊 Sound effects volume set to {volume:.1f}")
+    
+    def set_music_volume(self, volume: float) -> None:
+        """
+        Set the volume for background music.
+        
+        Args:
+            volume (float): Volume level between 0.0 and 1.0
+        """
+        volume = max(0.0, min(1.0, volume))  # Clamp between 0.0 and 1.0
+        
+        # Set volume for pygame mixer music
+        pygame.mixer.music.set_volume(volume)
+        
+        print(f"🎵 Music volume set to {volume:.1f}")
+    
     def _load_songs(self) -> None:
         """Load MP3 files from the songs directory."""
         try:

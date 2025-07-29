@@ -34,12 +34,13 @@ from modules.attack_module.attack_manager import AttackManager
 class TestMode(TestModeInterface):
     """Simplified TestMode focusing on core puzzle battle functionality."""
     
-    def __init__(self, screen, font, audio, asset_path: str):
+    def __init__(self, screen, font, audio, asset_path: str, settings_system=None):
         """Initialize the test mode with core puzzle battle setup."""
         self.screen = screen
         self.font = font
         self.audio = audio
         self.asset_path = asset_path
+        self.settings_system = settings_system
         
         # Get screen dimensions
         self.width = screen.get_width()
@@ -52,9 +53,9 @@ class TestMode(TestModeInterface):
         self.LIGHT_BLUE = (100, 150, 255)
         
         # Create player puzzle engine
-        self.player_engine = PuzzleEngine(screen, font, audio, asset_path)
+        self.player_engine = PuzzleEngine(screen, font, audio, asset_path, settings_system)
         # Create enemy puzzle engine (no audio to avoid conflicts)
-        self.enemy_engine = PuzzleEngine(screen, font, None, asset_path)
+        self.enemy_engine = PuzzleEngine(screen, font, None, asset_path, settings_system)
         
         # Set test_mode attribute so puzzle module knows to use landing-based transformation
         self.player_engine.test_mode = self

@@ -7,14 +7,16 @@ class InputHandler:
     Manages keyboard and mouse events, key repeat timing, and game controls.
     """
     
-    def __init__(self, puzzle_engine):
+    def __init__(self, puzzle_engine, settings_system=None):
         """
         Initialize the input handler.
         
         Args:
             puzzle_engine: Reference to the puzzle engine for calling game methods
+            settings_system: Reference to settings system for custom controls
         """
         self.engine = puzzle_engine
+        self.settings_system = settings_system
         
         # Key tracking system
         self.keys_pressed = {}
@@ -30,6 +32,26 @@ class InputHandler:
         
         # Debug flag for spacebar acceleration
         self.debug_spacebar = False
+    
+    def get_control(self, action: str) -> int:
+        """Get the key code for a specific action from settings."""
+        if self.settings_system:
+            return self.settings_system.get_control(action)
+        # Fallback to default keys
+        default_controls = {
+            'move_up': pygame.K_UP,
+            'move_down': pygame.K_DOWN,
+            'move_left': pygame.K_LEFT,
+            'move_right': pygame.K_RIGHT,
+            'action': pygame.K_SPACE,
+            'menu_cancel': pygame.K_ESCAPE
+        }
+        return default_controls.get(action, pygame.K_UNKNOWN)
+    
+    def is_key_pressed(self, action: str) -> bool:
+        """Check if a control action key is currently pressed."""
+        key_code = self.get_control(action)
+        return key_code in self.keys_pressed
     
     def process_events(self, events):
         """
@@ -74,30 +96,30 @@ class InputHandler:
         
         # Handle one-time key presses
         if self.engine.game_active:
-            # Handle rotation with UP key (counter-clockwise)
-            if event.key == pygame.K_UP:
+            # Handle rotation with move_up key (counter-clockwise)
+            if event.key == self.get_control('move_up'):
                 # First try to rotate, if that fails, try to flip
                 if not self.engine.rotate_attached_piece(-1):
                     self.engine.flip_pieces_vertically()
             
-            # Handle rotation with DOWN key (clockwise)
-            elif event.key == pygame.K_DOWN:
+            # Handle rotation with move_down key (clockwise)
+            elif event.key == self.get_control('move_down'):
                 # First try to rotate, if that fails, try to flip
                 if not self.engine.rotate_attached_piece(1):
                     self.engine.flip_pieces_vertically()
             
             # Handle immediate left/right movement on initial press
-            elif event.key == pygame.K_LEFT:
+            elif event.key == self.get_control('move_left'):
                 self.engine.move_piece(-1, 0)  # Move left
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == self.get_control('move_right'):
                 self.engine.move_piece(1, 0)  # Move right
             
-            # Handle immediate acceleration when space is first pressed
-            elif event.key == pygame.K_SPACE:
+            # Handle immediate acceleration when action key is first pressed
+            elif event.key == self.get_control('action'):
                 self._handle_spacebar_press()
         
-        # Escape key - go back to menu
-        if event.key == pygame.K_ESCAPE:
+        # Menu cancel key - go back to menu
+        if event.key == self.get_control('menu_cancel'):
             return "back_to_menu"
         
         return None
@@ -110,8 +132,8 @@ class InputHandler:
         if event.key in self.last_key_action_time:
             del self.last_key_action_time[event.key]
         
-        # Reset speed when spacebar is released
-        if event.key == pygame.K_SPACE:
+        # Reset speed when action key is released
+        if event.key == self.get_control('action'):
             self._handle_spacebar_release()
     
     def _handle_spacebar_press(self):
@@ -145,32 +167,32 @@ class InputHandler:
             # Check if it's time for a repeat action
             time_since_last_action = current_time - self.last_key_action_time.get(key, 0)
             
-            # Arrow keys have no delay for first press, but slow repeats for held keys
-            if key in [pygame.K_LEFT, pygame.K_RIGHT]:
+            # Movement keys have no delay for first press, but slow repeats for held keys
+            if key in [self.get_control('move_left'), self.get_control('move_right')]:
                 # Immediate response for first press or if enough time has passed
                 if time_since_last_action >= self.arrow_repeat_interval:
-                    if key == pygame.K_LEFT:
+                    if key == self.get_control('move_left'):
                         self.engine.move_piece(-1, 0)  # Move left
-                    elif key == pygame.K_RIGHT:
+                    elif key == self.get_control('move_right'):
                         self.engine.move_piece(1, 0)  # Move right
                     # Update last action time to control repeat rate
                     self.last_key_action_time[key] = current_time
             
-            # Handle UP and DOWN for rotations with slow repeats
-            elif key in [pygame.K_UP, pygame.K_DOWN]:
+            # Handle move_up and move_down for rotations with slow repeats
+            elif key in [self.get_control('move_up'), self.get_control('move_down')]:
                 if time_since_last_action >= self.rotate_repeat_interval:
-                    if key == pygame.K_UP:
+                    if key == self.get_control('move_up'):
                         self.engine.rotate_attached_piece(-1)  # Counter-clockwise
-                    elif key == pygame.K_DOWN:
+                    elif key == self.get_control('move_down'):
                         self.engine.rotate_attached_piece(1)   # Clockwise
                     # Update last action time
                     self.last_key_action_time[key] = current_time
             
-            # Handle spacebar for immediate acceleration with no delay
-            elif key == pygame.K_SPACE:
-                # DEBUG: Print values during continuous space press every second
+            # Handle action key for immediate acceleration with no delay
+            elif key == self.get_control('action'):
+                # DEBUG: Print values during continuous action key press every second
                 if self.debug_spacebar and current_time % 1000 < 20:  # Only print once per second approximately
-                    print(f"SPACE HELD: current_speed={self.engine.current_fall_speed}, micro_time={self.engine.micro_fall_time}")
+                    print(f"ACTION KEY HELD: current_speed={self.engine.current_fall_speed}, micro_time={self.engine.micro_fall_time}")
                 
                 # Always apply acceleration immediately with no delay
                 self.engine.current_fall_speed = self.engine.accelerated_fall_speed
@@ -194,11 +216,12 @@ class InputHandler:
                     )
     
     def clear_spacebar_from_keys(self):
-        """Clear spacebar from tracked keys (used when generating new pieces)."""
-        if pygame.K_SPACE in self.keys_pressed:
-            del self.keys_pressed[pygame.K_SPACE]
-        if pygame.K_SPACE in self.last_key_action_time:
-            del self.last_key_action_time[pygame.K_SPACE]
+        """Clear action key from tracked keys (used when generating new pieces)."""
+        action_key = self.get_control('action')
+        if action_key in self.keys_pressed:
+            del self.keys_pressed[action_key]
+        if action_key in self.last_key_action_time:
+            del self.last_key_action_time[action_key]
     
     def set_debug_spacebar(self, debug):
         """Enable or disable spacebar debug output."""
