@@ -1,0 +1,8 @@
+{
+  "audio_volume": 1.0,
+  "music_volume": 1.0,
+  "fullscreen": true,
+  "vsync": true,
+  "particle_effects": true,
+  "brightness": 1.0
+}

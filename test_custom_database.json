@@ -1,0 +1,1773 @@
+{
+  "attack_table": {
+    "4_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Powerful 2x2 cluster"
+    },
+    "4_0_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4] cluster combo"
+    },
+    "4_0_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4] cluster combo"
+    },
+    "4_0_0_4": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4] cluster combo"
+    },
+    "4_0_0_5": {
+      "strikes": 5,
+      "garbage_blocks": 0,
+      "total_damage": 5,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4] cluster combo"
+    },
+    "6_0_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6] cluster combo"
+    },
+    "6_0_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6] cluster combo"
+    },
+    "6_0_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6] cluster combo"
+    },
+    "6_0_0_4": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6] cluster combo"
+    },
+    "6_0_0_5": {
+      "strikes": 5,
+      "garbage_blocks": 0,
+      "total_damage": 5,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6] cluster combo"
+    },
+    "8_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [8] cluster combo"
+    },
+    "8_0_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [8] cluster combo"
+    },
+    "8_0_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [8] cluster combo"
+    },
+    "8_0_0_4": {
+      "strikes": 8,
+      "garbage_blocks": 0,
+      "total_damage": 8,
+      "combo_type": "pure_cluster",
+      "description": "Pure [8] cluster combo"
+    },
+    "8_0_0_5": {
+      "strikes": 10,
+      "garbage_blocks": 0,
+      "total_damage": 10,
+      "combo_type": "pure_cluster",
+      "description": "Pure [8] cluster combo"
+    },
+    "9_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [9] cluster combo"
+    },
+    "9_0_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [9] cluster combo"
+    },
+    "9_0_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [9] cluster combo"
+    },
+    "9_0_0_4": {
+      "strikes": 8,
+      "garbage_blocks": 0,
+      "total_damage": 8,
+      "combo_type": "pure_cluster",
+      "description": "Pure [9] cluster combo"
+    },
+    "9_0_0_5": {
+      "strikes": 10,
+      "garbage_blocks": 0,
+      "total_damage": 10,
+      "combo_type": "pure_cluster",
+      "description": "Pure [9] cluster combo"
+    },
+    "12_0_0_1": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Massive cluster attack"
+    },
+    "12_0_0_2": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [12] cluster combo"
+    },
+    "12_0_0_3": {
+      "strikes": 9,
+      "garbage_blocks": 0,
+      "total_damage": 9,
+      "combo_type": "pure_cluster",
+      "description": "Pure [12] cluster combo"
+    },
+    "12_0_0_4": {
+      "strikes": 12,
+      "garbage_blocks": 0,
+      "total_damage": 12,
+      "combo_type": "pure_cluster",
+      "description": "Pure [12] cluster combo"
+    },
+    "12_0_0_5": {
+      "strikes": 15,
+      "garbage_blocks": 0,
+      "total_damage": 15,
+      "combo_type": "pure_cluster",
+      "description": "Pure [12] cluster combo"
+    },
+    "16_0_0_1": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [16] cluster combo"
+    },
+    "16_0_0_2": {
+      "strikes": 8,
+      "garbage_blocks": 0,
+      "total_damage": 8,
+      "combo_type": "pure_cluster",
+      "description": "Pure [16] cluster combo"
+    },
+    "16_0_0_3": {
+      "strikes": 12,
+      "garbage_blocks": 0,
+      "total_damage": 12,
+      "combo_type": "pure_cluster",
+      "description": "Pure [16] cluster combo"
+    },
+    "16_0_0_4": {
+      "strikes": 16,
+      "garbage_blocks": 0,
+      "total_damage": 16,
+      "combo_type": "pure_cluster",
+      "description": "Pure [16] cluster combo"
+    },
+    "16_0_0_5": {
+      "strikes": 20,
+      "garbage_blocks": 0,
+      "total_damage": 20,
+      "combo_type": "pure_cluster",
+      "description": "Pure [16] cluster combo"
+    },
+    "4_1_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 1,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 0 breakers"
+    },
+    "4_1_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 0 breakers"
+    },
+    "4_1_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 0 breakers"
+    },
+    "4_1_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 1 breakers"
+    },
+    "4_1_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 1 breakers"
+    },
+    "4_1_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 1 breakers"
+    },
+    "4_1_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 2 breakers"
+    },
+    "4_1_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 2 breakers"
+    },
+    "4_1_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 1 individual + 2 breakers"
+    },
+    "4_2_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 0 breakers"
+    },
+    "4_2_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 0 breakers"
+    },
+    "4_2_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 0 breakers"
+    },
+    "4_2_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Balanced mixed combo"
+    },
+    "4_2_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 1 breakers"
+    },
+    "4_2_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 1 breakers"
+    },
+    "4_2_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 2 breakers"
+    },
+    "4_2_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 2 breakers"
+    },
+    "4_2_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 2 individual + 2 breakers"
+    },
+    "4_3_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 0 breakers"
+    },
+    "4_3_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 0 breakers"
+    },
+    "4_3_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 0 breakers"
+    },
+    "4_3_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 1 breakers"
+    },
+    "4_3_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 1 breakers"
+    },
+    "4_3_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 1 breakers"
+    },
+    "4_3_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 1,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 2 breakers"
+    },
+    "4_3_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 2 breakers"
+    },
+    "4_3_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 3 individual + 2 breakers"
+    },
+    "4_4_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 4,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 0 breakers"
+    },
+    "4_4_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 0 breakers"
+    },
+    "4_4_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 4,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 0 breakers"
+    },
+    "4_4_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 1 breakers"
+    },
+    "4_4_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 1 breakers"
+    },
+    "4_4_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 1 breakers"
+    },
+    "4_4_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 2 breakers"
+    },
+    "4_4_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 2 breakers"
+    },
+    "4_4_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 4 individual + 2 breakers"
+    },
+    "4_5_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 5,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 0 breakers"
+    },
+    "4_5_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 5,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 0 breakers"
+    },
+    "4_5_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 5,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 0 breakers"
+    },
+    "4_5_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 4,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 1 breakers"
+    },
+    "4_5_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 1 breakers"
+    },
+    "4_5_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 4,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 1 breakers"
+    },
+    "4_5_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 2 breakers"
+    },
+    "4_5_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 2 breakers"
+    },
+    "4_5_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [4] clusters + 5 individual + 2 breakers"
+    },
+    "6_1_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 1,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 0 breakers"
+    },
+    "6_1_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 0 breakers"
+    },
+    "6_1_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 0 breakers"
+    },
+    "6_1_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 1 breakers"
+    },
+    "6_1_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 1 breakers"
+    },
+    "6_1_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 1 breakers"
+    },
+    "6_1_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 2 breakers"
+    },
+    "6_1_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 2 breakers"
+    },
+    "6_1_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 1 individual + 2 breakers"
+    },
+    "6_2_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 0 breakers"
+    },
+    "6_2_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 0 breakers"
+    },
+    "6_2_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 0 breakers"
+    },
+    "6_2_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 1,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 1 breakers"
+    },
+    "6_2_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 1 breakers"
+    },
+    "6_2_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 1 breakers"
+    },
+    "6_2_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 0,
+      "total_damage": 1,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 2 breakers"
+    },
+    "6_2_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 2 breakers"
+    },
+    "6_2_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 2 individual + 2 breakers"
+    },
+    "6_3_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 0 breakers"
+    },
+    "6_3_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 0 breakers"
+    },
+    "6_3_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 0 breakers"
+    },
+    "6_3_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 1 breakers"
+    },
+    "6_3_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 1 breakers"
+    },
+    "6_3_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 1 breakers"
+    },
+    "6_3_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 1,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 2 breakers"
+    },
+    "6_3_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 2 breakers"
+    },
+    "6_3_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 1,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 3 individual + 2 breakers"
+    },
+    "6_4_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 4,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 0 breakers"
+    },
+    "6_4_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 0 breakers"
+    },
+    "6_4_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 4,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 0 breakers"
+    },
+    "6_4_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 1 breakers"
+    },
+    "6_4_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 1 breakers"
+    },
+    "6_4_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 1 breakers"
+    },
+    "6_4_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 2,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 2 breakers"
+    },
+    "6_4_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 2 breakers"
+    },
+    "6_4_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 2,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 4 individual + 2 breakers"
+    },
+    "6_5_0_1": {
+      "strikes": 1,
+      "garbage_blocks": 5,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 0 breakers"
+    },
+    "6_5_0_2": {
+      "strikes": 2,
+      "garbage_blocks": 5,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 0 breakers"
+    },
+    "6_5_0_3": {
+      "strikes": 3,
+      "garbage_blocks": 5,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 0 breakers"
+    },
+    "6_5_1_1": {
+      "strikes": 1,
+      "garbage_blocks": 4,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 1 breakers"
+    },
+    "6_5_1_2": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 1 breakers"
+    },
+    "6_5_1_3": {
+      "strikes": 3,
+      "garbage_blocks": 4,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 1 breakers"
+    },
+    "6_5_2_1": {
+      "strikes": 1,
+      "garbage_blocks": 3,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 2 breakers"
+    },
+    "6_5_2_2": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 2 breakers"
+    },
+    "6_5_2_3": {
+      "strikes": 3,
+      "garbage_blocks": 3,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [6] clusters + 5 individual + 2 breakers"
+    },
+    "8_1_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 0 breakers"
+    },
+    "8_1_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 1,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 0 breakers"
+    },
+    "8_1_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 1,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 0 breakers"
+    },
+    "8_1_1_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 1 breakers"
+    },
+    "8_1_1_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 1 breakers"
+    },
+    "8_1_1_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 1 breakers"
+    },
+    "8_1_2_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 2 breakers"
+    },
+    "8_1_2_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 2 breakers"
+    },
+    "8_1_2_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 1 individual + 2 breakers"
+    },
+    "8_2_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 0 breakers"
+    },
+    "8_2_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 2,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 0 breakers"
+    },
+    "8_2_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 2,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 0 breakers"
+    },
+    "8_2_1_1": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 1 breakers"
+    },
+    "8_2_1_2": {
+      "strikes": 4,
+      "garbage_blocks": 1,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 1 breakers"
+    },
+    "8_2_1_3": {
+      "strikes": 6,
+      "garbage_blocks": 1,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 1 breakers"
+    },
+    "8_2_2_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 2 breakers"
+    },
+    "8_2_2_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 2 breakers"
+    },
+    "8_2_2_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 2 individual + 2 breakers"
+    },
+    "8_3_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 0 breakers"
+    },
+    "8_3_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 3,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 0 breakers"
+    },
+    "8_3_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 3,
+      "total_damage": 9,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 0 breakers"
+    },
+    "8_3_1_1": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 1 breakers"
+    },
+    "8_3_1_2": {
+      "strikes": 4,
+      "garbage_blocks": 2,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 1 breakers"
+    },
+    "8_3_1_3": {
+      "strikes": 6,
+      "garbage_blocks": 2,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 1 breakers"
+    },
+    "8_3_2_1": {
+      "strikes": 2,
+      "garbage_blocks": 1,
+      "total_damage": 3,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 2 breakers"
+    },
+    "8_3_2_2": {
+      "strikes": 4,
+      "garbage_blocks": 1,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 2 breakers"
+    },
+    "8_3_2_3": {
+      "strikes": 6,
+      "garbage_blocks": 1,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 3 individual + 2 breakers"
+    },
+    "8_4_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 0 breakers"
+    },
+    "8_4_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 4,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 0 breakers"
+    },
+    "8_4_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 4,
+      "total_damage": 10,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 0 breakers"
+    },
+    "8_4_1_1": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 1 breakers"
+    },
+    "8_4_1_2": {
+      "strikes": 4,
+      "garbage_blocks": 3,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 1 breakers"
+    },
+    "8_4_1_3": {
+      "strikes": 6,
+      "garbage_blocks": 3,
+      "total_damage": 9,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 1 breakers"
+    },
+    "8_4_2_1": {
+      "strikes": 2,
+      "garbage_blocks": 2,
+      "total_damage": 4,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 2 breakers"
+    },
+    "8_4_2_2": {
+      "strikes": 4,
+      "garbage_blocks": 2,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 2 breakers"
+    },
+    "8_4_2_3": {
+      "strikes": 6,
+      "garbage_blocks": 2,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 4 individual + 2 breakers"
+    },
+    "8_5_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 5,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 0 breakers"
+    },
+    "8_5_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 5,
+      "total_damage": 9,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 0 breakers"
+    },
+    "8_5_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 5,
+      "total_damage": 11,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 0 breakers"
+    },
+    "8_5_1_1": {
+      "strikes": 2,
+      "garbage_blocks": 4,
+      "total_damage": 6,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 1 breakers"
+    },
+    "8_5_1_2": {
+      "strikes": 4,
+      "garbage_blocks": 4,
+      "total_damage": 8,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 1 breakers"
+    },
+    "8_5_1_3": {
+      "strikes": 6,
+      "garbage_blocks": 4,
+      "total_damage": 10,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 1 breakers"
+    },
+    "8_5_2_1": {
+      "strikes": 2,
+      "garbage_blocks": 3,
+      "total_damage": 5,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 2 breakers"
+    },
+    "8_5_2_2": {
+      "strikes": 4,
+      "garbage_blocks": 3,
+      "total_damage": 7,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 2 breakers"
+    },
+    "8_5_2_3": {
+      "strikes": 6,
+      "garbage_blocks": 3,
+      "total_damage": 9,
+      "combo_type": "mixed",
+      "description": "Mixed combo: [8] clusters + 5 individual + 2 breakers"
+    },
+    "0_1_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 0 breakers"
+    },
+    "0_1_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 0 breakers"
+    },
+    "0_1_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 0 breakers"
+    },
+    "0_1_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 1 breakers"
+    },
+    "0_1_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 1 breakers"
+    },
+    "0_1_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 1 - 1 breakers"
+    },
+    "0_2_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 0 breakers"
+    },
+    "0_2_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 0 breakers"
+    },
+    "0_2_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 0 breakers"
+    },
+    "0_2_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 1 breakers"
+    },
+    "0_2_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 1 breakers"
+    },
+    "0_2_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 1 breakers"
+    },
+    "0_2_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 2 breakers"
+    },
+    "0_2_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 2 breakers"
+    },
+    "0_2_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 2 - 2 breakers"
+    },
+    "0_3_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 0 breakers"
+    },
+    "0_3_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 0 breakers"
+    },
+    "0_3_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 0 breakers"
+    },
+    "0_3_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 1 breakers"
+    },
+    "0_3_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 1 breakers"
+    },
+    "0_3_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 1 breakers"
+    },
+    "0_3_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 2 breakers"
+    },
+    "0_3_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 2 breakers"
+    },
+    "0_3_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 2 breakers"
+    },
+    "0_3_3_1": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 3 breakers"
+    },
+    "0_3_3_2": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 3 breakers"
+    },
+    "0_3_3_3": {
+      "strikes": 0,
+      "garbage_blocks": 0,
+      "total_damage": 0,
+      "combo_type": "individual",
+      "description": "Individual blocks: 3 - 3 breakers"
+    },
+    "0_4_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 0 breakers"
+    },
+    "0_4_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 0 breakers"
+    },
+    "0_4_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 0 breakers"
+    },
+    "0_4_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 1 breakers"
+    },
+    "0_4_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 1 breakers"
+    },
+    "0_4_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 1 breakers"
+    },
+    "0_4_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 2 breakers"
+    },
+    "0_4_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 2 breakers"
+    },
+    "0_4_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 2 breakers"
+    },
+    "0_4_3_1": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 3 breakers"
+    },
+    "0_4_3_2": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 3 breakers"
+    },
+    "0_4_3_3": {
+      "strikes": 0,
+      "garbage_blocks": 1,
+      "total_damage": 1,
+      "combo_type": "individual",
+      "description": "Individual blocks: 4 - 3 breakers"
+    },
+    "0_5_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 0 breakers"
+    },
+    "0_5_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 0 breakers"
+    },
+    "0_5_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 0 breakers"
+    },
+    "0_5_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 1 breakers"
+    },
+    "0_5_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 1 breakers"
+    },
+    "0_5_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 1 breakers"
+    },
+    "0_5_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 2 breakers"
+    },
+    "0_5_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 2 breakers"
+    },
+    "0_5_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 2 breakers"
+    },
+    "0_5_3_1": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 3 breakers"
+    },
+    "0_5_3_2": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 3 breakers"
+    },
+    "0_5_3_3": {
+      "strikes": 0,
+      "garbage_blocks": 2,
+      "total_damage": 2,
+      "combo_type": "individual",
+      "description": "Individual blocks: 5 - 3 breakers"
+    },
+    "0_6_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 0 breakers"
+    },
+    "0_6_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 0 breakers"
+    },
+    "0_6_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 0 breakers"
+    },
+    "0_6_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 1 breakers"
+    },
+    "0_6_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 1 breakers"
+    },
+    "0_6_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 1 breakers"
+    },
+    "0_6_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 2 breakers"
+    },
+    "0_6_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 2 breakers"
+    },
+    "0_6_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 2 breakers"
+    },
+    "0_6_3_1": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 3 breakers"
+    },
+    "0_6_3_2": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 3 breakers"
+    },
+    "0_6_3_3": {
+      "strikes": 0,
+      "garbage_blocks": 3,
+      "total_damage": 3,
+      "combo_type": "individual",
+      "description": "Individual blocks: 6 - 3 breakers"
+    },
+    "0_7_0_1": {
+      "strikes": 0,
+      "garbage_blocks": 7,
+      "total_damage": 7,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 0 breakers"
+    },
+    "0_7_0_2": {
+      "strikes": 0,
+      "garbage_blocks": 7,
+      "total_damage": 7,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 0 breakers"
+    },
+    "0_7_0_3": {
+      "strikes": 0,
+      "garbage_blocks": 7,
+      "total_damage": 7,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 0 breakers"
+    },
+    "0_7_1_1": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 1 breakers"
+    },
+    "0_7_1_2": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 1 breakers"
+    },
+    "0_7_1_3": {
+      "strikes": 0,
+      "garbage_blocks": 6,
+      "total_damage": 6,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 1 breakers"
+    },
+    "0_7_2_1": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 2 breakers"
+    },
+    "0_7_2_2": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 2 breakers"
+    },
+    "0_7_2_3": {
+      "strikes": 0,
+      "garbage_blocks": 5,
+      "total_damage": 5,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 2 breakers"
+    },
+    "0_7_3_1": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 3 breakers"
+    },
+    "0_7_3_2": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 3 breakers"
+    },
+    "0_7_3_3": {
+      "strikes": 0,
+      "garbage_blocks": 4,
+      "total_damage": 4,
+      "combo_type": "individual",
+      "description": "Individual blocks: 7 - 3 breakers"
+    },
+    "4,4_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4] cluster combo"
+    },
+    "4,4_0_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4] cluster combo"
+    },
+    "4,4_0_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4] cluster combo"
+    },
+    "4,6_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 6] cluster combo"
+    },
+    "4,6_0_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 6] cluster combo"
+    },
+    "4,6_0_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 6] cluster combo"
+    },
+    "6,6_0_0_1": {
+      "strikes": 2,
+      "garbage_blocks": 0,
+      "total_damage": 2,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6, 6] cluster combo"
+    },
+    "6,6_0_0_2": {
+      "strikes": 4,
+      "garbage_blocks": 0,
+      "total_damage": 4,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6, 6] cluster combo"
+    },
+    "6,6_0_0_3": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [6, 6] cluster combo"
+    },
+    "4,4,4_0_0_1": {
+      "strikes": 3,
+      "garbage_blocks": 0,
+      "total_damage": 3,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4, 4] cluster combo"
+    },
+    "4,4,4_0_0_2": {
+      "strikes": 6,
+      "garbage_blocks": 0,
+      "total_damage": 6,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4, 4] cluster combo"
+    },
+    "4,4,4_0_0_3": {
+      "strikes": 9,
+      "garbage_blocks": 0,
+      "total_damage": 9,
+      "combo_type": "pure_cluster",
+      "description": "Pure [4, 4, 4] cluster combo"
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "total_rules": 252,
+    "description": "Attack database for BladeFighters"
+  }
+}

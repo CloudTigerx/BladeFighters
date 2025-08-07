@@ -1,0 +1,10 @@
+{
+  "move_up": 1073741906,
+  "move_down": 1073741905,
+  "move_left": 1073741904,
+  "move_right": 1073741903,
+  "action": 32,
+  "music_next": 93,
+  "music_prev": 91,
+  "music_pause": 112
+}
