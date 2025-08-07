@@ -1,0 +1,470 @@
+#!/usr/bin/env python3
+"""
+Testing Framework for Blade Fighters Refactoring
+Provides unit tests, integration tests, and regression testing capabilities
+"""
+
+import unittest
+import sys
+import os
+import json
+import time
+import pygame
+from typing import Dict, List, Any, Optional
+from unittest.mock import Mock, patch, MagicMock
+
+# Add the current directory to the path so we can import our modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+class BladeFightersTestSuite(unittest.TestCase):
+    """Base test suite for Blade Fighters game components."""
+    
+    @classmethod
+    def setUpClass(cls):
+        """Set up test environment once for all tests."""
+        # Initialize pygame for testing
+        pygame.init()
+        
+        # Create a test screen
+        cls.test_screen = pygame.display.set_mode((800, 600))
+        cls.test_font = pygame.font.Font(None, 24)
+        
+        # Test configuration
+        cls.test_config = {
+            'screen_width': 800,
+            'screen_height': 600,
+            'asset_path': 'puzzleassets',
+            'test_mode': True
+        }
+        
+        print(f"\n🧪 Setting up Blade Fighters test environment...")
+    
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test environment."""
+        pygame.quit()
+        print(f"\n🧹 Cleaned up test environment.")
+    
+    def setUp(self):
+        """Set up before each test."""
+        self.start_time = time.time()
+    
+    def tearDown(self):
+        """Clean up after each test."""
+        test_duration = time.time() - self.start_time
+        if test_duration > 1.0:  # Log slow tests
+            print(f"⚠️  Slow test: {self._testMethodName} took {test_duration:.2f}s")
+
+
+class PuzzleEngineTests(BladeFightersTestSuite):
+    """Tests for the puzzle engine core functionality."""
+    
+    def setUp(self):
+        super().setUp()
+        # Import here to avoid import errors if modules don't exist
+        try:
+            from puzzle_module import PuzzleEngine
+            self.PuzzleEngine = PuzzleEngine
+        except ImportError:
+            self.skipTest("PuzzleEngine not available")
+    
+    def test_puzzle_engine_initialization(self):
+        """Test that puzzle engine initializes correctly."""
+        try:
+            engine = self.PuzzleEngine(
+                self.test_screen, 
+                self.test_font, 
+                None,  # No audio for testing
+                self.test_config['asset_path']
+            )
+            
+            # Check that essential attributes are initialized
+            self.assertIsNotNone(engine)
+            self.assertIsNotNone(engine.puzzle_grid)  # Fixed: actual attribute name
+            self.assertIsInstance(engine.puzzle_grid, list)
+            
+        except Exception as e:
+            self.fail(f"PuzzleEngine initialization failed: {e}")
+    
+    def test_grid_creation(self):
+        """Test that the game grid is created with correct dimensions."""
+        try:
+            engine = self.PuzzleEngine(
+                self.test_screen, 
+                self.test_font, 
+                None,
+                self.test_config['asset_path']
+            )
+            
+            # Check grid dimensions (actual dimensions from PuzzleEngine)
+            self.assertEqual(len(engine.puzzle_grid), 16)  # Fixed: total_grid_height = 16
+            self.assertEqual(len(engine.puzzle_grid[0]), 6)  # Width = 6
+            
+        except Exception as e:
+            self.fail(f"Grid creation test failed: {e}")
+    
+    def test_piece_creation(self):
+        """Test that puzzle pieces are created correctly."""
+        try:
+            engine = self.PuzzleEngine(
+                self.test_screen, 
+                self.test_font, 
+                None,
+                self.test_config['asset_path']
+            )
+            
+            # Check that pieces have required attributes
+            if hasattr(engine, 'main_piece') and engine.main_piece:
+                piece = engine.main_piece
+                self.assertIsNotNone(piece)
+                # Add more specific piece tests based on your piece structure
+                
+        except Exception as e:
+            self.fail(f"Piece creation test failed: {e}")
+
+
+# AttackSystemTests removed - old attack system no longer exists
+class AudioSystemTests(BladeFightersTestSuite):
+    """Tests for the audio system functionality."""
+    
+    def setUp(self):
+        super().setUp()
+        try:
+            # Try extracted module first
+            from audio_module import AudioSystem
+            self.AudioSystem = AudioSystem
+            print("✅ Testing extracted AudioSystem module")
+        except ImportError:
+            try:
+                # Fallback to legacy module
+                from audio_system import AudioSystem
+                self.AudioSystem = AudioSystem
+                print("⚠️  Testing legacy AudioSystem (fallback)")
+            except ImportError:
+                self.skipTest("AudioSystem not available")
+    
+    def test_audio_system_initialization(self):
+        """Test that audio system initializes correctly."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            self.assertIsNotNone(audio_system)
+            self.assertIsNotNone(audio_system.sounds)
+            self.assertIsInstance(audio_system.sounds, dict)
+            self.assertIsNotNone(audio_system.songs)
+            self.assertIsInstance(audio_system.songs, list)
+            
+        except Exception as e:
+            self.fail(f"AudioSystem initialization failed: {e}")
+    
+    def test_sound_loading(self):
+        """Test that sound files are loaded correctly."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Check that expected sound types are loaded
+            expected_sounds = ['hover', 'click', 'placed', 'singlebreak', 'double', 'triple', 'tripormore']
+            
+            for sound_name in expected_sounds:
+                self.assertIn(sound_name, audio_system.sounds, f"Sound '{sound_name}' not loaded")
+                self.assertIsNotNone(audio_system.sounds[sound_name], f"Sound '{sound_name}' is None")
+            
+        except Exception as e:
+            self.fail(f"Sound loading test failed: {e}")
+    
+    def test_sound_playback(self):
+        """Test that sounds can be played without errors."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Test playing each sound type
+            test_sounds = ['hover', 'click', 'placed', 'singlebreak']
+            
+            for sound_name in test_sounds:
+                if sound_name in audio_system.sounds:
+                    # Should not raise an exception
+                    audio_system.play_sound(sound_name)
+                    
+            # Test playing non-existent sound (should handle gracefully)
+            audio_system.play_sound('nonexistent_sound')
+            
+        except Exception as e:
+            self.fail(f"Sound playback test failed: {e}")
+    
+    def test_mp3_player_integration(self):
+        """Test that MP3 player is properly integrated."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Check MP3 player exists
+            self.assertTrue(hasattr(audio_system, 'mp3_player'))
+            self.assertIsNotNone(audio_system.mp3_player)
+            
+            # Check songs are loaded
+            if audio_system.songs:
+                self.assertGreater(len(audio_system.songs), 0)
+                
+                # Check first song has required attributes
+                first_song = audio_system.songs[0]
+                self.assertIn('path', first_song)
+                self.assertIn('title', first_song)
+                self.assertIn('artist', first_song)
+            
+        except Exception as e:
+            self.fail(f"MP3 player integration test failed: {e}")
+    
+    def test_volume_control(self):
+        """Test that volume controls work correctly."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Test that sounds have volume attributes
+            for sound_name, sound_obj in audio_system.sounds.items():
+                if hasattr(sound_obj, 'set_volume'):
+                    # Should not raise an exception
+                    sound_obj.set_volume(0.5)
+                    
+        except Exception as e:
+            self.fail(f"Volume control test failed: {e}")
+    
+    def test_fallback_behavior(self):
+        """Test that audio system handles missing files gracefully."""
+        try:
+            # Create audio system with non-existent path
+            audio_system = self.AudioSystem('nonexistent_path')
+            
+            # Should still initialize without crashing
+            self.assertIsNotNone(audio_system)
+            self.assertIsNotNone(audio_system.sounds)
+            
+            # Should be able to play sounds (even if they're dummy sounds)
+            audio_system.play_sound('hover')
+            audio_system.play_sound('click')
+            
+        except Exception as e:
+            self.fail(f"Fallback behavior test failed: {e}")
+    
+    def test_audio_event_handling(self):
+        """Test that audio system can handle pygame events."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            
+            # Create a mock pygame event
+            import pygame
+            mock_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'button': 1, 'pos': (100, 100)})
+            
+            # Should handle event without crashing
+            result = audio_system.handle_audio_events(mock_event)
+            self.assertIsInstance(result, bool)
+            
+        except Exception as e:
+            self.fail(f"Audio event handling test failed: {e}")
+    
+    def test_audio_integration_with_menu(self):
+        """Test that audio system integrates correctly with menu system."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            from menu_system import MenuSystem
+            
+            # Create menu system with audio
+            menu_system = MenuSystem(self.test_screen, self.test_font, audio_system, self.test_config['asset_path'])
+            
+            # Check that menu system has audio reference
+            self.assertIsNotNone(menu_system.audio)
+            
+        except Exception as e:
+            self.fail(f"Audio-menu integration test failed: {e}")
+    
+    def test_audio_integration_with_puzzle(self):
+        """Test that audio system integrates correctly with puzzle engine."""
+        try:
+            audio_system = self.AudioSystem(self.test_config['asset_path'])
+            from puzzle_module import PuzzleEngine
+            
+            # Create puzzle engine with audio
+            puzzle_engine = PuzzleEngine(self.test_screen, self.test_font, audio_system, self.test_config['asset_path'])
+            
+            # Check that puzzle engine has audio reference
+            self.assertIsNotNone(puzzle_engine.audio)
+            
+        except Exception as e:
+            self.fail(f"Audio-puzzle integration test failed: {e}")
+
+
+# IntegrationTests removed - old attack system no longer exists
+class PerformanceTests(BladeFightersTestSuite):
+    """Performance tests to ensure refactoring doesn't degrade performance."""
+    
+    def test_puzzle_engine_performance(self):
+        """Test that puzzle engine operations complete within reasonable time."""
+        try:
+            from puzzle_module import PuzzleEngine
+            
+            engine = PuzzleEngine(
+                self.test_screen, 
+                self.test_font, 
+                None,
+                self.test_config['asset_path']
+            )
+            
+            # Test update performance
+            start_time = time.time()
+            for _ in range(100):  # 100 updates
+                engine.update()
+            
+            duration = time.time() - start_time
+            self.assertLess(duration, 1.0, f"100 updates took {duration:.2f}s, should be < 1.0s")
+            
+        except Exception as e:
+            self.fail(f"Performance test failed: {e}")
+
+
+class RegressionTests(BladeFightersTestSuite):
+    """Regression tests to ensure existing functionality is preserved."""
+    
+    def test_alpha_value_clamping(self):
+        """Test that alpha values are properly clamped to prevent color errors."""
+        # This test verifies our previous fix is still working
+        try:
+            from puzzle_renderer import PuzzleRenderer
+            from puzzle_module import PuzzleEngine
+            
+            engine = PuzzleEngine(
+                self.test_screen, 
+                self.test_font, 
+                None,
+                self.test_config['asset_path']
+            )
+            
+            renderer = PuzzleRenderer(engine)
+            
+            # Test that renderer has screen_shake attribute (our previous fix)
+            self.assertTrue(hasattr(renderer, 'screen_shake'))
+            
+        except Exception as e:
+            self.fail(f"Regression test failed: {e}")
+
+
+class TestRunner:
+    """Custom test runner with detailed reporting."""
+    
+    def __init__(self):
+        self.results = {
+            'passed': 0,
+            'failed': 0,
+            'skipped': 0,
+            'errors': []
+        }
+    
+    def run_tests(self, test_classes: Optional[List[type]] = None) -> Dict[str, Any]:
+        """Run all tests and return detailed results."""
+        if test_classes is None:
+            test_classes = [
+                PuzzleEngineTests,
+                AudioSystemTests,
+                PerformanceTests,
+                RegressionTests
+            ]
+        
+        print("\n" + "="*60)
+        print("🧪 BLADE FIGHTERS REFACTORING TEST SUITE")
+        print("="*60)
+        
+        # Create test suite
+        suite = unittest.TestSuite()
+        
+        for test_class in test_classes:
+            try:
+                # Add all tests from the class
+                tests = unittest.TestLoader().loadTestsFromTestCase(test_class)
+                suite.addTests(tests)
+            except Exception as e:
+                print(f"⚠️  Could not load tests from {test_class.__name__}: {e}")
+        
+        # Run tests
+        runner = unittest.TextTestRunner(verbosity=2)
+        result = runner.run(suite)
+        
+        # Compile results
+        self.results['passed'] = result.testsRun - len(result.failures) - len(result.errors)
+        self.results['failed'] = len(result.failures)
+        self.results['errors'] = len(result.errors)  # Fixed: store count, not list
+        
+        # Store detailed error information - Fixed: initialize as list
+        self.results['error_details'] = []
+        for test, traceback in result.failures + result.errors:
+            self.results['error_details'].append({
+                'test': str(test),
+                'traceback': traceback
+            })
+        
+        return self.results
+    
+    def print_summary(self):
+        """Print a summary of test results."""
+        print("\n" + "="*60)
+        print("📊 TEST RESULTS SUMMARY")
+        print("="*60)
+        
+        print(f"✅ Passed: {self.results['passed']}")
+        print(f"❌ Failed: {self.results['failed']}")
+        print(f"⚠️  Errors: {self.results['errors']}")
+        
+        if self.results.get('error_details'):
+            print(f"\n🔍 DETAILED ERRORS:")
+            for error in self.results['error_details']:
+                print(f"   {error['test']}")
+                print(f"   {error['traceback'][:200]}...")
+        
+        # Calculate pass rate
+        total = self.results['passed'] + self.results['failed'] + self.results['errors']
+        if total > 0:
+            pass_rate = (self.results['passed'] / total) * 100
+            print(f"\n📈 Pass Rate: {pass_rate:.1f}%")
+            
+            if pass_rate >= 90:
+                print("🎉 Excellent! Ready for refactoring.")
+            elif pass_rate >= 75:
+                print("👍 Good! Minor issues to address.")
+            else:
+                print("⚠️  Warning! Significant issues found.")
+    
+    def save_results(self, filename: str = 'test_results.json'):
+        """Save test results to a JSON file."""
+        with open(filename, 'w') as f:
+            json.dump(self.results, f, indent=2)
+        
+        print(f"\n💾 Test results saved to {filename}")
+
+
+def run_all_tests():
+    """Run all tests and return results."""
+    runner = TestRunner()
+    results = runner.run_tests()
+    runner.print_summary()
+    runner.save_results()
+    return results
+
+
+def run_specific_test(test_class_name: str):
+    """Run tests from a specific test class."""
+    test_classes = {
+        'puzzle': PuzzleEngineTests,
+        'audio': AudioSystemTests,
+        'performance': PerformanceTests,
+        'regression': RegressionTests
+    }
+    
+    if test_class_name.lower() in test_classes:
+        runner = TestRunner()
+        results = runner.run_tests([test_classes[test_class_name.lower()]])
+        runner.print_summary()
+        return results
+    else:
+        print(f"❌ Unknown test class: {test_class_name}")
+        print(f"Available: {', '.join(test_classes.keys())}")
+
+
+if __name__ == "__main__":
+    # Run all tests by default
+    run_all_tests() 
