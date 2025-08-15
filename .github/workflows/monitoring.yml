@@ -1,0 +1,149 @@
+name: Monitoring & Metrics
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tools/monitoring/**'
+
+jobs:
+  state-monitoring:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [staging, production]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install psutil prometheus-client
+
+      - name: Monitor state change frequency
+        run: |
+          echo "📊 Monitoring state change frequency..."
+          python tools/monitoring/state_monitor.py --environment ${{ matrix.environment }} --output state-metrics-${{ matrix.environment }}.json
+
+      - name: Monitor memory usage
+        run: |
+          echo "💾 Monitoring memory usage for state operations..."
+          python tools/monitoring/memory_monitor.py --environment ${{ matrix.environment }} --output memory-metrics-${{ matrix.environment }}.json
+
+      - name: Monitor cross-module communication
+        run: |
+          echo "🔗 Monitoring cross-module communication..."
+          python tools/monitoring/communication_monitor.py --environment ${{ matrix.environment }} --output comm-metrics-${{ matrix.environment }}.json
+
+      - name: Monitor error rates
+        run: |
+          echo "⚠️ Monitoring error rates per module..."
+          python tools/monitoring/error_monitor.py --environment ${{ matrix.environment }} --output error-metrics-${{ matrix.environment }}.json
+
+      - name: Upload metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-${{ matrix.environment }}
+          path: |
+            state-metrics-${{ matrix.environment }}.json
+            memory-metrics-${{ matrix.environment }}.json
+            comm-metrics-${{ matrix.environment }}.json
+            error-metrics-${{ matrix.environment }}.json
+
+  performance-analysis:
+    runs-on: ubuntu-latest
+    needs: state-monitoring
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Download metrics
+        uses: actions/download-artifact@v4
+        with:
+          path: metrics/
+
+      - name: Analyze performance trends
+        run: |
+          echo "📈 Analyzing performance trends..."
+          python tools/monitoring/performance_analyzer.py --metrics metrics/ --output performance-analysis.json
+
+      - name: Detect anomalies
+        run: |
+          echo "🔍 Detecting performance anomalies..."
+          python tools/monitoring/anomaly_detector.py --metrics metrics/ --output anomalies.json
+
+      - name: Generate alerts
+        run: |
+          echo "🚨 Generating alerts..."
+          python tools/monitoring/alert_generator.py --anomalies anomalies.json --output alerts.json
+
+      - name: Upload analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-analysis
+          path: |
+            performance-analysis.json
+            anomalies.json
+            alerts.json
+
+  alerting:
+    runs-on: ubuntu-latest
+    needs: performance-analysis
+    if: always()
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Download alerts
+        uses: actions/download-artifact@v4
+        with:
+          path: alerts/
+
+      - name: Send critical alerts
+        run: |
+          echo "📢 Sending critical alerts..."
+          python tools/monitoring/alert_sender.py --alerts alerts/alerts.json --severity critical
+
+      - name: Update monitoring dashboard
+        run: |
+          echo "📊 Updating monitoring dashboard..."
+          python tools/monitoring/dashboard_updater.py --metrics alerts/ --output dashboard-data.json
+
+      - name: Upload dashboard data
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-data
+          path: dashboard-data.json

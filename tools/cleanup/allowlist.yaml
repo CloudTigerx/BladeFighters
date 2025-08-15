@@ -1,0 +1,15 @@
+# Patterns to protect from cleanup tools. Both scanners will respect these.
+# Use glob-style patterns.
+
+modules:
+  - modules.story_module.dynamic_loader
+  - core.plugins.*
+
+assets:
+  - puzzleassets/effects/*sparkle*.png
+  - sounds/ui/*.wav
+
+# Lines containing this marker inside a source file signal "keep" for that file
+# (the dead-code report will skip the file; orphan assets are handled by explicit paths).
+comments_keep_marker: "KEEP: used via reflection"
+

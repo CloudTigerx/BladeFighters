@@ -1,8 +1,22 @@
 {
-  "audio_volume": 1.0,
-  "music_volume": 1.0,
-  "fullscreen": true,
+  "master_volume": 1.0,
+  "music_volume": 0.63,
+  "brightness": 1.0,
+  "ui_scale": 1.1540384615384616,
   "vsync": true,
+  "fullscreen": false,
+  "native_fullscreen": false,
+  "borderless": true,
+  "show_fps": true,
   "particle_effects": true,
-  "brightness": 1.0
+  "resolution": "1728x1117",
+  "sensitivity": 1.0,
+  "repeat_initial_delay_ms": 120,
+  "repeat_interval_ms": 80,
+  "repeat_move_interval_ms": 500,
+  "repeat_rotate_interval_ms": 600,
+  "attack_freeze_ms_on_receive": 150,
+  "renderer.snap_on_land": true,
+  "renderer.landing_epsilon_px": 0,
+  "attacks.spawn_mode": "animated"
 }

@@ -12,6 +12,7 @@ Key Features:
 """
 
 import time
+import math
 from typing import List, Dict, Any, Optional, Tuple
 from .attack_calculator import AttackCalculator
 from .data_structures import (
@@ -43,14 +44,25 @@ class AttackManager:
         self.player1_attacks: List[AttackPayload] = []
         self.player2_attacks: List[AttackPayload] = []
         
-        # Column rotation state for attack placement
-        self.column_rotation_state = {
-            1: 0,  # Player 1's rotation index
-            2: 0   # Player 2's rotation index
-        }
-        
-        # Column rotation sequence (1-indexed, will convert to 0-indexed)
+        # Column rotation state for attack placement (shared across both players per spec)
+        self.column_rotation_state = 0
+        # Column rotation sequence per spec (1-indexed): 1,6,2,5,3,4
+        # Converted to 0-based in get_next_column_for_attack
         self.column_sequence = [1, 6, 2, 5, 3, 4]
+
+        # Handedness alternation R,L,R,L shared between opponents
+        self.handedness_index = 0  # 0=Right, 1=Left
+
+        # Deterministic vertical drop patterns (1-based columns from spec), avoiding column 4
+        # 1-wide pattern: 2, 3, 5, 5, 6, 1
+        # 2-wide pattern: (2/3), (2/3), (5/6), (5/6), (1/2), (2/3), (5/6), (2/3), (5/6), (1/2)
+        # 3-wide pattern: always (1/2/3), repeated length 4 for index advancement
+        self.vertical_patterns = {
+            1: [2, 3, 5, 5, 6, 1],
+            2: [(2, 3), (2, 3), (5, 6), (5, 6), (1, 2), (2, 3), (5, 6), (2, 3), (5, 6), (1, 2)],
+            3: [(1, 2, 3), (1, 2, 3), (1, 2, 3), (1, 2, 3)],
+        }
+        self.vertical_pattern_indices = {1: 0, 2: 0, 3: 0}
         
         # Attack statistics
         self.attack_stats = {
@@ -65,7 +77,7 @@ class AttackManager:
         self.garbage_transform_time = 3.0  # Seconds for garbage transformation
         self.strike_transform_time = 4.0  # Seconds for strike transformation
         
-        print("🎯 AttackManager initialized with attack calculator")
+        
     
     def process_combo(self, broken_blocks: List[Tuple[int, int, str]], 
                      is_cluster: bool, combo_multiplier: int,
@@ -82,34 +94,30 @@ class AttackManager:
         Returns:
             Dictionary with attack generation results
         """
-        print(f"🔍 ATTACK CALCULATION:")
-        print(f"   Input: {len(broken_blocks)} blocks, cluster={is_cluster}, multiplier={combo_multiplier}")
+        
         
         # Update statistics
         self.attack_stats['chains_processed'] += 1
         
-        # Calculate garbage block attack with detailed logging
-        garbage_count = (len(broken_blocks) * combo_multiplier) // 2
-        print(f"   Garbage formula: {len(broken_blocks)} blocks × {combo_multiplier} combo = {garbage_count} garbage blocks")
+        # Detect all valid rectangular sub-clusters inside the broken set (per color)
+        clusters, covered_positions = self._detect_subrectangle_clusters(broken_blocks)
         
-        # Use game engine's cluster detection result instead of our own spatial analysis
-        clusters = []
-        if is_cluster:
-            # Trust the game engine's cluster detection and create cluster from spatial analysis
-            clusters = self._detect_clusters_in_broken_blocks(broken_blocks)
-            
-            # If our spatial analysis fails but game engine says it's a cluster, create a fallback cluster
-            if not clusters:
-                print(f"   Game engine detected cluster, creating fallback cluster analysis")
-                clusters = self._create_fallback_cluster(broken_blocks)
+        # Garbage should NOT count cluster cells. Compute garbage pool as non-cluster broken cells.
+        total_broken = len(broken_blocks)
+        non_cluster_cells = 0
+        if covered_positions:
+            # covered_positions contains (x,y) cells used by clusters
+            broken_pos = {(x, y) for (x, y, _c) in broken_blocks}
+            non_cluster_cells = max(0, len(broken_pos - covered_positions))
+        else:
+            non_cluster_cells = total_broken
+        
+        # Sprinkle (garbage) formula: floor(non_cluster_cells/2) * combo
+        garbage_count = (non_cluster_cells // 2) * max(1, combo_multiplier)
+        
         
         # Log cluster detection results
-        if clusters:
-            print(f"   Clusters detected: {len(clusters)}")
-            for i, cluster in enumerate(clusters):
-                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} ({cluster.cluster_type.name})")
-        else:
-            print(f"   No clusters detected (non-cluster combo)")
+        
         
         # Generate attacks
         attacks_generated = []
@@ -124,7 +132,6 @@ class AttackManager:
         
         # Generate cluster strikes if we have clusters
         if clusters:
-            print(f"   Generating cluster strikes:")
             for i, cluster in enumerate(clusters):
                 cluster.position_in_chain = i + 1  # Set position in cluster chain
                 cluster.combo_level = combo_multiplier  # Set combo level
@@ -132,7 +139,6 @@ class AttackManager:
                 # Calculate what the strike should be
                 calculator = AttackCalculator()
                 expected_strike = calculator.calculate_cluster_strike(cluster.cluster_type.value, cluster.combo_level)
-                print(f"     Cluster {i+1}: {cluster.width}x{cluster.height} level {combo_multiplier} → {expected_strike[0]}")
                 
                 strike_attack = self._create_cluster_strike(
                     cluster, player_id, combo_multiplier
@@ -196,40 +202,32 @@ class AttackManager:
         # Verify it's a complete rectangular cluster
         if position_set == all_positions_in_box and len(positions) == expected_blocks:
             # Determine cluster type based on actual dimensions
+            # Reject skinny rectangles (must be at least 2x2)
+            if width < 2 or height < 2:
+                print(f"   Spatial analysis: rectangle {width}x{height} is too thin for a cluster")
+                return clusters
             if width == 2 and height == 2:
                 cluster_type = ClusterType.CLUSTER_2x2
             elif width == 3 and height == 3:
                 cluster_type = ClusterType.CLUSTER_3x3
-            elif (width == 3 and height == 2) or (width == 2 and height == 3):
+            elif width == 3 and height == 2:
                 cluster_type = ClusterType.CLUSTER_3x2
-                # Normalize to width x height format
-                if width == 2 and height == 3:
-                    width, height = 3, 2
+            elif width == 2 and height == 3:
+                cluster_type = ClusterType.CLUSTER_2x3
             elif width == 4 and height == 4:
                 cluster_type = ClusterType.CLUSTER_4x4
-            elif (width == 5 and height == 2) or (width == 2 and height == 5):
+            elif width == 5 and height == 2:
                 cluster_type = ClusterType.CLUSTER_5x2
-                # Normalize to width x height format
-                if width == 2 and height == 5:
-                    width, height = 5, 2
-            elif (width == 6 and height == 2) or (width == 2 and height == 6):
+            elif width == 2 and height == 5:
+                cluster_type = ClusterType.CLUSTER_2x5
+            elif width == 6 and height == 2:
                 cluster_type = ClusterType.CLUSTER_6x2
-                # Normalize to width x height format
-                if width == 2 and height == 6:
-                    width, height = 6, 2
+            elif width == 2 and height == 6:
+                cluster_type = ClusterType.CLUSTER_2x6
             else:
-                # For other dimensions, classify as closest match
-                if width * height == 4:
-                    cluster_type = ClusterType.CLUSTER_2x2
-                    width, height = 2, 2
-                elif width * height >= 9:
-                    cluster_type = ClusterType.CLUSTER_3x3
-                    width, height = 3, 3
-                elif width * height >= 6:
-                    cluster_type = ClusterType.CLUSTER_3x2
-                    width, height = 3, 2
-                else:
-                    return clusters  # Don't create cluster for unrecognized patterns
+                # Unrecognized rectangle size; not a valid cluster
+                print(f"   Spatial analysis: rectangle {width}x{height} not a recognized cluster size")
+                return clusters
             
             cluster = ClusterData(
                 cluster_type=cluster_type,
@@ -243,9 +241,93 @@ class AttackManager:
             
             print(f"   Spatial analysis: {min_x},{min_y} to {max_x},{max_y} = {width}x{height} cluster")
         else:
-            print(f"   Spatial analysis: Not a complete rectangular cluster (scattered blocks)")
+            print(f"   Spatial analysis: Not a complete rectangular cluster (scattered or non-rectangular)")
         
         return clusters
+
+    def _detect_subrectangle_clusters(self, broken_blocks: List[Tuple[int, int, str]]) -> Tuple[List[ClusterData], set]:
+        """Find all rectangular sub-clusters (permitted sizes) within the broken set, per color.
+        Returns (clusters, covered_positions_set).
+        """
+        if not broken_blocks:
+            return [], set()
+
+        # Allowed cluster dimensions (width, height) with normalized width>=height
+        # Include both orientations so 2x3 is detected and normalized to 3x2
+        allowed_dims = [(4, 4), (6, 2), (2, 6), (5, 2), (2, 5), (3, 3), (3, 2), (2, 3), (2, 2)]
+
+        # Group positions by color
+        color_to_positions: Dict[str, set] = {}
+        for x, y, color in broken_blocks:
+            color_to_positions.setdefault(color, set()).add((x, y))
+
+        detected: List[ClusterData] = []
+        covered: set = set()
+
+        # Greedy detection: larger areas first, non-overlapping
+        for color, positions in color_to_positions.items():
+            # Work on a mutable copy
+            remaining = set(positions)
+
+            # Precompute bounds to scan potential top-left corners
+            if not remaining:
+                continue
+            xs = [p[0] for p in remaining]
+            ys = [p[1] for p in remaining]
+            min_x, max_x = min(xs), max(xs)
+            min_y, max_y = min(ys), max(ys)
+
+            # Try each allowed dimension, largest first
+            for width, height in allowed_dims:
+                # Scan top-left candidates
+                x = min_x
+                while x <= max_x - (width - 1):
+                    y = min_y
+                    while y <= max_y - (height - 1):
+                        # Build rectangle cells
+                        rect_cells = {(x + dx, y + dy) for dx in range(width) for dy in range(height)}
+                        # Check all cells of this color are in remaining
+                        if rect_cells.issubset(remaining):
+                            # Record cluster
+                            cluster_type = None
+                            if width == 2 and height == 2:
+                                cluster_type = ClusterType.CLUSTER_2x2
+                            elif width == 3 and height == 3:
+                                cluster_type = ClusterType.CLUSTER_3x3
+                            elif width == 3 and height == 2:
+                                cluster_type = ClusterType.CLUSTER_3x2
+                            elif width == 4 and height == 4:
+                                cluster_type = ClusterType.CLUSTER_4x4
+                            elif width == 5 and height == 2:
+                                cluster_type = ClusterType.CLUSTER_5x2
+                            elif width == 2 and height == 5:
+                                cluster_type = ClusterType.CLUSTER_2x5
+                            elif width == 6 and height == 2:
+                                cluster_type = ClusterType.CLUSTER_6x2
+                            elif width == 2 and height == 6:
+                                cluster_type = ClusterType.CLUSTER_2x6
+                            elif width == 2 and height == 3:
+                                cluster_type = ClusterType.CLUSTER_2x3
+                            
+                            if cluster_type is not None:
+                                detected.append(ClusterData(
+                                    cluster_type=cluster_type,
+                                    width=width,
+                                    height=height,
+                                    position_in_chain=1,
+                                    combo_level=1,
+                                    blocks_broken=width * height
+                                ))
+                                # Remove cells to avoid overlap
+                                remaining.difference_update(rect_cells)
+                                covered.update(rect_cells)
+                                # Advance y past this rectangle to reduce rescans
+                                y += height
+                                continue
+                        y += 1
+                    x += 1
+
+        return detected, covered
     
     def _create_garbage_attack(self, block_count: int, source_player: int, 
                               combo_multiplier: int) -> GarbageBlockPayload:
@@ -273,8 +355,10 @@ class AttackManager:
         """Create a cluster strike attack payload."""
         # Calculate strike pattern
         calculator = AttackCalculator()
+        # Use actual orientation (width x height) so vertical clusters (e.g., 2x3) scale correctly
+        oriented_type = f"{cluster.width}x{cluster.height}"
         pattern, width, height = calculator.calculate_cluster_strike(
-            cluster.cluster_type.value, cluster.combo_level
+            oriented_type, cluster.combo_level
         )
         
         # Create dummy combo data for the payload
@@ -343,6 +427,10 @@ class AttackManager:
             # Normalize to 6x2 format
             if width == 2 and height == 6:
                 width, height = 6, 2
+        elif block_count == 6 and ((width == 2 and height == 3) or (width == 3 and height == 2)):
+            cluster_type = ClusterType.CLUSTER_3x2
+            if width == 2 and height == 3:
+                width, height = 3, 2
         else:
             # Default fallback based on block count
             if block_count >= 9:
@@ -375,7 +463,18 @@ class AttackManager:
             self.player2_attacks.extend(attacks)
         
         print(f"🎯 Added {len(attacks)} attacks to player {target_player}'s queue")
+        # Breaker-order: attacks are appended in generation order to preserve strict queueing semantics
     
+    def get_next_handedness(self) -> str:
+        """Return next handedness in shared sequence (R, L, R, L, ...)."""
+        hand = 'R' if (self.handedness_index % 2 == 0) else 'L'
+        self.handedness_index = (self.handedness_index + 1) % 2
+        return hand
+
+    def advance_column_rotation(self) -> None:
+        """Advance the shared column rotation by one (counts as a turn in the pattern)."""
+        self.column_rotation_state = (self.column_rotation_state + 1) % len(self.column_sequence)
+
     def get_next_column_for_attack(self, target_player: int) -> int:
         """
         Get the next column for attack placement using rotation.
@@ -386,12 +485,10 @@ class AttackManager:
         Returns:
             Column index (0-based)
         """
-        current_index = self.column_rotation_state[target_player]
+        current_index = self.column_rotation_state
         column = self.column_sequence[current_index]
-        
-        # Advance to next column
-        self.column_rotation_state[target_player] = (current_index + 1) % len(self.column_sequence)
-        
+        # Advance to next column (shared)
+        self.column_rotation_state = (current_index + 1) % len(self.column_sequence)
         # Convert to 0-based indexing
         return column - 1
     
@@ -416,8 +513,8 @@ class AttackManager:
                 else:
                     remaining_attacks.append(attack)
             else:
-                # Set creation time if not set
-                attack.creation_time = current_time
+                # Set creation time if not set - set it to a time that makes the attack ready
+                attack.creation_time = current_time - attack.delivery_delay
                 remaining_attacks.append(attack)
         self.player1_attacks = remaining_attacks
         
@@ -425,14 +522,20 @@ class AttackManager:
         remaining_attacks = []
         for attack in self.player2_attacks:
             if hasattr(attack, 'creation_time'):
-                if current_time - attack.creation_time >= attack.delivery_delay:
+                time_diff = current_time - attack.creation_time
+                if time_diff >= attack.delivery_delay:
                     ready_attacks['player2'].append(attack)
                 else:
                     remaining_attacks.append(attack)
             else:
-                # Set creation time if not set
-                attack.creation_time = current_time
-                remaining_attacks.append(attack)
+                # Set creation time if not set - set it to a time that makes the attack ready
+                attack.creation_time = current_time - attack.delivery_delay
+                # Check if it's ready now
+                time_diff = current_time - attack.creation_time
+                if time_diff >= attack.delivery_delay:
+                    ready_attacks['player2'].append(attack)
+                else:
+                    remaining_attacks.append(attack)
         self.player2_attacks = remaining_attacks
         
         return ready_attacks
@@ -453,6 +556,18 @@ class AttackManager:
             return self.player2_attacks.copy()
         else:
             return []
+
+    def pop_attacks_for_player(self, target_player: int) -> List[AttackPayload]:
+        """Return and clear pending attacks for the specified player only."""
+        if target_player == 1:
+            attacks = self.player1_attacks.copy()
+            self.player1_attacks.clear()
+            return attacks
+        if target_player == 2:
+            attacks = self.player2_attacks.copy()
+            self.player2_attacks.clear()
+            return attacks
+        return []
     
     def get_attack_statistics(self) -> Dict[str, Any]:
         """Get attack system statistics."""
@@ -460,8 +575,8 @@ class AttackManager:
             **self.attack_stats,
             'pending_attacks_p1': len(self.player1_attacks),
             'pending_attacks_p2': len(self.player2_attacks),
-            'column_rotation_p1': self.column_rotation_state[1],
-            'column_rotation_p2': self.column_rotation_state[2]
+            'column_rotation_index': self.column_rotation_state,
+            'handedness_next': 'R' if (self.handedness_index % 2 == 0) else 'L'
         }
     
     def reset_statistics(self):
@@ -492,6 +607,9 @@ class AttackManager:
         """
         # Process attack queues
         ready_attacks = self.process_attack_queue(current_time)
+        
+        # Store the last ready attacks for legacy compatibility
+        self._last_ready_attacks = ready_attacks
         
         # Return status
         return {

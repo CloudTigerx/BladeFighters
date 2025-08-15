@@ -116,8 +116,8 @@ class PuzzleEngine:
         self.physics = BasicPhysics(self)
         
         # Piece fall timing
-        self.normal_fall_speed = 64000  # my speeds
-        self.accelerated_fall_speed = 3600  # my speeds
+        self.normal_fall_speed = 640000  # my speeds
+        self.accelerated_fall_speed = 2400  # my speeds
         self.current_fall_speed = self.normal_fall_speed
         self.last_fall_time = 0
         self.micro_fall_time = self._calculate_micro_fall_time(self.current_fall_speed)
@@ -140,24 +140,36 @@ class PuzzleEngine:
         self.clusters = set()  # Tracks positions of blocks in clusters
         self.breaking_blocks = []  # Tracks blocks currently being destroyed
         self.breaking_animation_start = 0
-        self.breaking_animation_duration = 300  # 300ms (0.3s) for breaking animations - longer for more dramatic effects
+        self.breaking_animation_duration = 160  # 300ms (0.3s) for breaking animations - longer for more dramatic effects
+        # Debug toggle
+        self.debug_breaks = True
         
         # Chain reaction state machine
         self.chain_reaction_in_progress = False
         self.chain_state = "idle"  # States: idle, breaking, waiting_for_breaking, applying_gravity, waiting_for_gravity
         self.last_state_change = 0
-        self.state_delay = 50  # ms between state transitions (reduced for smoother combos)
+        self.state_delay = 0.35  # ms between state transitions (reduced for smoother combos)
         self.chain_count = 0  # Track consecutive chain reactions
-        
-        self.chain_delay = 30
+        # Reduce spam: gate verbose breaker/cluster debug logs
+        self.enable_debug_logs = False
+        # Debug instrumentation removed
+
+        # Softlock detection (state + grid signature)
+        self._last_grid_signature = None
+        self._last_chain_state = None
+        self._stall_frame_count = 0
+
+        # Chain/cluster timing and input setup
+        _delay = 30
         self.last_cluster_check_time = 0
         self.cluster_check_interval = 250
         
         # Game buttons for back button etc.
         self.game_buttons = []
         
-        # Initialize input handler
-        self.input_handler = InputHandler(self, settings_system)  # settings_system is now settings_ui
+        # Initialize input handler with clock if available
+        clock = getattr(self, 'clock', None)
+        self.input_handler = InputHandler(self, settings_system, clock=clock)  # settings_system is now settings_ui
         
         # Initialize piece movement (physics already initialized above)
         self.piece_movement = PieceMovement(self)
@@ -175,9 +187,11 @@ class PuzzleEngine:
         self.grid_offset_x = 0  # Align grid to the left edge
         self.grid_offset_y = (self.height - (self.grid_height * self.block_size)) // 3
         self.cell_size = self.block_size
-        
 
-    
+    def _combo_debug(self, message: str) -> None:
+        return
+        
+        
     def create_empty_grid(self, width, height):
         """Create an empty grid with None values."""
         return [[None for _ in range(width)] for _ in range(height)]  # Use the height parameter
@@ -354,7 +368,9 @@ class PuzzleEngine:
                                          attached_x >= 0 and attached_x < self.grid_width and
                                          self.puzzle_grid[math.ceil(next_attached_visual_y + buffer_cells)][attached_x] is not None)
                 
-                if main_would_collide or attached_would_collide or not can_move_down:
+                # If either would collide OR we are at bottom row boundary, place now
+                at_bottom_boundary = (main_y >= self.grid_height - 1) or (attached_y >= self.grid_height - 1)
+                if main_would_collide or attached_would_collide or not can_move_down or at_bottom_boundary:
                     # We're about to visually collide, place the piece now
                     self.place_piece_on_grid()
                     return  # Exit after placing piece
@@ -419,8 +435,17 @@ class PuzzleEngine:
         # This happens when both pieces would be placed in row 0
         unique_positions = {}
         
+        # Clamp to visible grid bounds to avoid writing below the floor
+        def _clamp_row(y: int) -> int:
+            if y < 0:
+                return 0
+            if y >= self.grid_height:
+                return self.grid_height - 1
+            return y
+
         # Place pieces in order of priority
         for x, y, piece in pieces_to_place:
+            y = _clamp_row(y)
             # If this position is already taken, skip it
             if (x, y) in unique_positions:
                 continue
@@ -470,16 +495,17 @@ class PuzzleEngine:
         """Apply gravity to make pieces fall into empty spaces, preserving cluster integrity."""
         blocks_moved = False
         
-        # Track garbage block movements
-        garbage_movements = {}  # (old_x, old_y) -> (new_x, new_y)
+        # Track movements of attack blocks (garbage and strike)
+        attack_movements = {}  # (old_x, old_y) -> (new_x, new_y)
         
         # CRITICAL FIX: Only handle clusters if NO piece is currently falling
         # This prevents cluster detection from interfering with piece placement
         current_clusters = []
         cluster_block_positions = set()  # Track all positions that are part of clusters
         
-        # Only detect clusters if no piece is falling and no chain reaction is in progress
-        if not self.main_piece and not self.chain_reaction_in_progress:
+        # Detect and handle clusters if no piece is currently falling
+        # (ensure cluster integrity even during chain reactions)
+        if not self.main_piece:
             # STEP 1: Handle clusters first - they must move as complete units
             current_clusters = self.find_all_clusters()
             
@@ -489,31 +515,32 @@ class PuzzleEngine:
                     cluster_block_positions.add(pos)
                 
                 # Check if this cluster has support
+                min_fall_distance = 0
                 if not self.is_cluster_supported(cluster_blocks):
                     # This entire cluster needs to fall as a unit
                     # Find the minimum fall distance for the whole cluster
                     min_fall_distance = float('inf')
-                    
                     for x, y in cluster_blocks:
                         # Calculate how far this position could fall
                         fall_distance = 0
                         for check_y in range(y + 1, self.grid_height):
                             check_pos = (x, check_y)
-                            # Stop if we hit a block that's not part of this cluster
-                            if (check_pos not in cluster_blocks and 
-                                self.puzzle_grid[check_y][x] is not None):
-                                break
+                            # Ignore cells that are part of the same cluster (do not block the fall)
+                            if check_pos in cluster_blocks:
+                                continue
+                            # Empty space → can fall further
                             if self.puzzle_grid[check_y][x] is None:
                                 fall_distance += 1
-                            else:
-                                break
-                        
+                                continue
+                            # Non-empty and not cluster → blocked
+                            break
                         # The cluster can only fall as far as its most constrained block
                         min_fall_distance = min(min_fall_distance, fall_distance)
+                
+                # Move the entire cluster down by the minimum fall distance
+                if min_fall_distance > 0 and min_fall_distance != float('inf'):
                     
-                    # Move the entire cluster down by the minimum fall distance
-                    if min_fall_distance > 0 and min_fall_distance != float('inf'):
-                        # First, collect all the block types in the cluster
+                    # First, collect all the block types in the cluster
                         cluster_data = {}
                         for x, y in cluster_blocks:
                             cluster_data[(x, y)] = self.puzzle_grid[y][x]
@@ -527,20 +554,23 @@ class PuzzleEngine:
                                 # Add falling animation for cluster blocks
                                 if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
                                     current_time = time.time()
-                                    self.renderer.animation_state_manager.visual_falling_blocks[(x, new_y)] = {
-                                        'start_time': current_time,
-                                        'duration': self.renderer.animation_state_manager.fall_animation_duration * min_fall_distance,
-                                        'start_y': y,
-                                        'block_type': block_type
-                                    }
-                                
+                                    key = (x, new_y)
+                                    # Do not reset an existing animation; only add if not present
+                                    if key not in self.renderer.animation_state_manager.visual_falling_blocks:
+                                        self.renderer.animation_state_manager.visual_falling_blocks[key] = {
+                                            'start_time': current_time,
+                                            'duration': self.renderer.animation_state_manager.fall_animation_duration * min_fall_distance,
+                                            'start_y': y,
+                                            'block_type': block_type
+                                        }
                                 # Move block to final position in grid (for logic)
                                 self.puzzle_grid[new_y][x] = block_type
                                 blocks_moved = True
-                                
-                                # Track garbage block movements
-                                if '_garbage' in block_type:
-                                    garbage_movements[(x, y)] = (x, new_y)
+                                # Mark new cluster positions so they are excluded from per-block gravity below
+                                cluster_block_positions.add((x, new_y))
+                                # Track attack block movements (garbage or strike)
+                                if ('_garbage' in block_type) or (block_type == 'garbage_block') or ('_strike' in block_type):
+                                    attack_movements[(x, y)] = (x, new_y)
         
         # STEP 2: Handle individual blocks (not part of clusters)
         # First, check for any blocks in row 0 that need to fall
@@ -563,21 +593,23 @@ class PuzzleEngine:
                     # Add falling animation to renderer if available
                     if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
                         current_time = time.time()
-                        self.renderer.animation_state_manager.visual_falling_blocks[(x, target_y)] = {
-                            'start_time': current_time,
-                            'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
-                            'start_y': 0,
-                            'block_type': block_type
-                        }
+                        key = (x, target_y)
+                        if key not in self.renderer.animation_state_manager.visual_falling_blocks:
+                            self.renderer.animation_state_manager.visual_falling_blocks[key] = {
+                                'start_time': current_time,
+                                'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
+                                'start_y': 0,
+                                'block_type': block_type
+                            }
                     
                     # Move the block to final position in grid (for logic)
                     self.puzzle_grid[target_y][x] = block_type
                     self.puzzle_grid[0][x] = None
                     blocks_moved = True
                     
-                    # If this is a garbage block, track its movement
-                    if '_garbage' in block_type:
-                        garbage_movements[(x, 0)] = (x, target_y)
+                    # If this is an attack block (garbage or strike), track its movement
+                    if ('_garbage' in block_type) or (block_type == 'garbage_block') or ('_strike' in block_type):
+                        attack_movements[(x, 0)] = (x, target_y)
         
         # Then apply gravity to the rest of the grid from bottom to top
         for y in range(self.grid_height - 2, 0, -1):  # Start from second-to-last row
@@ -600,32 +632,58 @@ class PuzzleEngine:
                         # Add falling animation to renderer if available
                         if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
                             current_time = time.time()
-                            self.renderer.animation_state_manager.visual_falling_blocks[(x, target_y)] = {
-                                'start_time': current_time,
-                                'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
-                                'start_y': y,
-                                'block_type': block_type
-                            }
+                            key = (x, target_y)
+                            if key not in self.renderer.animation_state_manager.visual_falling_blocks:
+                                self.renderer.animation_state_manager.visual_falling_blocks[key] = {
+                                    'start_time': current_time,
+                                    'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
+                                    'start_y': y,
+                                    'block_type': block_type
+                                }
                         
                         # Move the block to final position in grid (for logic)
                         self.puzzle_grid[target_y][x] = block_type
                         self.puzzle_grid[y][x] = None
                         blocks_moved = True
                         
-                        # If this is a garbage block, track its movement
-                        if '_garbage' in block_type:
-                            garbage_movements[(x, y)] = (x, target_y)
+                        # If this is an attack block (garbage or strike), track its movement
+                        if ('_garbage' in block_type) or (block_type == 'garbage_block') or ('_strike' in block_type):
+                            attack_movements[(x, y)] = (x, target_y)
         
-        # Attack system removed - simplified test mode
+        # Expose the movements to external systems (e.g., TestMode) for tracking updates
+        # Create attribute if not present
+        try:
+            self.attack_block_movements = attack_movements
+        except Exception:
+            # Fallback in case attribute assignment is restricted
+            pass
+        
+        # ENHANCED PIECE SLIDING: Handle pieces that slide off when breaking apart
+        if blocks_moved and hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+            self._handle_piece_sliding(attack_movements)
         
         return blocks_moved
+        
+    def _handle_piece_sliding(self, attack_movements):
+        """Handle pieces that slide off when breaking apart from clusters."""
+        # This method ensures pieces slide smoothly when breaking apart
+        # rather than falling instantly
+        
+        # Update attack block tracking for external systems (TestMode)
+        if hasattr(self, 'test_mode') and self.test_mode:
+            # Notify test mode of attack block movements
+            try:
+                if hasattr(self.test_mode, '_update_attack_block_positions'):
+                    self.test_mode._update_attack_block_positions(attack_movements)
+            except Exception:
+                pass
     
     def generate_new_piece(self):
         """Generate a new main and attached piece."""
         # Check for game over condition - if column 4 is filled up to the invisible row
         # Only check column 4 (index 3) for game over
         if self.puzzle_grid[0][3] is not None:
-            print(f"Game Over: Column 4 has reached the invisible row")
+            
             self.game_active = False
             return False
 
@@ -772,6 +830,9 @@ class PuzzleEngine:
                 if (x, y) in visited or self.puzzle_grid[y][x] is None:
                     continue
                 
+                # Skip strike/garbage cells for cluster purposes
+                if ('_garbage' in str(self.puzzle_grid[y][x])) or ('_strike' in str(self.puzzle_grid[y][x])):
+                    continue
                 # Get the color of the current block
                 current_color = self.puzzle_grid[y][x].split('_')[0]
                 
@@ -782,6 +843,13 @@ class PuzzleEngine:
                     self.puzzle_grid[y+1][x] is not None and
                     self.puzzle_grid[y+1][x+1] is not None):
                     
+                    # Skip if any are strike/garbage
+                    if ('_garbage' in str(self.puzzle_grid[y][x+1])) or ('_strike' in str(self.puzzle_grid[y][x+1])):
+                        continue
+                    if ('_garbage' in str(self.puzzle_grid[y+1][x])) or ('_strike' in str(self.puzzle_grid[y+1][x])):
+                        continue
+                    if ('_garbage' in str(self.puzzle_grid[y+1][x+1])) or ('_strike' in str(self.puzzle_grid[y+1][x+1])):
+                        continue
                     # Check if all are the same color
                     if (self.puzzle_grid[y][x+1].split('_')[0] == current_color and
                         self.puzzle_grid[y+1][x].split('_')[0] == current_color and
@@ -817,6 +885,7 @@ class PuzzleEngine:
             for y in range(start_y, min(start_y + height, self.total_grid_height)):
                 if (y >= self.total_grid_height or 
                     self.puzzle_grid[y][x] is None or
+                    '_garbage' in str(self.puzzle_grid[y][x]) or '_strike' in str(self.puzzle_grid[y][x]) or
                     self.puzzle_grid[y][x].split('_')[0] != color):
                     valid_column = False
                     break
@@ -837,6 +906,7 @@ class PuzzleEngine:
             for x in range(start_x, start_x + width):
                 if (x >= self.grid_width or 
                     self.puzzle_grid[y][x] is None or
+                    '_garbage' in str(self.puzzle_grid[y][x]) or '_strike' in str(self.puzzle_grid[y][x]) or
                     self.puzzle_grid[y][x].split('_')[0] != color):
                     valid_row = False
                     break
@@ -853,7 +923,8 @@ class PuzzleEngine:
     def is_cluster_supported(self, cluster_blocks):
         """
         Check if a cluster has any support beneath it.
-        A cluster is supported if any block in its bottom row has a non-cluster block below it.
+        A cluster should remain standing if ANY of its bottom cells has direct support below.
+        It should only fall when the entire underside is unsupported.
         
         Args:
             cluster_blocks: Set of (x, y) coordinates that form the cluster
@@ -872,25 +943,19 @@ class PuzzleEngine:
                 columns[x] = []
             columns[x].append(y)
         
-        # For each column in the cluster, check if the bottom-most block has direct support
+        # If ANY bottom cell has support, the cluster is supported.
         for x, y_values in columns.items():
-            # Find the bottom-most block in this column
             bottom_y = max(y_values)
-            
-            # Skip if at the bottom of the grid (already supported)
+            # Bottom row of grid counts as supported
             if bottom_y >= self.grid_height - 1:
-                continue  # This column is supported, but others might not be
-            
-            # Check if there's a block directly below that's not part of the cluster
+                return True
             below_pos = (x, bottom_y + 1)
-            if below_pos not in cluster_blocks and self.puzzle_grid[bottom_y + 1][x] is not None:
-                continue  # This column has support, check others
-            else:
-                # This column has no support - the cluster can fall in this column
-                return False
+            cell_below = self.puzzle_grid[bottom_y + 1][x]
+            if below_pos not in cluster_blocks and cell_below is not None:
+                return True
         
-        # All columns have direct support - the cluster is fully supported
-        return True
+        # No support found under any bottom cell → entire underside is clear → should fall
+        return False
     
     def find_all_clusters(self):
         """
@@ -918,7 +983,11 @@ class PuzzleEngine:
             if self.puzzle_grid[y][x] is None:
                 continue
                 
-            color = self.puzzle_grid[y][x].split('_')[0]
+            cell_val = self.puzzle_grid[y][x]
+            # Skip non-normal blocks (garbage/strike/neutral)
+            if (cell_val is None) or ('_garbage' in str(cell_val)) or ('_strike' in str(cell_val)) or (cell_val == 'garbage_block'):
+                continue
+            color = cell_val.split('_')[0]
             current_cluster = set()
             
             # Use a flood-fill approach to find all connected blocks of the same color
@@ -950,6 +1019,101 @@ class PuzzleEngine:
                 visited.update(current_cluster)
         
         return clusters
+
+    def find_rectangular_clusters_for_render(self):
+        """
+        Find only true rectangular clusters (2x2 or larger) for UI highlighting.
+        Returns a list of sets, each set containing the (x, y) cells of one rectangle.
+        This avoids unioning overlapping rectangles, so partial shapes won't all glow at once.
+        """
+        rectangles = []
+
+        def is_valid_cell(cx: int, cy: int, color: str) -> bool:
+            if cx < 0 or cy < 0 or cx >= self.grid_width or cy >= self.total_grid_height:
+                return False
+            cell = self.puzzle_grid[cy][cx]
+            if cell is None:
+                return False
+            if ('_garbage' in str(cell)) or ('_strike' in str(cell)):
+                return False
+            return cell.split('_')[0] == color
+
+        y = 0
+        while y < self.total_grid_height:
+            x = 0
+            while x < self.grid_width:
+                cell = self.puzzle_grid[y][x]
+                if cell is None or ('_garbage' in str(cell)) or ('_strike' in str(cell)) or (cell == 'garbage_block'):
+                    x += 1
+                    continue
+                color = cell.split('_')[0]
+
+                # Check for minimum 2x2 starting at (x, y)
+                if not (is_valid_cell(x + 1, y, color) and is_valid_cell(x, y + 1, color) and is_valid_cell(x + 1, y + 1, color)):
+                    x += 1
+                    continue
+
+                # Extend width
+                width = 2
+                while True:
+                    next_col = x + width
+                    all_match = True
+                    if next_col >= self.grid_width:
+                        break
+                    for ry in range(y, y + 2):
+                        if not is_valid_cell(next_col, ry, color):
+                            all_match = False
+                            break
+                    if not all_match:
+                        break
+                    width += 1
+
+                # Extend height across current width
+                height = 2
+                while True:
+                    next_row = y + height
+                    all_match = True
+                    if next_row >= self.total_grid_height:
+                        break
+                    for rx in range(x, x + width):
+                        if not is_valid_cell(rx, next_row, color):
+                            all_match = False
+                            break
+                    if not all_match:
+                        break
+                    height += 1
+
+                # Build rectangle set
+                if width >= 2 and height >= 2:
+                    rect_cells = set()
+                    for rx in range(x, x + width):
+                        for ry in range(y, y + height):
+                            rect_cells.add((rx, ry))
+                    rectangles.append(rect_cells)
+
+                x += 1
+            y += 1
+
+        # Prefer larger rectangles: sort by area desc, then width desc, then height desc
+        def rect_dims(rc):
+            xs = [p[0] for p in rc]; ys = [p[1] for p in rc]
+            w = (max(xs) - min(xs) + 1) if xs else 0
+            h = (max(ys) - min(ys) + 1) if ys else 0
+            return w, h
+
+        ranked = sorted(rectangles, key=lambda rc: (-len(rc), -rect_dims(rc)[0], -rect_dims(rc)[1]))
+        selected: list[set[tuple[int,int]]] = []
+        for rc in ranked:
+            keep = True
+            for sc in selected:
+                # Strict non-overlap for UI clarity: never reuse cells across rectangles
+                if rc & sc:
+                    keep = False
+                    break
+            if keep:
+                selected.append(rc)
+
+        return selected
     
     def find_connected_pieces(self, start_x, start_y, target_color):
         """
@@ -963,7 +1127,11 @@ class PuzzleEngine:
             return set()
             
         # Get color of the starting piece without any suffix
-        piece_color = self.puzzle_grid[start_y][start_x].split('_')[0]
+        start_cell = self.puzzle_grid[start_y][start_x]
+        # Treat strike/garbage as non-traversable and non-connectable until transformed
+        if ('_garbage' in str(start_cell)) or ('_strike' in str(start_cell)):
+            return set()
+        piece_color = start_cell.split('_')[0]
         if piece_color != target_color:
             return set()
         
@@ -987,8 +1155,13 @@ class PuzzleEngine:
                     0 <= ny < self.grid_height and 
                     self.puzzle_grid[ny][nx] is not None):
                     
+                    cell = self.puzzle_grid[ny][nx]
+                    # Do not traverse through or include strike/garbage while untransformed
+                    if ('_garbage' in str(cell)) or ('_strike' in str(cell)):
+                        visited.add((nx, ny))
+                        continue
                     # Check if the color matches (ignoring suffixes like "_breaker")
-                    next_color = self.puzzle_grid[ny][nx].split('_')[0]
+                    next_color = cell.split('_')[0]
                     if next_color == target_color:
                         queue.append((nx, ny))
                         visited.add((nx, ny))
@@ -1016,8 +1189,21 @@ class PuzzleEngine:
                 # Update the chain reaction state machine
                 self.update_chain_reaction()
             else:
-                # Update falling piece
-                self.update_falling_piece()
+                # Auto-arm breaker chain if breakers are present and chain ended
+                try:
+                    if self.find_breakers_to_activate():
+                        # Start breaking immediately
+                        self.chain_reaction_in_progress = True
+                        self.chain_state = "breaking"
+                        self.breaking_animation_start = pygame.time.get_ticks()
+                        if getattr(self, 'debug_combo_trace', False):
+                            self._combo_debug("Auto-armed breaker chain after idle state")
+                    else:
+                        # Update falling piece
+                        self.update_falling_piece()
+                except Exception:
+                    # Fallback to normal update if detection fails
+                    self.update_falling_piece()
         
         # Return whether the game is still active
         return self.game_active
@@ -1098,6 +1284,53 @@ class PuzzleEngine:
         """Update the chain reaction state machine."""
         current_time = pygame.time.get_ticks()
         
+        # Compute a lightweight signature of the grid to detect no-change stalls
+        def _grid_signature():
+            try:
+                return tuple(tuple(row) for row in self.puzzle_grid)
+            except Exception:
+                return ()
+        grid_sig = _grid_signature()
+        state_sig = self.chain_state
+        if self.chain_reaction_in_progress and self._last_grid_signature == grid_sig and self._last_chain_state == state_sig:
+            self._stall_frame_count += 1
+        else:
+            self._stall_frame_count = 0
+        self._last_grid_signature = grid_sig
+        self._last_chain_state = state_sig
+        
+        # If we appear stalled for ~1 second worth of frames, force progress
+        if self._stall_frame_count > 60:
+            # Prefer to clear breaking and advance rather than hard-reset
+            if self.chain_state == "breaking":
+                try:
+                    self.clear_breaking_blocks()
+                except Exception:
+                    pass
+                self.chain_state = "applying_gravity"
+                self.last_state_change = current_time
+            else:
+                # Hard end the chain to avoid permanent softlock
+                self.chain_reaction_in_progress = False
+                self.chain_state = "idle"
+                if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                    try:
+                        asm = self.renderer.animation_state_manager
+                        asm.visual_falling_blocks.clear()
+                        asm.breaking_blocks_animations.clear()
+                        asm.recently_broken_positions.clear()
+                        asm.recent_break_timestamps.clear()
+                    except Exception:
+                        pass
+                if hasattr(self, 'chain_start_time'):
+                    try:
+                        del self.chain_start_time
+                    except Exception:
+                        pass
+                self.chain_count = 0
+            # Reset stall counter after intervention
+            self._stall_frame_count = 0
+        
         # Add a global timeout for entire chain reaction
         # If chain has been active too long, force it to complete
         if hasattr(self, 'chain_start_time'):
@@ -1111,6 +1344,10 @@ class PuzzleEngine:
         else:
             # Initialize chain start time if not set
             self.chain_start_time = current_time
+
+        # Note: No hard cap on chain length; allow chains to run as long as needed.
+
+        # (debug removed)
         
         # State machine for chain reactions
         if self.chain_state == "idle":
@@ -1134,14 +1371,64 @@ class PuzzleEngine:
                     self.last_state_change = current_time
         
         elif self.chain_state == "breaking":
-            # Even though breaking animations are disabled, we still want the 1-second delay
-            # to create the impression of breaking before proceeding
+            # Wait briefly, then proceed; add failsafes so we never stall
             elapsed_time = current_time - self.breaking_animation_start
-            if elapsed_time >= self.breaking_animation_duration:
-                # After the 1-second delay, clear the blocks and move to next state
-                self.clear_breaking_blocks()
-                self.chain_state = "applying_gravity"
-                self.last_state_change = current_time
+            renderer_done = False
+            try:
+                if hasattr(self, 'renderer'):
+                    renderer_done = not self.renderer.animations_in_progress()
+            except Exception:
+                renderer_done = True
+            # Proceed if duration elapsed, renderer finished, or hard timeout
+            if (
+                elapsed_time >= self.breaking_animation_duration or
+                renderer_done or
+                elapsed_time > max(600, self.breaking_animation_duration + 200)
+            ):
+                processed, remaining = self.clear_breaking_blocks()
+                if getattr(self, 'debug_breaks', False):
+                    try:
+                        print(f"[BREAK] processed={processed} remaining={remaining} chain={self.chain_count}")
+                    except Exception:
+                        pass
+                # Guard: if nothing processed and no future remain, avoid re-entering breaking
+                if processed == 0 and remaining == 0:
+                    # Fast finalize: try one gravity pass and end if no more breakers
+                    gravity_applied = self.apply_gravity()
+                    if not gravity_applied and not self.find_breakers_to_activate():
+                        if getattr(self, 'debug_breaks', False):
+                            try:
+                                print("[BREAK-END] fast finalize: no gravity, no breakers -> idle")
+                            except Exception:
+                                pass
+                        self.chain_reaction_in_progress = False
+                        self.chain_state = "idle"
+                        if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                            try:
+                                asm = self.renderer.animation_state_manager
+                                asm.visual_falling_blocks.clear()
+                                asm.breaking_blocks_animations.clear()
+                                asm.recently_broken_positions.clear()
+                                asm.recent_break_timestamps.clear()
+                            except Exception:
+                                pass
+                        if hasattr(self, 'chain_start_time'):
+                            del self.chain_start_time
+                        self.chain_count = 0
+                        if hasattr(self, '_broken_notified_positions'):
+                            self._broken_notified_positions.clear()
+                        return
+                    else:
+                        self.chain_state = "applying_gravity"
+                        self.last_state_change = current_time
+                        return
+                # If staggered lightning is active and we have more scheduled, stay in breaking; bump chain and restart timer
+                if remaining > 0:
+                    self.chain_count = max(1, self.chain_count) + 1
+                    self.breaking_animation_start = current_time
+                else:
+                    self.chain_state = "applying_gravity"
+                    self.last_state_change = current_time
                 
         elif self.chain_state == "waiting_for_breaking":
             # Even though breaking animations are disabled, we still want to wait for the full duration
@@ -1158,28 +1445,72 @@ class PuzzleEngine:
                 gravity_applied = self.apply_gravity()
                 self.chain_state = "waiting_for_gravity"
                 self.last_state_change = current_time
+
+                # Keep per-chain dedupe set for the entire chain to prevent replays
+                if hasattr(self, '_scheduled_break_positions'):
+                    pass
+                if hasattr(self, '_broken_notified_positions'):
+                    # Keep until chain fully ends; do not clear here
+                    pass
                 
                 # If no gravity was applied, skip directly to checking for more breakers
                 if not gravity_applied:
                     if self.find_breakers_to_activate():
                         self.chain_state = "breaking"
                         self.breaking_animation_start = current_time
+                        # (debug removed)
                     else:
                         # One more final gravity check before ending
                         final_gravity_applied = self.apply_gravity()
                         if not final_gravity_applied:
                             self.chain_reaction_in_progress = False
                             self.chain_state = "idle"
+                            # Ensure no stale animations or break flags block next piece
+                            if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                                try:
+                                    asm = self.renderer.animation_state_manager
+                                    asm.visual_falling_blocks.clear()
+                                    asm.breaking_blocks_animations.clear()
+                                    asm.recently_broken_positions.clear()
+                                    asm.recent_break_timestamps.clear()
+                                except Exception:
+                                    pass
                             # Reset chain start time when chain completes
                             if hasattr(self, 'chain_start_time'):
                                 del self.chain_start_time
                             self.chain_count = 0  # Reset chain counter when reaction ends
+                            if hasattr(self, '_broken_notified_positions'):
+                                self._broken_notified_positions.clear()
+                            if hasattr(self, '_scheduled_break_positions'):
+                                self._scheduled_break_positions.clear()
                         else:
                             # If gravity was applied in the final check, stay in the state machine
                             self.chain_state = "waiting_for_gravity"
             
         elif self.chain_state == "waiting_for_gravity":
             # Check if renderer has finished the gravity animations
+            # Extra failsafe: if we've been waiting with no animations for >300ms, force-complete the chain
+            if hasattr(self, 'renderer'):
+                try:
+                    if (not self.renderer.animations_in_progress()) and (current_time - self.last_state_change > 300):
+                        # (debug removed)
+                        self.chain_reaction_in_progress = False
+                        self.chain_state = "idle"
+                        if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                            asm = self.renderer.animation_state_manager
+                            try:
+                                asm.visual_falling_blocks.clear()
+                                asm.breaking_blocks_animations.clear()
+                                asm.recently_broken_positions.clear()
+                                asm.recent_break_timestamps.clear()
+                            except Exception:
+                                pass
+                        if hasattr(self, 'chain_start_time'):
+                            del self.chain_start_time
+                        self.chain_count = 0
+                        return
+                except Exception:
+                    pass
             if not hasattr(self, 'renderer') or not self.renderer.animations_in_progress():
                 # Gravity animations complete, check for more breakers
                 if self.find_breakers_to_activate():
@@ -1187,6 +1518,7 @@ class PuzzleEngine:
                     self.chain_state = "breaking"
                     self.breaking_animation_start = current_time
                     self.chain_count += 1  # Increment chain counter when new breakers are activated
+                    # (debug removed)
                 else:
                     # No more breakers, do one final gravity check
                     final_gravity_applied = self.apply_gravity()
@@ -1194,10 +1526,24 @@ class PuzzleEngine:
                         # No more gravity, end the chain reaction
                         self.chain_reaction_in_progress = False
                         self.chain_state = "idle"
+                        # Ensure no stale animations or break flags block next piece
+                        if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                            try:
+                                asm = self.renderer.animation_state_manager
+                                asm.visual_falling_blocks.clear()
+                                asm.breaking_blocks_animations.clear()
+                                asm.recently_broken_positions.clear()
+                                asm.recent_break_timestamps.clear()
+                            except Exception:
+                                pass
                         # Reset chain start time when chain completes
                         if hasattr(self, 'chain_start_time'):
                             del self.chain_start_time
                         self.chain_count = 0  # Reset chain counter when reaction ends
+                        if hasattr(self, '_broken_notified_positions'):
+                            self._broken_notified_positions.clear()
+                        if hasattr(self, '_scheduled_break_positions'):
+                            self._scheduled_break_positions.clear()
                     else:
                         # If gravity was applied, stay in waiting_for_gravity state
                         self.last_state_change = current_time
@@ -1207,16 +1553,31 @@ class PuzzleEngine:
                     self.chain_state = "breaking"
                     self.breaking_animation_start = current_time
                     self.chain_count += 1  # Increment chain counter when new breakers are activated
+                    # (debug removed)
                 else:
                     # Apply gravity one final time before ending
                     final_gravity_applied = self.apply_gravity()
                     if not final_gravity_applied:
                         self.chain_reaction_in_progress = False 
                         self.chain_state = "idle"
+                        # Ensure no stale animations or break flags block next piece
+                        if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                            try:
+                                asm = self.renderer.animation_state_manager
+                                asm.visual_falling_blocks.clear()
+                                asm.breaking_blocks_animations.clear()
+                                asm.recently_broken_positions.clear()
+                                asm.recent_break_timestamps.clear()
+                            except Exception:
+                                pass
                         # Reset chain start time when chain completes
                         if hasattr(self, 'chain_start_time'):
                             del self.chain_start_time
                         self.chain_count = 0  # Reset chain counter when reaction ends
+                        if hasattr(self, '_broken_notified_positions'):
+                            self._broken_notified_positions.clear()
+                        if hasattr(self, '_scheduled_break_positions'):
+                            self._scheduled_break_positions.clear()
                     else:
                         # If gravity was applied, stay in waiting_for_gravity state
                         self.last_state_change = current_time
@@ -1245,13 +1606,22 @@ class PuzzleEngine:
         Returns True if any breakers were found and activated.
         """
         activated_breakers = []
+        seen_breaker_positions = set()
+        # Build a fast lookup of already scheduled breaks to prevent duplicates
+        try:
+            existing_scheduled = set((sx, sy, sbt) for (sx, sy, _sts, _sdel, sbt, _sib) in getattr(self, 'breaking_blocks', []))
+        except Exception:
+            existing_scheduled = set()
+        # Maintain a per-chain dedupe set across the whole chain lifetime
+        if not hasattr(self, '_scheduled_break_positions'):
+            self._scheduled_break_positions = set()
         
         # Scan the entire grid for breaker blocks
         for y in range(self.grid_height):
             for x in range(self.grid_width):
                 # Check if current position contains a breaker block
                 if self.puzzle_grid[y][x] is not None and "_breaker" in self.puzzle_grid[y][x]:
-                    print(f"[BREAKER DEBUG] Found breaker block at ({x}, {y}): {self.puzzle_grid[y][x]}")
+                    
                     
                     # Check if this breaker is adjacent to a block of the same color
                     breaker_color = self.puzzle_grid[y][x].replace('_breaker', '')
@@ -1264,50 +1634,163 @@ class PuzzleEngine:
                             self.puzzle_grid[adj_y][adj_x] is not None):
                             
                             adjacent_color = self.puzzle_grid[adj_y][adj_x]
+                            # Do not consider strikes or garbage as valid adjacency for activation
+                            if ('_strike' in adjacent_color) or ('_garbage' in adjacent_color):
+                                continue
                             # Remove any suffixes for color comparison
                             clean_adjacent = adjacent_color.replace('_breaker', '').replace('_garbage', '').replace('_block', '')
                             
                             if clean_adjacent == breaker_color:
-                                print(f"[BREAKER DEBUG] Breaker at ({x},{y}) [{breaker_color}] activated by adjacent block at ({adj_x},{adj_y}) [{adjacent_color}]")
+                                if (x, y) in seen_breaker_positions:
+                                    break
                                 activated_breakers.append((x, y, breaker_color))
+                                seen_breaker_positions.add((x, y))
                                 break  # Only need one adjacent block to activate
                     
         # Process all activated breakers and find connected blocks of the same color
         for x, y, breaker_color in activated_breakers:
             # Add the breaker itself to breaking blocks
-            self.breaking_blocks.append((x, y, pygame.time.get_ticks(), 0, breaker_color, True))
-            print(f"[BREAKER DEBUG] Added breaker to breaking_blocks: ({x}, {y}) {breaker_color}")
+            key = (x, y, breaker_color)
+            if key not in existing_scheduled and key not in self._scheduled_break_positions:
+                self.breaking_blocks.append((x, y, pygame.time.get_ticks(), 0, breaker_color, True))
+                existing_scheduled.add(key)
+                self._scheduled_break_positions.add(key)
             
-            # The breaker will destroy all connected blocks of the same color
+            
+            # The breaker will destroy connected same-color blocks
             connected_blocks = self.find_connected_pieces(x, y, breaker_color)
-            print(f"[BREAKER DEBUG] Found {len(connected_blocks)} connected blocks for breaker at ({x}, {y})")
-            
-            for cx, cy in connected_blocks:
-                if (cx, cy) != (x, y):  # Don't add the breaker twice
-                    self.breaking_blocks.append((cx, cy, pygame.time.get_ticks(), 0, breaker_color, False))
-                    print(f"[BREAKER DEBUG] Added connected block to breaking_blocks: ({cx}, {cy}) {breaker_color}")
+            positions = set(connected_blocks)
+            # Rectangle cluster detection for instant break
+            min_x = min(px for px, _ in positions) if positions else x
+            max_x = max(px for px, _ in positions) if positions else x
+            min_y = min(py for _, py in positions) if positions else y
+            max_y = max(py for _, py in positions) if positions else y
+            rect_area = (max_x - min_x + 1) * (max_y - min_y + 1)
+            is_rect_cluster = len(positions) == rect_area
+
+            now_ts = pygame.time.get_ticks()
+            hop = int(getattr(self, 'lightning_hop_ms', 100))
+
+            if is_rect_cluster:
+                # Break whole rectangle instantly (ts = now)
+                for cx, cy in positions:
+                    if (cx, cy) == (x, y):
+                        continue
+                    cell = self.puzzle_grid[cy][cx]
+                    if cell and (('_garbage' in cell) or ('_strike' in cell)):
+                        continue
+                    k2 = (cx, cy, breaker_color)
+                    if k2 not in existing_scheduled and k2 not in self._scheduled_break_positions:
+                        self.breaking_blocks.append((cx, cy, now_ts, 0, breaker_color, False))
+                        existing_scheduled.add(k2)
+                        self._scheduled_break_positions.add(k2)
+            else:
+                # Unified immediate break for non-rectangular clusters as well (no layered BFS)
+                # Schedule all connected same-color normal blocks to break now
+                for cx, cy in positions:
+                    if (cx, cy) == (x, y):
+                        continue
+                    cell = self.puzzle_grid[cy][cx]
+                    if cell and (('_garbage' in cell) or ('_strike' in cell)):
+                        continue
+                    k3 = (cx, cy, breaker_color)
+                    if k3 not in existing_scheduled and k3 not in self._scheduled_break_positions:
+                        self.breaking_blocks.append((cx, cy, now_ts, 0, breaker_color, False))
+                        existing_scheduled.add(k3)
+                        self._scheduled_break_positions.add(k3)
+
+            # Phase 2 lightning (staggered) disabled for stability in breaking loop
+            if False and getattr(self, 'lightning_breaks_enabled', False) and getattr(self, 'lightning_staggered', False):
+                start_frontier = set()
+                # Start from neighbors of any same-color block scheduled above
+                scheduled_normals = {(sx, sy) for (sx, sy, _ts, _d, _bt, _ib) in self.breaking_blocks if _bt == breaker_color}
+                base_front = scheduled_normals if scheduled_normals else set(connected_blocks)
+                for cx, cy in base_front:
+                    for nx, ny in ((cx-1, cy), (cx+1, cy), (cx, cy-1), (cx, cy+1)):
+                        if 0 <= nx < self.grid_width and 0 <= ny < self.grid_height:
+                            c = self.puzzle_grid[ny][nx]
+                            if not c:
+                                continue
+                            if ('_garbage' in c) or (('_strike' in c) and getattr(self, 'lightning_affects_strikes', False)):
+                                start_frontier.add((nx, ny))
+                # Build BFS layers across attack cells
+                visited = set()
+                layers = []
+                frontier = set(start_frontier)
+                while frontier:
+                    layer = set()
+                    for nx, ny in frontier:
+                        if (nx, ny) in visited:
+                            continue
+                        visited.add((nx, ny))
+                        cell = self.puzzle_grid[ny][nx]
+                        if not cell:
+                            continue
+                        if ('_garbage' in cell) or (('_strike' in cell) and getattr(self, 'lightning_affects_strikes', False)):
+                            layer.add((nx, ny))
+                    if not layer:
+                        break
+                    layers.append(layer)
+                    # Next frontier
+                    next_frontier = set()
+                    for nx, ny in layer:
+                        for qx, qy in ((nx-1, ny), (nx+1, ny), (nx, ny-1), (nx, ny+1)):
+                            if 0 <= qx < self.grid_width and 0 <= qy < self.grid_height and (qx, qy) not in visited:
+                                qc = self.puzzle_grid[qy][qx]
+                                if qc and (('_garbage' in qc) or (('_strike' in qc) and getattr(self, 'lightning_affects_strikes', False))):
+                                    next_frontier.add((qx, qy))
+                    frontier = next_frontier
+                # Schedule layers into breaking_blocks with timestamps spaced by hop_ms
+                hop = int(getattr(self, 'lightning_hop_ms', 100))
+                now = pygame.time.get_ticks()
+                # Offset garbage lightning to start after last normal layer
+                normal_layers = 0
+                if not is_rect_cluster:
+                    # estimate by max layer_index-1 used above
+                    # find max scheduled ts for normals
+                    if self.breaking_blocks:
+                        max_ts = max((ts for (_x,_y,ts,_d,_bt,_ib) in self.breaking_blocks if _bt == breaker_color), default=now)
+                        normal_layers = max(0, (max_ts - now) // max(1, hop))
+                for i, layer in enumerate(layers):
+                    tstamp = now + (normal_layers + i) * hop
+                    for nx, ny in layer:
+                        self.breaking_blocks.append((nx, ny, tstamp, 0, breaker_color, False))
+                        # Lightning visuals disabled
+                    
         
         return len(activated_breakers) > 0
 
     def clear_breaking_blocks(self):
-        """Clear breaking blocks from the grid."""
+        """Clear breaking blocks that are due now; leave future-scheduled ones.
+        Returns a tuple (processed_count, remaining_scheduled).
+        """
         if self.breaking_blocks:
-            # Count the number of blocks being broken for combo tracking
-            combo_count = len(self.breaking_blocks)
-            print(f"DEBUG: Clearing {combo_count} breaking blocks")
-            
+            now_ts = pygame.time.get_ticks()
+            due = []
+            future = []
+            for x, y, ts, delay, block_type, is_breaker in self.breaking_blocks:
+                # Treat entries with missing ts as due now
+                if ts is None or ts <= now_ts:
+                    due.append((x, y, ts, delay, block_type, is_breaker))
+                else:
+                    future.append((x, y, ts, delay, block_type, is_breaker))
+            if not due:
+                # Nothing to process yet
+                return (0, len(future))
+
+            combo_count = len(due)
+
+            # Lightning visuals disabled
+
             # Get broken blocks for attack generation
             broken_blocks = []
-            for x, y, _, _, block_type, _ in self.breaking_blocks:
+            for x, y, _ts, _delay, block_type, _ in due:
                 if 0 <= y < self.grid_height and 0 <= x < self.grid_width:
-                    # Add to broken blocks list for attack generation
                     broken_blocks.append((x, y, block_type))
-                    # Remove the block from the grid
                     self.puzzle_grid[y][x] = None
             
             # Play single break sound if this is not part of a combo
             if self.chain_count == 0 and self.audio and broken_blocks:
-                print("DEBUG: Playing single break sound - not part of combo")
                 self.audio.play_sound("singlebreak")
                 # Now increment chain count for subsequent breaks
                 self.chain_count = 1
@@ -1316,18 +1799,15 @@ class PuzzleEngine:
                 # Play appropriate combo sound
                 if self.audio:
                     if self.chain_count == 2:
-                        print("DEBUG: Playing double combo sound")
                         self.audio.play_sound("double")
                     elif self.chain_count == 3:
-                        print("DEBUG: Playing triple combo sound")
                         self.audio.play_sound("triple")
                     elif self.chain_count > 3:
-                        print(f"DEBUG: Playing tripormore combo sound for {self.chain_count}x combo")
                         self.audio.play_sound("tripormore")
 
                 # Calculate position in the middle of the broken blocks for the combo text
                 sum_x, sum_y = 0, 0
-                for x, y, _, _, _, _ in self.breaking_blocks:
+                for x, y, _ts, _delay, _bt, _ib in due:
                     sum_x += x
                     sum_y += y
                 avg_x = sum_x / combo_count
@@ -1345,16 +1825,51 @@ class PuzzleEngine:
             
             # Generate attacks based on broken blocks if we have a handler
             if hasattr(self, 'blocks_broken_handler') and broken_blocks:
-                # Call the handler with the broken blocks
-                is_cluster = self.chain_count > 1
-                combo_multiplier = max(1, self.chain_count)
-                
-                # This will call back to the TestMode which manages the attack system
-                self.blocks_broken_handler(broken_blocks, is_cluster, combo_multiplier)
+                # Per-chain dedupe of break notifications to prevent duplicate attack generation
+                try:
+                    if not hasattr(self, '_broken_notified_positions'):
+                        self._broken_notified_positions = set()
+                    pos_sig = tuple(sorted((int(x), int(y)) for x, y, _ in broken_blocks))
+                    if pos_sig not in self._broken_notified_positions:
+                        self._broken_notified_positions.add(pos_sig)
+                        is_cluster = self.chain_count > 1
+                        combo_multiplier = max(1, self.chain_count)
+                        self.blocks_broken_handler(broken_blocks, is_cluster, combo_multiplier)
+                except Exception:
+                    # Fallback to single notify if dedupe fails
+                    is_cluster = self.chain_count > 1
+                    combo_multiplier = max(1, self.chain_count)
+                    self.blocks_broken_handler(broken_blocks, is_cluster, combo_multiplier)
             
-            # Clear the breaking blocks list
-            self.breaking_blocks = []
-            print("DEBUG: Breaking blocks list cleared")
+            # Persist only future-scheduled entries, but avoid duplicates within this chain
+            if future:
+                try:
+                    if not hasattr(self, '_scheduled_break_positions'):
+                        self._scheduled_break_positions = set()
+                    deduped = []
+                    for (sx, sy, sts, sdel, sbt, sib) in future:
+                        key = (sx, sy, sbt)
+                        if key in self._scheduled_break_positions:
+                            continue
+                        self._scheduled_break_positions.add(key)
+                        deduped.append((sx, sy, sts, sdel, sbt, sib))
+                    self.breaking_blocks = deduped
+                except Exception:
+                    self.breaking_blocks = future
+            else:
+                self.breaking_blocks = []
+            
+
+            # Ensure renderer breaking animations are cleared only for just-broken cells
+            if hasattr(self, 'renderer') and hasattr(self.renderer, 'animation_state_manager'):
+                try:
+                    asm = self.renderer.animation_state_manager
+                    for x, y, _ts, _delay, _bt, _ib in due:
+                        asm.breaking_blocks_animations.pop((x, y), None)
+                except Exception:
+                    pass
+            return (combo_count, len(self.breaking_blocks))
+        return (0, 0)
     
     def activate_breaker_blocks(self):
         """Legacy method for backward compatibility - use the state machine instead."""
@@ -1368,7 +1883,7 @@ class PuzzleEngine:
         if not blocks_to_update:
             return
             
-        print(f"Processing {len(blocks_to_update)} fully transformed garbage blocks")
+        
             
         # Convert fully transformed garbage blocks to normal blocks
         for (x, y), color in blocks_to_update:
@@ -1382,7 +1897,7 @@ class PuzzleEngine:
                 if current_block and '_garbage' in current_block:
                     # Replace with normal block of the same color
                     self.player_engine.puzzle_grid[y][x] = block_type
-                    print(f"Transformed player garbage block at ({x}, {y}) to {block_type}")
+                    
             
             # Check enemy grid
             if 0 <= x < self.enemy_engine.grid_width and 0 <= y < self.enemy_engine.grid_height:
@@ -1391,7 +1906,7 @@ class PuzzleEngine:
                 if current_block and '_garbage' in current_block:
                     # Replace with normal block of the same color
                     self.enemy_engine.puzzle_grid[y][x] = block_type
-                    print(f"Transformed enemy garbage block at ({x}, {y}) to {block_type}")
+                    
                     
         # Make sure these changes are visible immediately
         self.player_renderer.update_visual_state()

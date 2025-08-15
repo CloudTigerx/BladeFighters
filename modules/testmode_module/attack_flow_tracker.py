@@ -8,12 +8,14 @@ Replaces scattered debug messages with organized summaries.
 
 import time
 from typing import Dict, List, Any
+from utils.clock import Clock, PygameClock
 
 class AttackFlowTracker:
     """Tracks attack flow between players with clean summary output."""
     
-    def __init__(self):
+    def __init__(self, clock: Clock = None):
         """Initialize the attack flow tracker."""
+        self.clock: Clock = clock or PygameClock()
         self.reset()
     
     def reset(self):
@@ -44,7 +46,7 @@ class AttackFlowTracker:
             'type': attack_type,
             'count': count,
             'remaining': count,
-            'timestamp': time.time()
+            'timestamp': self._now_s()
         })
     
     def track_queued(self, receiver: str, attack_type: str, count: int):
@@ -101,7 +103,7 @@ class AttackFlowTracker:
     
     def should_print_summary(self) -> bool:
         """Check if enough time has passed to print another summary."""
-        current_time = time.time()
+        current_time = self._now_s()
         if current_time - self.last_summary_time > 5.0:  # Every 5 seconds max
             self.last_summary_time = current_time
             return True
@@ -115,3 +117,9 @@ class AttackFlowTracker:
                 print(f"   → {combo_info['strikes']} strikes")
             if combo_info.get('garbage', 0) > 0:
                 print(f"   → {combo_info['garbage']} garbage")
+
+    def _now_ms(self) -> int:
+        return int(self.clock.now_ms())
+
+    def _now_s(self) -> float:
+        return self._now_ms() / 1000.0

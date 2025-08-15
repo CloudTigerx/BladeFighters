@@ -1,0 +1,163 @@
+{
+  "initial_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "LOADING",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": false,
+      "score": 0,
+      "level": 1,
+      "lines_cleared": 0,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.7,
+      "sfx_volume": 0.8,
+      "music_volume": 0.6,
+      "current_song": null
+    },
+    "input": {
+      "keyboard": {
+        "space_pressed": false,
+        "left_pressed": false,
+        "right_pressed": false,
+        "down_pressed": false,
+        "up_pressed": false
+      },
+      "mouse": {
+        "left_button": false,
+        "right_button": false,
+        "position": [0, 0]
+      }
+    }
+  },
+  "main_menu_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "MAIN_MENU",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": false,
+      "score": 0,
+      "level": 1,
+      "lines_cleared": 0,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.7,
+      "sfx_volume": 0.8,
+      "music_volume": 0.6,
+      "current_song": "menu_music"
+    }
+  },
+  "game_active_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "GAME",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": true,
+      "score": 1500,
+      "level": 5,
+      "lines_cleared": 25,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.7,
+      "sfx_volume": 0.8,
+      "music_volume": 0.6,
+      "current_song": "game_music"
+    }
+  },
+  "pause_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "PAUSE",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": false,
+      "score": 1500,
+      "level": 5,
+      "lines_cleared": 25,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.7,
+      "sfx_volume": 0.8,
+      "music_volume": 0.6,
+      "current_song": "pause_music"
+    }
+  },
+  "settings_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "SETTINGS",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": false,
+      "score": 0,
+      "level": 1,
+      "lines_cleared": 0,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.5,
+      "sfx_volume": 0.9,
+      "music_volume": 0.4,
+      "current_song": null
+    }
+  },
+  "high_score_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "GAME",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": true,
+      "score": 50000,
+      "level": 20,
+      "lines_cleared": 150,
+      "game_mode": "NORMAL"
+    },
+    "audio": {
+      "master_volume": 0.7,
+      "sfx_volume": 0.8,
+      "music_volume": 0.6,
+      "current_song": "game_music"
+    }
+  },
+  "test_mode_state": {
+    "game_running": true,
+    "screen": {
+      "current_screen": "GAME",
+      "transition_in_progress": false,
+      "transition_duration": 0.5
+    },
+    "puzzle": {
+      "game_active": true,
+      "score": 0,
+      "level": 1,
+      "lines_cleared": 0,
+      "game_mode": "TEST"
+    },
+    "audio": {
+      "master_volume": 0.3,
+      "sfx_volume": 0.5,
+      "music_volume": 0.2,
+      "current_song": null
+    }
+  }
+} 

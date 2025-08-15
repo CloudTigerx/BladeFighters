@@ -87,14 +87,17 @@ class ScreenManager:
             print("Screen Manager: Initializing game screen")
         elif screen_name == "test":
             print("Screen Manager: Initializing test screen")
-        elif screen_name == "settings":
-            print("Screen Manager: Initializing settings screen")
+        # Settings screen removed
         elif screen_name == "story":
             print("Screen Manager: Initializing story screen")
         elif screen_name == "story_content":
             print("Screen Manager: Initializing story content screen")
         elif screen_name == "main_menu":
             print("Screen Manager: Initializing main menu screen")
+        elif screen_name == "smithing":
+            print("Screen Manager: Initializing smithing screen")
+        elif screen_name == "inventory":
+            print("Screen Manager: Initializing inventory screen")
         
         print(f"Screen Manager: Transitioned from {old_screen} to {screen_name}")
     

@@ -1,0 +1,309 @@
+# Animation System
+
+## Overview
+
+The Animation System provides comprehensive animation management for the BladeFighters game, including sprite-based animations, state management, and rendering optimization. This system handles all game animations with efficient state tracking and smooth playback.
+
+## 🎯 Key Features
+
+- **Sprite Animation Management** - Efficient sprite sheet animation handling
+- **Animation State Management** - Centralized animation state tracking and control
+- **Rendering Optimization** - Optimized animation rendering with minimal performance impact
+- **Frame Rate Control** - Configurable frame rates and timing for smooth animations
+- **Animation Transitions** - Smooth transitions between different animation states
+- **Memory Management** - Efficient memory usage for animation assets
+- **Integration Support** - Easy integration with game state and other systems
+
+## 📁 Module Structure
+
+```
+core/Animations/
+├── README.md                      # This documentation file
+├── Animation_Rendering.py         # Primary animation rendering system
+└── AnimationStateManagement.py    # Animation state management and control
+```
+
+## 🚀 Quick Start
+
+### Basic Usage
+
+```python
+from core.Animations.Animation_Rendering import AnimationRenderer
+from core.Animations.AnimationStateManagement import AnimationStateManager
+
+# Initialize the animation system
+state_manager = AnimationStateManager()
+renderer = AnimationRenderer(state_manager)
+
+# Load and play an animation
+animation_id = renderer.load_animation("player_idle", "assets/player_idle.png", 8, 1)
+renderer.play_animation(animation_id)
+```
+
+### Advanced Usage with State Management
+
+```python
+from core.Animations.Animation_Rendering import AnimationRenderer
+from core.Animations.AnimationStateManagement import AnimationStateManager
+
+# Initialize with custom settings
+state_manager = AnimationStateManager()
+renderer = AnimationRenderer(state_manager, fps=60)
+
+# Create complex animation sequence
+idle_anim = renderer.load_animation("idle", "assets/idle.png", 4, 1)
+walk_anim = renderer.load_animation("walk", "assets/walk.png", 8, 1)
+attack_anim = renderer.load_animation("attack", "assets/attack.png", 6, 1)
+
+# Set up animation transitions
+state_manager.set_transition("idle", "walk", "walk")
+state_manager.set_transition("walk", "idle", "idle")
+state_manager.set_transition("idle", "attack", "attack")
+state_manager.set_transition("attack", "idle", "idle")
+```
+
+## 📋 API Reference
+
+### AnimationRenderer
+
+The primary class for animation rendering and playback.
+
+#### Constructor
+
+```python
+AnimationRenderer(state_manager: AnimationStateManager, fps: int = 30)
+```
+
+**Parameters:**
+- `state_manager` (AnimationStateManager): Animation state manager instance
+- `fps` (int, optional): Target frame rate for animations (default: 30)
+
+**Returns:**
+- `AnimationRenderer`: Initialized animation renderer instance
+
+#### Methods
+
+##### `load_animation(name: str, sprite_sheet_path: str, frames: int, rows: int = 1) -> str`
+
+Load an animation from a sprite sheet.
+
+**Parameters:**
+- `name` (str): Name identifier for the animation
+- `sprite_sheet_path` (str): Path to the sprite sheet image
+- `frames` (int): Number of frames in the animation
+- `rows` (int, optional): Number of rows in the sprite sheet (default: 1)
+
+**Returns:**
+- `str`: Animation ID for referencing the loaded animation
+
+##### `play_animation(animation_id: str, loop: bool = True)`
+
+Start playing an animation.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation to play
+- `loop` (bool, optional): Whether to loop the animation (default: True)
+
+##### `stop_animation(animation_id: str)`
+
+Stop playing an animation.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation to stop
+
+##### `pause_animation(animation_id: str)`
+
+Pause an animation.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation to pause
+
+##### `resume_animation(animation_id: str)`
+
+Resume a paused animation.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation to resume
+
+##### `get_current_frame(animation_id: str) -> pygame.Surface`
+
+Get the current frame of an animation.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation
+
+**Returns:**
+- `pygame.Surface`: Current frame surface
+
+##### `update(delta_time: float)`
+
+Update all animations with elapsed time.
+
+**Parameters:**
+- `delta_time` (float): Time elapsed since last update in seconds
+
+### AnimationStateManager
+
+The primary class for animation state management and transitions.
+
+#### Constructor
+
+```python
+AnimationStateManager()
+```
+
+**Returns:**
+- `AnimationStateManager`: Initialized animation state manager instance
+
+#### Methods
+
+##### `set_current_state(state: str)`
+
+Set the current animation state.
+
+**Parameters:**
+- `state` (str): New animation state
+
+##### `get_current_state() -> str`
+
+Get the current animation state.
+
+**Returns:**
+- `str`: Current animation state
+
+##### `set_transition(from_state: str, to_state: str, animation_id: str)`
+
+Set up a transition between animation states.
+
+**Parameters:**
+- `from_state` (str): Source state
+- `to_state` (str): Target state
+- `animation_id` (str): Animation to play during transition
+
+##### `trigger_transition(to_state: str)`
+
+Trigger a transition to a new state.
+
+**Parameters:**
+- `to_state` (str): Target state to transition to
+
+##### `is_playing(animation_id: str) -> bool`
+
+Check if an animation is currently playing.
+
+**Parameters:**
+- `animation_id` (str): ID of the animation to check
+
+**Returns:**
+- `bool`: True if animation is playing, False otherwise
+
+##### `get_animation_progress(animation_id: str) -> float`
+
+Get the progress of an animation (0.0 to 1.0).
+
+**Parameters:**
+- `animation_id` (str): ID of the animation
+
+**Returns:**
+- `float`: Animation progress from 0.0 to 1.0
+
+## 🔧 Integration Examples
+
+### Basic Game Integration
+
+```python
+from core.Animations.Animation_Rendering import AnimationRenderer
+from core.Animations.AnimationStateManagement import AnimationStateManager
+
+class Player:
+    def __init__(self):
+        self.anim_state_manager = AnimationStateManager()
+        self.anim_renderer = AnimationRenderer(self.anim_state_manager)
+        
+        # Load player animations
+        self.idle_anim = self.anim_renderer.load_animation("idle", "assets/player_idle.png", 4)
+        self.walk_anim = self.anim_renderer.load_animation("walk", "assets/player_walk.png", 8)
+        
+        # Set initial state
+        self.anim_state_manager.set_current_state("idle")
+        self.anim_renderer.play_animation(self.idle_anim)
+    
+    def update(self, delta_time):
+        # Update animations
+        self.anim_renderer.update(delta_time)
+    
+    def render(self, screen, position):
+        # Get current animation frame
+        current_frame = self.anim_renderer.get_current_frame(self.idle_anim)
+        screen.blit(current_frame, position)
+    
+    def set_state(self, new_state):
+        # Change animation state
+        self.anim_state_manager.trigger_transition(new_state)
+        if new_state == "idle":
+            self.anim_renderer.play_animation(self.idle_anim)
+        elif new_state == "walk":
+            self.anim_renderer.play_animation(self.walk_anim)
+```
+
+### Advanced Integration with State Transitions
+
+```python
+from core.Animations.Animation_Rendering import AnimationRenderer
+from core.Animations.AnimationStateManagement import AnimationStateManager
+
+class Enemy:
+    def __init__(self):
+        self.anim_state_manager = AnimationStateManager()
+        self.anim_renderer = AnimationRenderer(self.anim_state_manager, fps=60)
+        
+        # Load enemy animations
+        self.idle_anim = self.anim_renderer.load_animation("idle", "assets/enemy_idle.png", 6)
+        self.attack_anim = self.anim_renderer.load_animation("attack", "assets/enemy_attack.png", 8)
+        self.death_anim = self.anim_renderer.load_animation("death", "assets/enemy_death.png", 10)
+        
+        # Set up state transitions
+        self.anim_state_manager.set_transition("idle", "attack", self.attack_anim)
+        self.anim_state_manager.set_transition("attack", "idle", self.idle_anim)
+        self.anim_state_manager.set_transition("idle", "death", self.death_anim)
+        self.anim_state_manager.set_transition("attack", "death", self.death_anim)
+        
+        # Start with idle animation
+        self.anim_state_manager.set_current_state("idle")
+        self.anim_renderer.play_animation(self.idle_anim)
+    
+    def attack(self):
+        # Trigger attack state
+        self.anim_state_manager.trigger_transition("attack")
+        self.anim_renderer.play_animation(self.attack_anim, loop=False)
+    
+    def die(self):
+        # Trigger death state
+        self.anim_state_manager.trigger_transition("death")
+        self.anim_renderer.play_animation(self.death_anim, loop=False)
+```
+
+## 🧪 Testing
+
+The animation system includes comprehensive tests to ensure proper functionality:
+
+```bash
+# Run animation system tests
+python -m pytest core/Animations/tests/ -v
+```
+
+## 📝 Notes
+
+- Animations are automatically optimized for performance
+- Frame rates can be adjusted per animation renderer instance
+- State transitions are handled automatically when configured
+- Memory usage is optimized for sprite sheet animations
+- The system supports both looping and non-looping animations
+
+## 🔗 Related Documentation
+
+- **[Core Module Documentation](../README.md)** - Core system documentation
+- **[Graphics System Documentation](../gfx/README.md)** - Graphics system integration
+- **[Asset Loading Documentation](../asset_loader.py)** - Asset loading integration
+
+*This module is part of the BladeFighters project. For project-wide documentation, see the [Documentation Index](../../docs/README.md).*

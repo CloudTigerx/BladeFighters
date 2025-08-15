@@ -1,198 +1,282 @@
-# Blade Fighters - Puzzle Fighting Game
+# BladeFighters - Puzzle Combat Game
 
-A complex puzzle fighting game with real-time combat mechanics, currently undergoing architectural refactoring from monolithic to modular design.
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![Pygame](https://img.shields.io/badge/Pygame-2.0+-green.svg)](https://pygame.org)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🎮 Game Overview
+A sophisticated puzzle combat game featuring Tetris-style gameplay with advanced attack mechanics, state management, and modular architecture.
 
-Blade Fighters is a puzzle-based fighting game where players compete by solving puzzles to generate attacks against their opponents. The game features:
+## 🎮 Overview
 
-- **Real-time puzzle solving** with falling block mechanics
-- **Attack system** that generates offensive moves based on puzzle performance
-- **Multiple game modes** including test mode, story mode, and quickplay
-- **Audio system** with music and sound effects
-- **Menu system** with settings and customization options
+BladeFighters combines classic puzzle gameplay with innovative combat mechanics. Players clear blocks to generate attacks against opponents, using strategic thinking and quick reflexes to dominate the battlefield.
 
-## 🏗️ Current Architecture
+### Key Features
 
-### Status: Monolithic (Under Refactoring)
-The codebase is currently a monolithic structure with tight coupling between components:
+- **🎯 Advanced Combat System**: Mathematical attack calculations with cluster strikes and garbage blocks
+- **🏗️ Modular Architecture**: Clean, maintainable codebase with 15+ specialized modules
+- **🎵 Audio Integration**: Comprehensive audio system with state management
+- **📱 Responsive UI**: Scaled interface system for multiple screen sizes
+- **🎲 AI Opponents**: Multiple AI difficulty levels with heuristic and random strategies
+- **📹 Replay System**: Record and replay gameplay sessions
+- **🔧 Test Mode**: Comprehensive testing and debugging tools
+- **📖 Story Mode**: Immersive narrative experience
+- **⚙️ Settings Management**: Unified configuration system
 
-- **game_client.py** (1632 lines) - Main game loop and coordination
-- **puzzle_module.py** - Core puzzle engine
-- **attack_system.py** - Attack generation and management
-- **audio_system.py** - Audio playback and management
-- **menu_system.py** - Menu interface and navigation
-- **settings_system.py** - Game settings and configuration
-- **puzzle_renderer.py** - Visual rendering of puzzle elements
-
-### Known Issues (Resolved)
-- ✅ Alpha value clamping (was 303, now clamped to 255)
-- ✅ Screen shake attribute missing (fixed)
-- ✅ Invalid color argument errors (resolved)
-
-## 🚀 Refactoring Goals
-
-### Target Architecture: Modular Design
-Transform the monolithic codebase into a clean, modular architecture:
-
-1. **Core Engine** - Extracted puzzle engine with clean interfaces
-2. **Event System** - Decoupled communication between modules
-3. **Plugin Architecture** - Swappable components (audio, rendering, etc.)
-4. **Data Contracts** - Clear interfaces between modules
-5. **Testing Infrastructure** - Comprehensive test coverage
-
-### Refactoring Tools Created
-- **dependency_analyzer.py** - Analyzes module dependencies and coupling
-- **test_framework.py** - Comprehensive testing suite
-- **session_manager.py** - Progress tracking and context management
-- **REFACTORING_TRACKER.md** - Detailed progress tracking
-
-## 🛠️ Development Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- Pygame
+
+- Python 3.11 or higher
+- Pygame 2.0 or higher
 - Git
 
 ### Installation
-```bash
-# Clone the repository
-git clone https://github.com/CloudTigerx/BladeFighters.git
-cd BladeFighters
 
-# Install dependencies (when requirements.txt is created)
-pip install -r requirements.txt
-```
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd BladeFighters-cluster-fix-working-copy-6
+   ```
 
-### Running the Game
-```bash
-# Run the main game
-python main.py
+2. **Set up virtual environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
 
-# Run in test mode (for development)
-python main.py --test-mode
-```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
 
-### Running Refactoring Tools
-```bash
-# Analyze dependencies
-python dependency_analyzer.py
+4. **Run the game**
+   ```bash
+   python main.py
+   ```
 
-# Run tests
-python test_framework.py
+### Alternative Launch Methods
 
-# Start session management
-python session_manager.py
-```
+- **macOS/Linux**: `./run_mac.sh`
+- **Windows**: `run_bladefighters.bat`
+- **Direct**: `python game_client.py`
 
-## 📁 Project Structure
+## 🎮 Game Controls
+
+### Basic Controls
+- **Arrow Keys**: Move pieces left/right/down
+- **Z/X**: Rotate pieces
+- **Space**: Hard drop
+- **C**: Hold piece
+- **P**: Pause
+
+### Advanced Controls
+- **F9**: Input tuner overlay (tune input feel)
+- **F10**: Debug mode
+- **F11**: Fullscreen toggle
+
+### Menu Navigation
+- **Arrow Keys**: Navigate menus
+- **Enter**: Select option
+- **Escape**: Back/Cancel
+
+## 🏗️ Architecture
+
+BladeFighters uses a modular architecture with clear separation of concerns:
 
 ```
 BladeFighters/
-├── main.py                 # Entry point
-├── game_client.py          # Main game client (monolithic)
-├── puzzle_module.py        # Puzzle engine
-├── attack_system.py        # Attack system
-├── audio_system.py         # Audio management
-├── menu_system.py          # Menu interface
-├── settings_system.py      # Settings management
-├── puzzle_renderer.py      # Visual rendering
-├── puzzle_ai.py           # AI opponent logic
-├── blade_fighter_lessons.py # Tutorial system
-├── mp3_player.py          # Music player
-├── ui_editor.py           # UI editing tools
-├── ui_positions.json      # UI layout data
-├── puzzleassets/          # Game assets
-│   ├── magic/             # Magic effects
-│   ├── fonts/             # Font files
-│   ├── Enemys/            # Enemy sprites
-│   └── sounds/            # Audio files
-├── stories/               # Story content
-├── sounds/                # Sound effects and music
-├── dependency_analyzer.py # Dependency analysis tool
-├── test_framework.py      # Testing framework
-├── session_manager.py     # Session management
-├── REFACTORING_TRACKER.md # Progress tracking
-└── ARCHITECTURE_DOCUMENTATION.md # Architecture docs
+├── core/                    # Core game engine
+├── modules/                 # Specialized modules
+│   ├── attack_module/       # Combat system
+│   ├── audio_module/        # Audio management
+│   ├── game_state_module/   # State management
+│   ├── input_module/        # Input handling
+│   ├── menu_module/         # UI systems
+│   ├── screen_module/       # Screen management
+│   ├── settings_module/     # Configuration
+│   ├── testmode_module/     # Testing tools
+│   └── ...                  # Additional modules
+├── puzzleassets/            # Game assets
+├── sounds/                  # Audio files
+├── contracts/               # Interface contracts
+└── tests/                   # Test suites
 ```
 
-## 🔧 Refactoring Process
+For detailed architecture information, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-### Phase 1: Foundation & Analysis ✅
-- [x] Create architecture documentation
-- [x] Identify core dependencies
-- [x] Set up tracking system
-- [ ] Create dependency graph
-- [ ] Define module boundaries
-- [ ] Set up testing framework
+## 📚 Documentation
 
-### Phase 2: Core Engine Extraction
-- [ ] Extract puzzle engine core
-- [ ] Create clean interfaces
-- [ ] Implement event system
-- [ ] Add dependency injection
-- [ ] Create data contracts
+### 📖 [Documentation Index](DOCUMENTATION_SPECIALIST_REPORT.md)
+Complete guide to all project documentation and knowledge management.
 
-### Phase 3: Module Separation
-- [ ] Separate attack system
-- [ ] Modularize rendering
-- [ ] Extract audio system
-- [ ] Separate menu system
-- [ ] Extract settings system
+### 🏗️ [System Architecture](ARCHITECTURE.md)
+Technical architecture overview including time management, input handling, and system integration.
 
-### Phase 4: Integration & Testing
-- [ ] Reintegrate modules
-- [ ] Comprehensive testing
-- [ ] Performance optimization
-- [ ] Documentation
+### 📋 Progress Reports
+- [Audio Integration Completion](AUDIO_INTEGRATION_COMPLETION_REPORT.md)
+- [Error Handling Refactor Progress](ERROR_HANDLING_REFACTOR_PROGRESS.md)
+
+### 🎯 Module Documentation
+- [Attack Module](modules/attack_module/README.md) - Combat system
+- [Screen Module](modules/screen_module/README.md) - Screen management
+- [Audio Module](modules/audio_module/AUDIO_STATE_INTEGRATION_GUIDE.md) - Audio integration
+- [Game State Module](modules/game_state_module/MIGRATION_GUIDE.md) - State management
+- [Settings Module](modules/settings_module/MIGRATION_GUIDE.md) - Configuration
+- [Input Module](modules/input_module/MIGRATION_GUIDE.md) - Input handling
 
 ## 🧪 Testing
 
-The project includes a comprehensive testing framework:
-
+### Run All Tests
 ```bash
-# Run all tests
-python test_framework.py
-
-# Run specific test categories
-python test_framework.py --category puzzle
-python test_framework.py --category attack
-python test_framework.py --category integration
+python -m pytest
 ```
 
-## 📊 Progress Tracking
+### Run Specific Test Suites
+```bash
+# Attack module tests
+python -m pytest modules/attack_module/tests/
 
-- **Current Phase**: Foundation & Analysis
-- **Progress**: 0% - Planning Phase
-- **Next Milestone**: Dependency analysis and module boundary definition
+# Screen module tests
+python -m pytest modules/screen_module/tests/
 
-See `REFACTORING_TRACKER.md` for detailed progress information.
+# Audio module tests
+python -m pytest modules/audio_module/tests/
+```
+
+### Test Coverage
+```bash
+python -m pytest --cov=modules --cov-report=html
+```
+
+## 🔧 Development
+
+### Code Style
+- **Line Length**: 100 characters
+- **Formatter**: Black
+- **Linter**: Ruff
+- **Type Checking**: MyPy
+
+### Pre-commit Hooks
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+### Development Tools
+- **Asset Packer**: `python tools/packer/pack.py`
+- **Asset Preflight**: `python modules/asset_module/preflight.py`
+- **Repro Token**: `python tools/repro_token.py`
+
+## 🎯 Key Systems
+
+### Combat System
+The attack module implements sophisticated combat mechanics:
+- **Garbage Blocks**: Standard block flooding
+- **Cluster Strikes**: Special attack patterns (2x2, 3x3, 4x4)
+- **Chain Mechanics**: Position-based combo levels
+- **Attack Queuing**: Proper timing and delivery
+
+### State Management
+Unified state management across all modules:
+- **Game State Manager**: Central state coordination
+- **Audio State**: Volume, music, and SFX management
+- **Screen State**: Screen transitions and history
+- **Input State**: Input processing and validation
+
+### Audio System
+Comprehensive audio integration:
+- **Volume Control**: Master, music, and SFX volumes
+- **Music Management**: Playlist and playback control
+- **SFX System**: Sound effects with spatial audio
+- **State Persistence**: Settings and preferences
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**Game won't start**
+- Check Python version (3.11+ required)
+- Verify Pygame installation
+- Check virtual environment activation
+
+**Audio issues**
+- Verify audio files in `sounds/` directory
+- Check system audio settings
+- Review audio module logs
+
+**Performance problems**
+- Check frame rate with F10 debug mode
+- Review asset preflight results
+- Monitor memory usage
+
+### Getting Help
+1. Check the [troubleshooting guide](docs/TROUBLESHOOTING.md)
+2. Review relevant module documentation
+3. Check test results for your specific issue
+4. Create an issue with detailed error information
 
 ## 🤝 Contributing
 
-This project is currently in active refactoring. The focus is on:
+### Development Workflow
+1. **Fork the repository**
+2. **Create a feature branch**
+3. **Follow code style guidelines**
+4. **Write tests for new features**
+5. **Update documentation**
+6. **Submit a pull request**
 
-1. **Architectural improvements** - Modularization and clean design
-2. **Code quality** - Testing, documentation, and maintainability
-3. **Performance optimization** - Maintaining game performance during refactoring
+### Module Development
+- Follow the established module structure
+- Use the module documentation template
+- Implement comprehensive testing
+- Update integration guides
 
-## 📝 License
+### Documentation Standards
+- Use clear, concise language
+- Include code examples
+- Provide migration guides for changes
+- Update the documentation index
 
-[Add your license information here]
+## 📊 Project Status
 
-## 🐛 Known Issues
+### ✅ Completed
+- Core game engine
+- Attack system implementation
+- Audio system integration
+- Screen management
+- Error handling refactor
+- State management system
 
-- Attack system tightly coupled to grid and game state
-- High cyclomatic complexity in main game client
-- Limited test coverage
-- Monolithic architecture making maintenance difficult
+### 🚧 In Progress
+- Module documentation standardization
+- User documentation creation
+- Performance optimization
+- Advanced AI features
 
-## 🎯 Roadmap
+### 📋 Planned
+- Mobile platform support
+- Multiplayer networking
+- Advanced visual effects
+- Additional game modes
 
-1. **Short term** (1-2 weeks): Complete dependency analysis and core engine extraction
-2. **Medium term** (1-2 months): Complete module separation and integration
-3. **Long term** (3+ months): Performance optimization and production readiness
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Pygame Community**: For the excellent game development framework
+- **Python Community**: For the robust programming language
+- **Open Source Contributors**: For inspiration and best practices
+
+## 📞 Support
+
+- **Documentation**: [Documentation Index](DOCUMENTATION_SPECIALIST_REPORT.md)
+- **Issues**: Create an issue on GitHub
+- **Discussions**: Use GitHub Discussions for questions
 
 ---
 
-**Note**: This project is actively being refactored. The current codebase is functional but monolithic. The refactoring process aims to transform it into a maintainable, modular architecture while preserving all existing functionality. 
+**BladeFighters** - Where puzzle meets combat! ⚔️🎮
+
+*Built with ❤️ and Python* 

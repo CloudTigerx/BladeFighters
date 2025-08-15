@@ -10,6 +10,7 @@ from typing import Dict
 # Import animation modules
 from .Animations.Animation_Rendering import AnimationRenderer
 from .Animations.AnimationStateManagement import AnimationStateManager
+from utils.clock import PygameClock, Clock
 
 # GarbageBlockState removed - no longer needed
 
@@ -47,11 +48,14 @@ class PuzzleRenderer:
     Handles rendering and visual effects for the puzzle game.
     This class separates rendering logic from game mechanics.
     """
-    def __init__(self, engine):
+    def __init__(self, engine, clock: Clock = None):
         """Initialize the puzzle renderer with an engine."""
         self.engine = engine
         self.screen = engine.screen
         print(f"[DEBUG] Renderer screen size: {self.screen.get_width()}x{self.screen.get_height()}")
+
+        # Unified time source
+        self.clock: Clock = clock or getattr(engine, 'clock', None) or PygameClock()
         
         # Visual state tracking
         self.visual_state = {
@@ -81,11 +85,8 @@ class PuzzleRenderer:
         
         # Set a reference to this renderer in the engine
         self.engine.renderer = self
-        
-        # Initialize screen shake attributes
-        self.screen_shake = False
-        self.shake_offset_x = 0
-        self.shake_offset_y = 0
+
+        # Screen shake removed
         
         # Get screen dimensions
         self.width = self.screen.get_width()
@@ -164,23 +165,19 @@ class PuzzleRenderer:
         # Animation buffer setup
         self.current_animation_buffer = {}
         self.next_animation_buffer = {}
-        self.buffer_swap_time = time.time()
+        self.buffer_swap_time = self._now_s()
         self.buffer_swap_interval = 1.0 / 240.0  # 240Hz update rate
         
         # Fixed timestep for logic updates
         self.fixed_timestep = 1.0 / 240.0  # 240Hz logic updates
         self.accumulator = 0.0
-        self.last_frame_time = time.time()
+        self.last_frame_time = self._now_s()
         
-        # At the beginning of the main game loop
-        pygame.display.set_mode((self.engine.width, self.engine.height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+        # The display surface is created and managed by GameClient.
+        # Avoid resetting the display here to prevent flicker during loading.
         
         # Or manually implement frame limiting
-        self.clock = pygame.time.Clock()
-        
-        # Initialize modular animation system
-        self.animation_state_manager = AnimationStateManager(engine)
-        self.animation_renderer = AnimationRenderer(self.screen, engine, self.animation_state_manager)
+        self.clock_fps = pygame.time.Clock()
         
         # Initialize piece visuals now that the animation system is ready
         self.update_visual_state()
@@ -204,6 +201,12 @@ class PuzzleRenderer:
             self.current_x_offset = (self.screen.get_width() - grid_width_pixels) // 2
             self.current_y_offset = (self.screen.get_height() - grid_height_pixels) // 2
     
+    def _now_ms(self) -> int:
+        return int(self.clock.now_ms())
+
+    def _now_s(self) -> float:
+        return self._now_ms() / 1000.0
+
     def _get_block_color(self, position):
         """Get the color of a block at a given position (x, y)."""
         x, y = position
@@ -238,6 +241,7 @@ class PuzzleRenderer:
         """Update the visual state to match the current game state."""
         # Initialize collections if they don't exist
         self.animation_state_manager.ensure_state_initialized()
+        # No-op (removed debug)
             
         # Get the visual position with micro-movement interpolation
         self.animation_state_manager.update_player_piece_state()
@@ -252,7 +256,7 @@ class PuzzleRenderer:
         
         # CRITICAL FIX: Only check for clusters when NO piece is falling
         # This prevents cluster detection from interfering with falling pieces
-        current_time = time.time()
+        current_time = self._now_s()
         
         # Add frame throttling for cluster detection
         if not hasattr(self, 'last_cluster_check_time'):
@@ -269,7 +273,10 @@ class PuzzleRenderer:
         )
         
         if should_check_clusters:
-            if hasattr(self.engine, 'find_all_clusters'):
+            # Use stricter rectangular detection for UI so incomplete shapes don't glow
+            if hasattr(self.engine, 'find_rectangular_clusters_for_render'):
+                current_clusters = self.engine.find_rectangular_clusters_for_render()
+            elif hasattr(self.engine, 'find_all_clusters'):
                 current_clusters = self.engine.find_all_clusters()
             self.last_cluster_check_time = current_time
         elif hasattr(self, 'previous_clusters'):
@@ -293,24 +300,36 @@ class PuzzleRenderer:
                     
                     # If it's a new cluster, create an animation for it
                     if is_new_cluster and len(new_cluster) >= 4:  # Only animate clusters of 4+ blocks
-                        cluster_id = self.next_cluster_id
-                        self.next_cluster_id += 1
+                        # CRITICAL FIX: Check if this cluster contains strike blocks - NO GLOW FOR STRIKES
+                        has_strike_blocks = False
+                        for block_pos in new_cluster:
+                            x, y = block_pos
+                            if (0 <= x < self.engine.grid_width and 0 <= y < self.engine.total_grid_height):
+                                block_type = self.engine.puzzle_grid[y][x]
+                                if block_type and ('strike_block' in str(block_type) or '_strike' in str(block_type)):
+                                    has_strike_blocks = True
+                                    break
                         
-                        self.cluster_animations[cluster_id] = {
-                            'start_time': current_time,
-                            'duration': self.cluster_animation_duration,
-                            'blocks': new_cluster.copy(),
-                            'color': self._get_block_color(next(iter(new_cluster)))  # Get color from first block
-                        }
-                        
-                        # RE-ENABLE CLUSTER GLOW EFFECTS
-                        # Add cluster glow effect for new cluster
-                        self.cluster_glow_effects[cluster_id] = {
-                            'blocks': new_cluster.copy(),
-                            'color': self._get_block_color(next(iter(new_cluster))),
-                            'start_time': current_time,
-                            'intensity': self.cluster_glow_intensity
-                        }
+                        # Only add cluster effects if NO strike blocks are present
+                        if not has_strike_blocks:
+                            cluster_id = self.next_cluster_id
+                            self.next_cluster_id += 1
+                            
+                            self.cluster_animations[cluster_id] = {
+                                'start_time': current_time,
+                                'duration': self.cluster_animation_duration,
+                                'blocks': new_cluster.copy(),
+                                'color': self._get_block_color(next(iter(new_cluster)))  # Get color from first block
+                            }
+                            
+                            # RE-ENABLE CLUSTER GLOW EFFECTS (but NOT for strikes)
+                            # Add cluster glow effect for new cluster
+                            self.cluster_glow_effects[cluster_id] = {
+                                'blocks': new_cluster.copy(),
+                                'color': self._get_block_color(next(iter(new_cluster))),
+                                'start_time': current_time,
+                                'intensity': self.cluster_glow_intensity
+                            }
         
         # Update cluster animations
         for cluster_id in list(self.cluster_animations.keys()):
@@ -358,7 +377,7 @@ class PuzzleRenderer:
         self.previous_clusters = current_clusters
         
         # ENABLE BREAKING ANIMATIONS AND ENHANCE THEM
-        current_time = time.time()
+        current_time = self._now_s()
         
         # Clear any expired breaking animations
         if hasattr(self, 'breaking_blocks_animations'):
@@ -367,52 +386,102 @@ class PuzzleRenderer:
                     if current_time - data['start_time'] > data['total_duration'] * 1.2:
                         self.animation_state_manager.breaking_blocks_animations.pop(pos, None)
             
-        # Add new breaking animations
+        # Incrementally add breaking animations only for new engine positions
         if hasattr(self.engine, 'breaking_blocks'):
-            for x, y, start_time, delay, block_color, is_breaker in self.engine.breaking_blocks:
-                pos_key = (x, y)
-                # Skip if we already have an animation for this position
-                if pos_key in self.animation_state_manager.breaking_blocks_animations:
-                    continue
-                
-                # Get the actual block type with breaker suffix if needed
-                # FIX: Only add suffix if it's not already there
-                if "_breaker" in block_color:
-                    # The block is already a breaker type, don't add suffix again
-                    block_type = block_color
-                else:
-                    # Only add suffix for non-breaker types that need to become breakers
-                    block_type = block_color + ('_breaker' if is_breaker else '')
-                
-                # Try to get the block surface from the engine (same logic as in _draw_block)
-                # Strip any suffixes when checking for base image
-                clean_type = block_type.replace('_breaker', '').replace('_garbage', '')
-                is_garbage = '_garbage' in block_type
-                
-                # Create detailed breaking animation with particles
-                try:
-                    # Initialize breaking animation
-                    self.animation_state_manager.breaking_blocks_animations[pos_key] = {
-                        'start_time': current_time,
-                        'progress': 0.0,
-                        'total_duration': self.animation_state_manager.breaking_animation_duration,
-                        'block_type': block_type
-                    }
-                    
-                    # Add particles if possible
-                    if hasattr(self, 'create_dust_particles'):
-                        # Make sure position is valid before creating particles
-                        if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+            # Consider either explicit breaking state or the presence of scheduled breaks
+            engine_in_break = False
+            try:
+                if getattr(self.engine, 'breaking_blocks', None):
+                    engine_in_break = True
+                elif hasattr(self.engine, 'chain_state') and self.engine.chain_state in ('breaking', 'waiting_for_breaking'):
+                    engine_in_break = True
+            except Exception:
+                engine_in_break = True
+            if engine_in_break:
+                # Build current engine positions and a lookup for color/breaker
+                engine_positions = set()
+                pos_to_info = {}
+                for x, y, _ts, _d, block_color, is_breaker in self.engine.breaking_blocks:
+                    key = (int(x), int(y))
+                    engine_positions.add(key)
+                    pos_to_info[key] = (block_color, is_breaker)
+
+                # Initialize tracking set if missing
+                if not hasattr(self, 'initialized_break_positions'):
+                    self.initialized_break_positions = set()
+
+                # Only attempt to add animations for positions not yet initialized
+                candidates = [pos for pos in engine_positions if pos not in self.initialized_break_positions]
+                if candidates:
+                    asm = self.animation_state_manager
+                    now_ms = self._now_ms()
+                    # Engine's gate is in milliseconds; ensure our visual duration uses seconds internally
+                    gate_ms = int(getattr(self.engine, 'breaking_animation_duration', 300))
+                    threshold_ms = max(180, gate_ms)
+                    for pos_key in candidates:
+                        # Skip if already active animation exists (defensive)
+                        if pos_key in asm.breaking_blocks_animations:
+                            self.initialized_break_positions.add(pos_key)
+                            continue
+                        # Throttle re-add per position
+                        last_ms = None
+                        try:
+                            last_ms = asm.recent_break_timestamps.get(pos_key)
+                        except Exception:
+                            last_ms = None
+                        if last_ms is not None and (now_ms - int(last_ms) < threshold_ms):
+                            continue
+                        # Resolve block type and ensure not empty
+                        block_color, is_breaker = pos_to_info.get(pos_key, ("", False))
+                        if "_breaker" in block_color:
+                            block_type = block_color
+                        else:
+                            block_type = (block_color + ('_breaker' if is_breaker else '')) if block_color else 'red_block'
+                        try:
+                            # Capture the current block surface so we can render a shrinking sprite
+                            gx, gy = pos_key
+                            grid_block_type = None
                             try:
-                                self.animation_state_manager.breaking_blocks_animations[pos_key]['particles'] = self.create_dust_particles(x, y, block_color)
+                                grid_block_type = self.engine.puzzle_grid[gy][gx]
+                            except Exception:
+                                grid_block_type = None
+
+                            block_surface = None
+                            if grid_block_type and hasattr(self.engine, 'puzzle_pieces'):
+                                # Map grid type to asset key used by puzzle_pieces
+                                asset_key = None
+                                if '_garbage' in grid_block_type or grid_block_type == 'garbage_block':
+                                    asset_key = grid_block_type if grid_block_type in self.engine.puzzle_pieces else 'garbage_block'
+                                elif '_strike' in grid_block_type:
+                                    asset_key = 'strike_block'
+                                elif '_breaker' in grid_block_type:
+                                    asset_key = grid_block_type.replace('_breaker', 'breaker')
+                                else:
+                                    asset_key = grid_block_type.replace('_block', 'block')
+                                block_surface = self.engine.puzzle_pieces.get(asset_key)
+
+                            asm.breaking_blocks_animations[pos_key] = {
+                                'start_ms': now_ms,
+                                'progress': 0.0,
+                                'total_duration_ms': int(getattr(asm, 'breaking_animation_duration', 0.3) * 1000.0),
+                                'block_type': block_type,
+                                'block_surface': block_surface
+                            }
+                            # Create dust/spark particles for the break effect
+                            x, y = pos_key
+                            try:
+                                asm.breaking_blocks_animations[pos_key]['particles'] = self.create_dust_particles(x, y, block_color)
                             except Exception as e:
                                 print(f"Error creating dust particles: {e}")
-                                self.animation_state_manager.breaking_blocks_animations[pos_key]['particles'] = []
-                        else:
-                            # Empty particles list if coordinates aren't valid
-                            self.animation_state_manager.breaking_blocks_animations[pos_key]['particles'] = []
-                except Exception as e:
-                    print(f"Error creating breaking animation: {e}")
+                                asm.breaking_blocks_animations[pos_key]['particles'] = []
+                            # Mark as initialized only after successful add
+                            self.initialized_break_positions.add(pos_key)
+                        except Exception as e:
+                            print(f"Error creating breaking animation: {e}")
+            else:
+                # Reset tracking when not breaking
+                if hasattr(self, 'initialized_break_positions'):
+                    self.initialized_break_positions.clear()
         
         # OPTIMIZE: Only calculate cluster support when no piece is falling
         supported_cluster_positions = set()
@@ -465,25 +534,62 @@ class PuzzleRenderer:
         
         self.animation_state_manager.update_falling_block_state(current_time, supported_cluster_positions, self.recently_broken_positions)
         
-        # IMPORTANT: Improve the check for whether a block is part of a supported cluster
-        # Make this check more strict to ensure clusters don't fall inappropriately
-        if hasattr(self, 'previous_grid_state'):
-            for y in range(self.engine.grid_height - 1):  # Skip bottom row
-                for x in range(self.engine.grid_width):
-                    # Add this improved check for clusters:
-                    # For any block, check if it's part of a supported cluster
-                    # If it is, NEVER animate it falling - this ensures cluster integrity
-                    current_pos = (x, y)
-                    if current_pos in supported_cluster_positions:
-                        # If this position is in a supported cluster, remove any animation
-                        if current_pos in self.animation_state_manager.visual_falling_blocks:
-                            self.animation_state_manager.visual_falling_blocks.pop(current_pos, None)
+        # IMPORTANT: Avoid force-removing in-progress falling animations for supported clusters.
+        # Doing so can cause skip/repeat loops if gravity re-adds them the next frame.
+        # Instead, let existing animations complete; rely on the engine to avoid re-queuing.
+        # We still do not start new animations for supported clusters (handled in engine),
+        # but if an animation exists, keep it.
     
     def update_animations(self):
         """Update all animations."""
         self.animation_state_manager.update_animations()
         self.animation_renderer.update_animations()
     
+    def create_dust_particles(self, grid_x: int, grid_y: int, block_color: str):
+        """Create a set of particle dicts for a breaking block at grid position."""
+        particles = []
+        try:
+            # Choose color palette based on block color
+            color_map = {
+                'red': ((255, 80, 80), (255, 140, 140)),
+                'blue': ((80, 160, 255), (140, 200, 255)),
+                'green': ((80, 255, 120), (140, 255, 180)),
+                'yellow': ((255, 220, 80), (255, 240, 140))
+            }
+            base, glow = color_map.get(block_color.replace('_block', '').replace('_breaker', '').replace('_garbage', ''), ((200, 200, 200), (240, 240, 240)))
+
+            # Number of particles scales slightly with block size
+            count = int(getattr(self.animation_state_manager, 'particle_count_per_block', 16))
+            max_speed = float(getattr(self.animation_state_manager, 'particle_max_speed', 3.0))
+            min_speed = float(getattr(self.animation_state_manager, 'particle_min_speed', 0.5))
+            max_size = int(getattr(self.animation_state_manager, 'particle_max_size', 4))
+            min_size = int(getattr(self.animation_state_manager, 'particle_min_size', 1))
+            lifespan = float(getattr(self.animation_state_manager, 'particle_lifespan', 0.6))
+
+            for _ in range(count):
+                speed = random.uniform(min_speed, max_speed)
+                angle = random.uniform(0, 2 * math.pi)
+                vx = math.cos(angle) * speed
+                vy = math.sin(angle) * speed * -0.5  # bias upwards a bit
+                size = random.randint(min_size, max_size)
+                life = lifespan * random.uniform(0.7, 1.0)
+                particles.append({
+                    'x': 0.5,  # relative inside the cell
+                    'y': 0.5,
+                    'vx': vx,
+                    'vy': vy,
+                    'length': max(2, size + 1),
+                    'width': max(1, size // 2),
+                    'rotation': random.uniform(0, 360),
+                    'color': base,
+                    'glow_color': glow,
+                    'life': life,
+                    'max_life': life
+                })
+        except Exception:
+            return []
+        return particles
+
     def clear_all_animations(self):
         """Clear all animations and visual effects."""
         if hasattr(self, 'animation_state_manager'):
@@ -518,7 +624,7 @@ class PuzzleRenderer:
             pygame.display.flip()
             
             # Limit frame rate
-            self.clock.tick(self.animation_frame_rate)
+            self.clock_fps.tick(self.animation_frame_rate)
         except Exception as e:
             print(f"[DEBUG] Error in draw_game_screen: {e}")
             traceback.print_exc()
@@ -529,14 +635,23 @@ class PuzzleRenderer:
             # Update coordinate offsets in case they changed
             self.update_coordinate_offsets()
             
-            # Draw the grid background
-            self.draw_grid_background()
-            
-            # Draw the grid blocks
-            self.draw_grid_blocks()
-            
-            # Draw the falling piece
-            self.draw_falling_piece()
+            # Compute clipping rect to constrain drawing to this board only
+            grid_width_px = self.engine.grid_width * self.block_width
+            grid_height_px = self.engine.grid_height * self.block_height
+            clip_rect = pygame.Rect(self.current_x_offset, self.current_y_offset, grid_width_px, grid_height_px)
+            # Save previous clip to restore later
+            prev_clip = self.screen.get_clip()
+            try:
+                self.screen.set_clip(clip_rect)
+                # Draw the grid background
+                self.draw_grid_background()
+                # Draw the grid blocks
+                self.draw_grid_blocks()
+                # Draw the falling piece
+                self.draw_falling_piece()
+            finally:
+                # Always restore previous clip
+                self.screen.set_clip(prev_clip)
             
             # Draw the next piece preview if configured
             if hasattr(self, 'preview_side'):
@@ -547,6 +662,12 @@ class PuzzleRenderer:
             
             # Draw the score and level
             self.draw_score_and_level()
+            
+            # Render animated combo texts
+            try:
+                self.animation_renderer.render_combo_texts()
+            except Exception:
+                pass
             
             # Draw the game over screen if the game is over
             self.draw_game_over_screen()
@@ -611,9 +732,11 @@ class PuzzleRenderer:
         # Use new animation renderer for breaking blocks
         for pos, block_data in self.animation_state_manager.breaking_blocks_animations.items():
             self.animation_renderer.render_breaking_block(pos, block_data, start_x, start_y, self.block_width, self.block_height)
-        
+
         # Draw cluster glow effects
         self.draw_cluster_glow_effects()
+
+        # Lightning overlays disabled
         
         # Return updated regions for efficient screen updates
     
@@ -725,49 +848,62 @@ class PuzzleRenderer:
                     self.engine.start_game()
     
     def show_combo_text(self, combo_count, position=None):
-        """Display combo text on screen when chain reactions occur."""
-        if not hasattr(self, 'combo_text_font'):
+        """Queue animated combo text via animation state manager."""
+        try:
+            if combo_count <= 1:
+                return
+            # Resolve message from state manager map or fallback
+            message = None
+            if hasattr(self.animation_state_manager, 'combo_text_messages'):
+                message = self.animation_state_manager.combo_text_messages.get(int(combo_count))
+            if not message:
+                message = f"COMBO x{int(combo_count)}!"
+
+            # Choose font
+            font_obj = None
             try:
-                self.combo_text_font = pygame.font.Font(None, 48)
-            except:
-                self.combo_text_font = pygame.font.Font(None, 36)
-        
-        if combo_count > 1:
-            # Create combo text
-            combo_text = f"COMBO x{combo_count}!"
-            color = (255, 255, 0)  # Yellow for combo text
-            
-            # Render text
-            text_surface = self.combo_text_font.render(combo_text, True, color)
-            
-            # Determine position
+                font_path = getattr(self.animation_state_manager, 'combo_font_path', None)
+                font_size = int(getattr(self.animation_state_manager, 'combo_font_size', 36))
+                if font_path and os.path.exists(font_path):
+                    font_obj = pygame.font.Font(font_path, font_size)
+                else:
+                    font_obj = pygame.font.Font(None, font_size)
+            except Exception:
+                try:
+                    font_obj = pygame.font.Font(None, 36)
+                except Exception:
+                    font_obj = None
+
+            # Position defaults to center
             if position:
-                text_x, text_y = position
-                # Adjust position to center the text
-                text_x -= text_surface.get_width() // 2
-                text_y -= text_surface.get_height() // 2
+                x, y = int(position[0]), int(position[1])
             else:
-                # Default to center of screen
-                text_x = (self.screen.get_width() - text_surface.get_width()) // 2
-                text_y = (self.screen.get_height() - text_surface.get_height()) // 2
-            
-            # Draw background rectangle for better visibility
-            padding = 10
-            bg_rect = pygame.Rect(text_x - padding, text_y - padding, 
-                                text_surface.get_width() + 2 * padding, 
-                                text_surface.get_height() + 2 * padding)
-            pygame.draw.rect(self.screen, (0, 0, 0), bg_rect)
-            pygame.draw.rect(self.screen, (255, 255, 255), bg_rect, 2)
-            
-            # Draw the text
-            self.screen.blit(text_surface, (text_x, text_y))
+                x = self.screen.get_width() // 2
+                y = self.screen.get_height() // 2
+
+            import time as _t
+            duration = float(getattr(self.animation_state_manager, 'combo_text_duration', 2.0))
+            entry = {
+                'text': message,
+                'color': (255, 255, 0),
+                'x': x,
+                'y': y,
+                'start_time': _t.time(),
+                'duration': duration,
+                'font': font_obj,
+            }
+            if not hasattr(self.animation_state_manager, 'combo_texts'):
+                self.animation_state_manager.combo_texts = []
+            self.animation_state_manager.combo_texts.append(entry)
+        except Exception:
+            pass
     
     def draw_cluster_glow_effects(self):
         """Draw glow effects for all active clusters."""
         if not self.cluster_glow_effects:
             return
             
-        current_time = time.time()
+        current_time = self._now_s()
         
         # Calculate grid offset
         start_x = self.current_x_offset

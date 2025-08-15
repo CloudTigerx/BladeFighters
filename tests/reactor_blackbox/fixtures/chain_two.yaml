@@ -1,0 +1,29 @@
+setup:
+  layout:
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., ., ., ., ., .]
+    - [., R, r, ., ., .]
+    - [., r, r, ., ., .]
+    - [., ., r, r, ., .]
+    - [., ., ., ., ., .]
+
+inputs:
+  - { t: 0, action: tick }
+  - { t: 50, action: drop }
+
+expect:
+  final_checksum: d00d661cc36339eb
+  payloads:
+    - { kind: garbage, count: 1, pattern: null }
+    - { kind: strike, count: 4, pattern: 1x4_vertical }
+

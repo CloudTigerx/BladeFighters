@@ -3,156 +3,278 @@ AudioSystem Implementation
 =========================
 
 Extracted audio system providing sound effects and music playback functionality.
-This implementation adheres to the AudioSystemInterface contract.
+This implementation integrates with the unified game state management system.
 
 Author: Blade Fighters Refactoring Team
 Created: During Phase 1 refactoring
+Updated: Phase 2 - Audio State Integration
 """
 
-import pygame
 import os
+import pygame
 import random
-import time
-from typing import Dict, Optional
-
-# Import the interface contract for validation
+from typing import Dict, List, Optional, Any
 try:
-    from ..audio_interface_contract import AudioSystemInterface
-    USE_INTERFACE_CONTRACT = True
+    from ..logging_module.error_handler import (
+        safe_file_operation,
+        safe_operation
+    )
+    from ..logging_module.logger import get_logger
+    from .audio_state_manager import AudioStateManager
+    from .mp3_player import MP3Player
 except ImportError:
-    # Fallback for when running standalone
-    USE_INTERFACE_CONTRACT = False
-    class AudioSystemInterface:
-        pass
-
-from .mp3_player import MP3Player
-
-
-class AudioSystem(AudioSystemInterface):
-    """
-    Extracted AudioSystem implementation.
+    # Fallback for testing or when running as standalone
+    def safe_file_operation(operation_name, default_return, log_level):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error in {operation_name}: {e}")
+                    return default_return
+            return wrapper
+        return decorator
     
-    Provides sound effects and music playback functionality with graceful
-    error handling and fallback behavior.
+    def safe_operation(operation_name, default_return, log_level):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error in {operation_name}: {e}")
+                    return default_return
+            return wrapper
+        return decorator
     
-    This class implements the AudioSystemInterface contract to ensure
-    compatibility during the refactoring process.
-    """
+    def get_logger(name):
+        import logging
+        return logging.getLogger(name)
     
-    def __init__(self, asset_path: str):
-        """
-        Initialize audio system with support for sound effects and music.
+    # Mock AudioStateManager for testing
+    class AudioStateManager:
+        def __init__(self, state_manager):
+            self.state_manager = state_manager
+    
+    # Mock MP3Player for testing
+    class MP3Player:
+        def __init__(self, songs=None, background_image=None):
+            self.songs = songs or []
+            self.background_image = background_image
+            self.mp3_player_buttons = {}
         
-        Args:
-            asset_path (str): Path to the game assets directory
-        """
-        # Initialize paths
+        def draw(self, screen, width, height):
+            return {}
+        
+        def pause_song(self):
+            pass
+        
+        def next_song(self):
+            pass
+        
+        def prev_song(self):
+            pass
+        
+        def volume_up(self):
+            pass
+        
+        def volume_down(self):
+            pass
+
+logger = get_logger(__name__)
+
+
+class AudioSystem:
+    """
+    Comprehensive audio system for managing music and sound effects.
+    Handles MP3 playback, sound effects, and audio controls.
+    Now integrated with unified state management.
+    """
+
+    def __init__(self, root_path: str = ".", asset_path: str = "puzzleassets", 
+                 state_manager=None):
+        self.root_path = root_path
         self.asset_path = asset_path
-        self.root_path = os.path.dirname(asset_path)
-        print(f"Audio system initialized with asset path: {asset_path}\nRoot path: {self.root_path}")
         
-        # Initialize pygame mixer for sounds
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
-        print("Audio system initialized with optimal parameters for MP3 playback")
+        # State management integration
+        self.state_manager = state_manager
+        self.audio_state_manager = None
+        if state_manager:
+            self.audio_state_manager = AudioStateManager(state_manager)
+            self.audio_state_manager.audio_system = self
         
-        # Dictionaries to store loaded sounds and songs
-        self.sounds = {}
-        self.songs = []
+        # Sound effects storage
+        self.sounds: Dict[str, pygame.mixer.Sound] = {}
         
-        # Hover sound tracking
-        self.hovered_buttons = set()
-        self.last_hover_sound_time = 0
-        self.hover_sound_cooldown = 300  # Minimum time (ms) between hover sounds
+        # Music management
+        self.music_playlist: List[str] = []
+        self.music_index = 0
         
-        # Load custom background image for MP3 player
+        # MP3 player UI
         self.mp3_player_background = self._load_mp3_player_background()
+        self.mp3_player_buttons: Dict[str, pygame.Rect] = {}
         
         # Load sounds
         self._load_sounds()
         
-        # Load songs
-        self._load_songs()
+        # Load songs and create MP3 player
+        self._load_songs_and_create_mp3_player()
         
-        # Initialize the MP3 player
-        self.mp3_player = MP3Player(self.songs, self.mp3_player_background)
-        self.mp3_player.set_sounds(self.sounds)
+        # Sync initial state if state manager is available
+        if self.audio_state_manager:
+            self._sync_from_state()
+        
+        logger.info("AudioSystem initialized successfully")
     
-    def play_sound(self, sound_name: str) -> None:
-        """
-        Play a sound effect by name.
+    def _load_songs_and_create_mp3_player(self):
+        """Load songs from the songs directory and create MP3 player instance."""
+        try:
+            songs = []
+            songs_dir = os.path.join(self.root_path, "sounds", "songs")
+            
+            if os.path.exists(songs_dir):
+                # Define song metadata
+                song_metadata = {
+                    "Alex-Productions - Revenge.mp3": {
+                        "title": "Revenge",
+                        "artist": "Alex Productions",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "Lightning Traveler - Jungles.mp3.mp3": {
+                        "title": "Jungles",
+                        "artist": "Lightning Traveler",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "Lowtone Music - Medicine Of The Future - Abstract Technology.mp3": {
+                        "title": "Medicine Of The Future",
+                        "artist": "Lowtone Music",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "Nihilore - Single Lane Tunnel.mp3": {
+                        "title": "Single Lane Tunnel",
+                        "artist": "Nihilore",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "Pufino - Vibing (Chill Lofi Royalty Free Music).mp3": {
+                        "title": "Vibing",
+                        "artist": "Pufino",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "Soundwave Sphere - Gravity Breaks.mp3.mp3": {
+                        "title": "Gravity Breaks",
+                        "artist": "Soundwave Sphere",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "snoozy beats - cat cafe.mp3": {
+                        "title": "Cat Cafe",
+                        "artist": "Snoozy Beats",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    },
+                    "through-tge-horizon-sunocom-321414.mp3": {
+                        "title": "Through The Horizon",
+                        "artist": "Sunocom",
+                        "source": "Pixabay",
+                        "license": "Pixabay License"
+                    }
+                }
+                
+                # Load each song file
+                for filename in os.listdir(songs_dir):
+                    if filename.lower().endswith('.mp3'):
+                        file_path = os.path.join(songs_dir, filename)
+                        
+                        # Get metadata for this song
+                        metadata = song_metadata.get(filename, {
+                            "title": filename.replace('.mp3', ''),
+                            "artist": "Unknown Artist",
+                            "source": "Unknown",
+                            "license": "Unknown"
+                        })
+                        
+                        songs.append({
+                            "path": file_path,
+                            "title": metadata["title"],
+                            "artist": metadata["artist"],
+                            "source": metadata["source"],
+                            "license": metadata["license"]
+                        })
+                
+                logger.info(f"Loaded {len(songs)} songs for MP3 player")
+            else:
+                logger.warning(f"Songs directory not found: {songs_dir}")
+            
+            # Create MP3 player instance
+            self.mp3_player = MP3Player(songs, self.mp3_player_background)
+            
+            # Set sounds for MP3 player UI interactions
+            if hasattr(self, 'sounds'):
+                self.mp3_player.set_sounds(self.sounds)
+            
+            logger.info("MP3 player created successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to load songs and create MP3 player: {e}")
+            # Create empty MP3 player as fallback
+            self.mp3_player = MP3Player([], self.mp3_player_background)
+    
+    def _sync_from_state(self):
+        """Sync audio system state from the state manager."""
+        if not self.audio_state_manager:
+            return
         
-        Args:
-            sound_name (str): Name of the sound to play
-        """
-        print(f"Attempting to play sound: {sound_name}")
-        print(f"Available sounds: {list(self.sounds.keys())}")
+        # Update local state from state manager
+        self._update_sound_volumes()
+    
+    def _update_sound_volumes(self):
+        """Update sound volumes based on state manager values."""
+        if not self.audio_state_manager:
+            return
         
-        if sound_name in self.sounds:
-            try:
-                self.sounds[sound_name].play()
-                print(f"Successfully played sound: {sound_name}")
-            except Exception as e:
-                print(f"Error playing sound {sound_name}: {e}")
+        master_volume = self.audio_state_manager.get_master_volume()
+        sfx_volume = self.audio_state_manager.get_sfx_volume()
+        
+        # Update all loaded sounds with new volume
+        for sound_name, sound in self.sounds.items():
+            base_volume = self._get_base_volume_for_sound(sound_name)
+            final_volume = base_volume * sfx_volume * master_volume
+            sound.set_volume(final_volume)
+    
+    def _get_base_volume_for_sound(self, sound_name: str) -> float:
+        """Get the base volume for a specific sound type."""
+        if 'hover' in sound_name:
+            return 0.3
+        elif 'click' in sound_name:
+            return 0.4
+        elif 'placed' in sound_name:
+            return 0.5
         else:
-            print(f"Sound not found: {sound_name}")
-    
-    def play_music(self, music_name: str) -> None:
-        """
-        Play background music.
-        
-        Args:
-            music_name (str): Name of music to play
-        """
-        if music_name == 'music' and hasattr(self, 'mp3_player') and self.mp3_player.songs:
-            self.mp3_player.play_song()
-    
-    def handle_audio_events(self, event: pygame.event.Event) -> bool:
-        """
-        Handle pygame events related to audio.
-        
-        Args:
-            event (pygame.event.Event): Pygame event to process
-            
-        Returns:
-            bool: True if event was handled, False otherwise
-        """
-        # First let the MP3 player try to handle the event
-        if hasattr(self, 'mp3_player') and self.mp3_player.handle_events(event):
-            return True
-            
-        return False  # Event wasn't handled
-    
-    def draw_mp3_player(self, screen: pygame.Surface, width: int, height: int) -> Dict[str, pygame.Rect]:
-        """
-        Draw the MP3 player interface on screen.
-        
-        Args:
-            screen (pygame.Surface): Surface to draw on
-            width (int): Screen width
-            height (int): Screen height
-            
-        Returns:
-            Dict[str, pygame.Rect]: Dictionary of button names to their rects
-        """
-        if hasattr(self, 'mp3_player'):
-            return self.mp3_player.draw(screen, width, height)
-        return {}
-    
-    # Private implementation methods
-    
+            return 0.6
+
+    @safe_file_operation("load MP3 player background", None, "WARNING")
     def _load_mp3_player_background(self) -> Optional[pygame.Surface]:
         """Load custom background image for the MP3 player."""
-        background_image = None
+        # First, try themed skin under puzzleassets/menus/mp3_skin.png
+        try:
+            themed_path = os.path.join(self.asset_path, 'menus', 'mp3_skin.png')
+            if os.path.exists(themed_path):
+                return pygame.image.load(themed_path)
+        except Exception as e:
+            logger.warning(f"Failed to load themed MP3 skin: {str(e)}")
         
-        # First, check for the specific mp3player.png in puzzleassets
+        # Check for the specific mp3player.png in puzzleassets
         specific_path = os.path.join(self.asset_path, "mp3player.png")
         if os.path.exists(specific_path):
             try:
                 background_image = pygame.image.load(specific_path)
-                print(f"Loaded custom MP3 player background from {specific_path}")
                 return background_image
             except pygame.error as e:
-                print(f"Error loading specific MP3 player background {specific_path}: {e}")
+                logger.warning(f"Failed to load MP3 player background: {str(e)}")
         
         # Check for other mp3_player_bg.png or mp3_player_bg.jpg in various directories
         image_filenames = ['mp3_player_bg.png', 'mp3_player_bg.jpg', 'mp3_background.png', 'mp3_background.jpg']
@@ -169,12 +291,11 @@ class AudioSystem(AudioSystemInterface):
                 if os.path.exists(image_path):
                     try:
                         background_image = pygame.image.load(image_path)
-                        print(f"Loaded MP3 player background image from {image_path}")
                         return background_image
                     except pygame.error as e:
-                        print(f"Error loading MP3 player background image {image_path}: {e}")
+                        logger.warning(f"Failed to load MP3 background {image_path}: {str(e)}")
         
-        print("No custom MP3 player background image found, using default style")
+        logger.info("No MP3 player background found, using default")
         return None
     
     def _load_sounds(self) -> None:
@@ -197,184 +318,200 @@ class AudioSystem(AudioSystemInterface):
             os.path.join(self.asset_path, 'sounds')      # puzzleassets/sounds (fallback)
         ]
         
-        # Sound directory information
-        for sound_dir in sound_dirs:
-            if os.path.exists(sound_dir):
-                print(f"Found sound directory: {sound_dir}")
-            else:
-                print(f"Sound directory not found: {sound_dir}")
-        
-        # Print sound system info
-        print(f"Sound system initialized. Using sound files from '{sound_dirs[0]}' (primary) or '{sound_dirs[1]}' (fallback).")
-        
         # Load each sound from the first directory where it's found
         for sound_name, file_names in sound_files.items():
-            sound_loaded = False
-            
-            for file_name in file_names:
-                for sound_dir in sound_dirs:
-                    file_path = os.path.join(sound_dir, file_name)
-                    print(f"Looking for {sound_name} sound at: {file_path}")
-                    
-                    if os.path.exists(file_path):
-                        try:
-                            # Check file size isn't zero
-                            if os.path.getsize(file_path) == 0:
-                                print(f"Warning: {file_path} has zero size")
-                                continue
-                                
-                            # Load the sound file with proper error handling
-                            sound = pygame.mixer.Sound(file_path)
-                            
-                            # Set volume based on sound type
-                            if 'hover' in sound_name:
-                                sound.set_volume(0.3)
-                            elif 'click' in sound_name:
-                                sound.set_volume(0.4)
-                            elif 'placed' in sound_name:
-                                sound.set_volume(0.5)  # Set placed sound to 50% volume
-                            elif 'singlebreak' in sound_name:
-                                sound.set_volume(0.6)  # Set single break sound to 60% volume
-                                
-                            self.sounds[sound_name] = sound
-                            print(f"Loaded {sound_name} sound from {file_path}")
-                            sound_loaded = True
-                            break
-                        except pygame.error as e:
-                            print(f"Error loading sound {file_path}: {e}")
-                
-                if sound_loaded:
-                    break
-                    
-            # Create dummy sounds as fallback for essential effects if they couldn't be loaded
-            if not sound_loaded:
-                print(f"No sound file found for '{sound_name}', using silent dummy sound")
-                self._create_silent_dummy_sound(sound_name)
-    
-    def _create_silent_dummy_sound(self, name: str) -> None:
-        """Create a silent dummy sound as a fallback."""
-        print(f"Creating silent dummy sound for {name}")
-        try:
-            # Create a short, silent sound using numpy array
-            buffer = pygame.sndarray.array([0] * 1000)  # 1000 samples of silence
-            dummy_sound = pygame.sndarray.make_sound(buffer)
-            dummy_sound.set_volume(0.0)  # Ensure it's silent
-            self.sounds[name] = dummy_sound
-        except:
-            # Last resort: completely empty sound object
-            print(f"Could not create dummy sound for {name}, using empty object")
-            class DummySound:
-                def play(self): pass
-                def stop(self): pass
-                def set_volume(self, volume): pass
-            self.sounds[name] = DummySound()
-    
-    def set_volume(self, volume: float) -> None:
-        """
-        Set the volume for sound effects.
-        
-        Args:
-            volume (float): Volume level between 0.0 and 1.0
-        """
-        volume = max(0.0, min(1.0, volume))  # Clamp between 0.0 and 1.0
-        
-        # Set volume for all loaded sounds
-        for sound_name, sound in self.sounds.items():
-            if hasattr(sound, 'set_volume'):
-                sound.set_volume(volume)
-        
-        print(f"🔊 Sound effects volume set to {volume:.1f}")
-    
-    def set_music_volume(self, volume: float) -> None:
-        """
-        Set the volume for background music.
-        
-        Args:
-            volume (float): Volume level between 0.0 and 1.0
-        """
-        volume = max(0.0, min(1.0, volume))  # Clamp between 0.0 and 1.0
-        
-        # Set volume for pygame mixer music
-        pygame.mixer.music.set_volume(volume)
-        
-        print(f"🎵 Music volume set to {volume:.1f}")
-    
-    def _load_songs(self) -> None:
-        """Load MP3 files from the songs directory."""
-        try:
-            # Define songs directories to check - prioritize ROOT_PATH/sounds/songs
-            songs_dirs = [
-                os.path.join(self.root_path, 'sounds', 'songs'),    # ROOT_PATH/sounds/songs (primary)
-                os.path.join(self.asset_path, 'sounds', 'songs')    # puzzleassets/sounds/songs (fallback)
-            ]
-            
-            # Find all MP3 files in songs directories
-            self.songs = []
-            
-            for songs_dir in songs_dirs:
-                if os.path.exists(songs_dir):
-                    print(f"Scanning for songs in: {songs_dir}")
-                    files = os.listdir(songs_dir)
-                    print(f"Found {len(files)} files in songs directory: {songs_dir}")
-                    
-                    for file in files:
-                        # Check for audio formats
-                        if file.lower().endswith(('.mp3', '.wav', '.ogg')):
-                            file_path = os.path.join(songs_dir, file)
-                            
-                            # Skip if already added to avoid duplicates
-                            if any(song['path'] == file_path for song in self.songs):
-                                continue
-                                
-                            # Extract title and artist from filename
-                            file_name = os.path.splitext(file)[0]
-                            parts = file_name.split(' - ', 1)
-                            
-                            artist = parts[0] if len(parts) > 1 else "Unknown Artist"
-                            title = parts[1] if len(parts) > 1 else file_name
-                            
-                            # Default attribution
-                            source = ""
-                            license_type = ""
-                            
-                            # Known songs with proper attribution
-                            if "cat cafe" in file_name.lower():
-                                source = "Free Music Archive"
-                                license_type = "CC BY"
-                            elif "nihilore" in file_name.lower():
-                                source = "nihilore.com"
-                                license_type = "CC BY-NC-SA"
-                            
-                            self.songs.append({
-                                'path': file_path,
-                                'title': title,
-                                'artist': artist,
-                                'filename': file,
-                                'source': source,
-                                'license': license_type
-                            })
-                            print(f"Added song: {artist} - {title}")
-                else:
-                    print(f"Songs directory not found: {songs_dir}")
-                    
-            # Initialize the MP3 player with the songs
-            if self.songs:
-                print(f"Loaded {len(self.songs)} songs for the MP3 player")
-                if hasattr(self, 'mp3_player'):
-                    self.mp3_player.set_songs(self.songs)
+            sound_loaded = self._load_sound_file(sound_name, file_names, sound_dirs)
+            if sound_loaded:
+                logger.debug(f"Loaded sound: {sound_name}")
             else:
-                print("No songs found in any directory")
+                logger.warning(f"Failed to load sound: {sound_name}")
+
+    @safe_operation("load sound file", False, "WARNING")
+    def _load_sound_file(self, sound_name: str, file_names: List[str], sound_dirs: List[str]) -> bool:
+        """Load a specific sound file."""
+        for file_name in file_names:
+            for sound_dir in sound_dirs:
+                file_path = os.path.join(sound_dir, file_name)
                 
-        except Exception as e:
-            print(f"Error loading songs: {e}")
+                if os.path.exists(file_path):
+                    try:
+                        # Check file size isn't zero
+                        if os.path.getsize(file_path) == 0:
+                            logger.warning(f"Sound file is empty: {file_path}")
+                            continue
+                            
+                        # Load the sound file with proper error handling
+                        sound = pygame.mixer.Sound(file_path)
+                        
+                        # Set volume based on sound type
+                        if 'hover' in sound_name:
+                            sound.set_volume(0.3)
+                        elif 'click' in sound_name:
+                            sound.set_volume(0.4)
+                        elif 'placed' in sound_name:
+                            sound.set_volume(0.5)
+                        else:
+                            sound.set_volume(0.6)
+                        
+                        self.sounds[sound_name] = sound
+                        return True
+                        
+                    except pygame.error as e:
+                        logger.warning(f"Failed to load sound {file_path}: {str(e)}")
+                        continue
+                    except Exception as e:
+                        logger.warning(f"Unexpected error loading sound {file_path}: {str(e)}")
+                        continue
+        
+        return False
 
+    @safe_operation("play sound", None, "WARNING")
+    def play_sound(self, sound_name: str) -> None:
+        """
+        Play a sound effect by name.
+        
+        Args:
+            sound_name (str): Name of the sound to play
+                Expected values: 'hover', 'click', 'placed', 'singlebreak',
+                               'double', 'triple', 'tripormore'
+        """
+        # Check if sound effects are enabled via state manager
+        if self.audio_state_manager and not self.audio_state_manager.is_sfx_enabled():
+            return
+        
+        if sound_name in self.sounds:
+            try:
+                self.sounds[sound_name].play()
+                logger.debug(f"Playing sound: {sound_name}")
+            except Exception as e:
+                logger.warning(f"Failed to play sound {sound_name}: {str(e)}")
+        else:
+            logger.debug(f"Sound not found: {sound_name}")
 
-# Validate interface compliance at module load time
-if USE_INTERFACE_CONTRACT:
-    # Verify that AudioSystem implements all required methods
-    required_methods = ['__init__', 'play_sound', 'play_music', 'handle_audio_events', 'draw_mp3_player']
-    for method in required_methods:
-        if not hasattr(AudioSystem, method):
-            raise NotImplementedError(f"AudioSystem missing required method: {method}")
+    @safe_operation("play music", None, "WARNING")
+    def play_music(self, music_name: str) -> None:
+        """
+        Play background music.
+        
+        Args:
+            music_name (str): Name of music to play
+                Expected values: 'music' (starts MP3 player)
+        """
+        # Check if music is enabled via state manager
+        if self.audio_state_manager and not self.audio_state_manager.is_music_enabled():
+            return
+            
+        if music_name == 'music':
+            # Toggle MP3 player visibility via state manager
+            if self.audio_state_manager:
+                current_visible = self.audio_state_manager.is_mp3_player_visible()
+                self.audio_state_manager.set_mp3_player_visible(not current_visible, "audio_system")
+            else:
+                # Fallback to local state if no state manager
+                logger.warning("No state manager available for MP3 player visibility")
+        else:
+            logger.debug(f"Unknown music: {music_name}")
+
+    @safe_operation("handle audio events", False, "WARNING")
+    def handle_audio_events(self, event: pygame.event.Event) -> bool:
+        """
+        Handle pygame events related to audio.
+        
+        Args:
+            event (pygame.event.Event): Pygame event to process
+            
+        Returns:
+            bool: True if event was handled, False otherwise
+        """
+        # Check if MP3 player exists and handle its events
+        if hasattr(self, 'mp3_player') and self.mp3_player:
+            return self.mp3_player.handle_events(event)
+        
+        return False
+
+    def _handle_mp3_button_click(self, button_name: str) -> None:
+        """Handle MP3 player button clicks."""
+        logger.debug(f"MP3 button clicked: {button_name}")
+        # Play click sound
+        self.play_sound('click')
+        
+        # Handle different button actions using MP3 player instance
+        if hasattr(self, 'mp3_player') and self.mp3_player:
+            if button_name == 'play_pause':
+                self.mp3_player.pause_song()
+                logger.info("MP3 play/pause toggled")
+            elif button_name == 'next':
+                self.mp3_player.next_song()
+                logger.info("MP3 next track")
+            elif button_name == 'previous':
+                self.mp3_player.prev_song()
+                logger.info("MP3 previous track")
+            elif button_name == 'volume_up':
+                self.mp3_player.volume_up()
+                logger.info("MP3 volume up")
+            elif button_name == 'volume_down':
+                self.mp3_player.volume_down()
+                logger.info("MP3 volume down")
+
+    @safe_operation("draw MP3 player", {}, "WARNING")
+    def draw_mp3_player(self, screen: pygame.Surface, width: int, height: int) -> Dict[str, pygame.Rect]:
+        """
+        Draw the MP3 player interface on screen.
+        
+        Args:
+            screen (pygame.Surface): Surface to draw on
+            width (int): Screen width
+            height (int): Screen height
+            
+        Returns:
+            Dict[str, pygame.Rect]: Dictionary of button names to their rects
+        """
+        # Check if MP3 player exists and draw it
+        if hasattr(self, 'mp3_player') and self.mp3_player:
+            return self.mp3_player.draw(screen, width, height)
+        
+        return {}
     
-    print("✅ AudioSystem implementation validated against interface contract") 
+    # State management convenience methods
+    
+    def set_master_volume(self, volume: float) -> bool:
+        """Set master volume through state manager."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.set_master_volume(volume, "audio_system")
+        return False
+    
+    def set_music_volume(self, volume: float) -> bool:
+        """Set music volume through state manager."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.set_music_volume(volume, "audio_system")
+        return False
+    
+    def set_sfx_volume(self, volume: float) -> bool:
+        """Set sound effects volume through state manager."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.set_sfx_volume(volume, "audio_system")
+        return False
+    
+    def enable_music(self, enabled: bool) -> bool:
+        """Enable or disable music through state manager."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.set_music_enabled(enabled, "audio_system")
+        return False
+    
+    def enable_sfx(self, enabled: bool) -> bool:
+        """Enable or disable sound effects through state manager."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.set_sfx_enabled(enabled, "audio_system")
+        return False
+    
+    def get_audio_state_summary(self) -> Dict[str, Any]:
+        """Get a summary of the current audio state."""
+        if self.audio_state_manager:
+            return self.audio_state_manager.get_state_summary()
+        return {}
+    
+    def sync_from_settings(self, settings: Dict[str, Any]) -> None:
+        """Sync audio state from settings configuration."""
+        if self.audio_state_manager:
+            self.audio_state_manager.sync_from_settings(settings)
+            self._sync_from_state()

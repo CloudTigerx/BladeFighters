@@ -1,0 +1,185 @@
+name: Module Integration Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'modules/**'
+      - 'core/**'
+      - 'tests/integration/**'
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'core/**'
+      - 'tests/integration/**'
+
+jobs:
+  module-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+        module: ['audio_module', 'screen_module', 'input_module', 'settings_module', 'game_state_module']
+    
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYTHONWARNINGS: default
+      MODULE: ${{ matrix.module }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install psutil memory-profiler
+
+      - name: Run module integration tests
+        run: |
+          echo "🧪 Running integration tests for $MODULE"
+          python -m pytest tests/integration/test_${MODULE}_integration.py -v --json-report --json-report-file=test-results-${MODULE}.json
+
+      - name: Performance benchmark
+        run: |
+          echo "⚡ Running performance benchmarks for $MODULE"
+          python tools/performance_benchmark.py --module $MODULE --output benchmark-${MODULE}.json
+
+      - name: Cross-module dependency validation
+        run: |
+          echo "🔗 Validating cross-module dependencies for $MODULE"
+          python tools/dependency_validator.py --module $MODULE --output deps-${MODULE}.json
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.module }}
+          path: test-results-${{ matrix.module }}.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.module }}
+          path: benchmark-${{ matrix.module }}.json
+
+      - name: Upload dependency results
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-${{ matrix.module }}
+          path: deps-${{ matrix.module }}.json
+
+  cross-module-integration:
+    runs-on: ubuntu-latest
+    needs: module-integration
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYTHONWARNINGS: default
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results/
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          path: benchmarks/
+
+      - name: Download dependency results
+        uses: actions/download-artifact@v4
+        with:
+          path: deps/
+
+      - name: Run cross-module integration tests
+        run: |
+          echo "🔄 Running cross-module integration tests"
+          python tools/cross_module_integration.py --test-results test-results/ --benchmarks benchmarks/ --deps deps/
+
+      - name: Conflict detection
+        run: |
+          echo "⚠️ Detecting module conflicts"
+          python tools/conflict_detector.py --test-results test-results/ --benchmarks benchmarks/ --deps deps/
+
+      - name: Generate integration report
+        run: |
+          echo "📊 Generating integration report"
+          python tools/integration_reporter.py --test-results test-results/ --benchmarks benchmarks/ --deps deps/ --output integration-report.json
+
+      - name: Upload integration report
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-report
+          path: integration-report.json
+
+  performance-regression:
+    runs-on: ubuntu-latest
+    needs: cross-module-integration
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYTHONWARNINGS: default
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Download current results
+        uses: actions/download-artifact@v4
+        with:
+          path: current-results/
+
+      - name: Get baseline results
+        run: |
+          echo "📈 Getting baseline performance data"
+          python tools/performance_baseline.py --output baseline.json
+
+      - name: Detect performance regression
+        run: |
+          echo "📊 Detecting performance regressions"
+          python tools/performance_regression_detector.py --current current-results/ --baseline baseline.json --threshold 0.1
+
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-regression-report
+          path: regression-report.json
