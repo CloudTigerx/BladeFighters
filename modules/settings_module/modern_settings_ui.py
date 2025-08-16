@@ -895,9 +895,9 @@ class ModernSettingsUI:
         overlay.fill((0, 0, 0, self.background_alpha))
         surface.blit(overlay, (0, 0))
         
-        # Calculate panel dimensions - use 70% of screen width
-        panel_width = int(self.width * 0.7)
-        panel_height = min(600, self.height - 120)
+        # Calculate panel dimensions - use 85% of screen width and height for wider container
+        panel_width = int(self.width * 0.85)
+        panel_height = min(700, self.height - 80)
         panel_x = (self.width - panel_width) // 2
         panel_y = (self.height - panel_height) // 2
         
@@ -911,11 +911,7 @@ class ModernSettingsUI:
         panel_rect = pygame.Rect(scaled_x, scaled_y, scaled_width, scaled_height)
         self._draw_9slice_panel(surface, panel_rect)
         
-        # Draw title
-        title_text = f"Settings - {self.active_tab}"
-        title_surface = self.font_title.render(title_text, True, Colors.TEXT_PRIMARY)
-        title_rect = title_surface.get_rect(midtop=(panel_x + panel_width // 2, scaled_y + 20))
-        surface.blit(title_surface, title_rect)
+        # Title removed - users can see what tab they're on from the tab buttons
         
         # Draw tab buttons
         for button in self.buttons.values():
@@ -923,8 +919,8 @@ class ModernSettingsUI:
                 button.draw(surface, self.font_body)
         
         # Draw sliders, dropdowns and labels
-        content_x = panel_x + 50  # Increased margin for better spacing
-        content_y = panel_y + 120  # Increased spacing from title
+        content_x = panel_x + 60  # Increased margin for better spacing
+        content_y = panel_y + 80  # Reduced spacing since title is removed
         spacing = 70  # Increased spacing between items
         
         for i, (setting_name, slider) in enumerate(self.sliders.items()):
@@ -975,8 +971,4 @@ class ModernSettingsUI:
             if button.text not in self.tabs:
                 button.draw(surface, self.font_body)
         
-        # Draw help text - moved to bottom of panel
-        help_text = "Use sliders, dropdowns, and toggles to adjust settings. Changes are applied immediately."
-        help_surface = self.font_small.render(help_text, True, Colors.TEXT_SECONDARY)
-        help_rect = help_surface.get_rect(midbottom=(panel_x + panel_width // 2, panel_y + panel_height - 25))
-        surface.blit(help_surface, help_rect)
+        # Help text removed - interface is self-explanatory

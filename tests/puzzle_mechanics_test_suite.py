@@ -50,12 +50,10 @@ class PuzzleMechanicsTestSuite:
             # Import puzzle engine
             from core.puzzle_module import PuzzleEngine
             
-            # Initialize pygame for testing
             pygame.init()
             screen = pygame.display.set_mode((800, 600))
             font = pygame.font.SysFont(None, 24)
             
-            # Create puzzle engine
             engine = PuzzleEngine(screen, font)
             engine.start_game()
             

@@ -18,7 +18,7 @@ def test_preflight_ok(tmp_path, monkeypatch):
     assets = tmp_path / "puzzleassets"
     assets.mkdir()
     # image
-    _make_dummy_png(assets / "colorful.png")
+    _make_dummy_png(assets / "puzzlebackground.png")
     # sounds dir exists but can be empty; we only validate size>0 if present
     (tmp_path / "sounds" / "effects").mkdir(parents=True, exist_ok=True)
     (tmp_path / "sounds" / "songs").mkdir(parents=True, exist_ok=True)
@@ -57,7 +57,7 @@ def test_preflight_bad_json(tmp_path):
     assets = tmp_path / "puzzleassets"
     assets.mkdir()
     # image ok
-    _make_dummy_png(assets / "colorful.png")
+    _make_dummy_png(assets / "puzzlebackground.png")
     # bad json
     (tmp_path / "game_settings.json").write_text("{ bad json }", encoding="utf-8")
     (tmp_path / "game_controls.json").write_text(json.dumps({}), encoding="utf-8")

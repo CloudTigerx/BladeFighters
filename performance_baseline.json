@@ -1,0 +1,11 @@
+{
+  "audio_system_initialization": {
+    "duration_ms": 50.0
+  },
+  "input_event_processing": {
+    "duration_ms": 5.0
+  },
+  "state_updates": {
+    "duration_ms": 25.0
+  }
+}

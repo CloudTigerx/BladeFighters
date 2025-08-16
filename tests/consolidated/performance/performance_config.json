@@ -1,0 +1,86 @@
+{
+  "performance_test_config": {
+    "version": "1.0.0",
+    "description": "Performance test configuration for BladeFighters",
+    "last_updated": "2024-01-15",
+    
+    "benchmark_settings": {
+      "audio_system": {
+        "max_duration_ms": 100.0,
+        "max_memory_mb": 50.0,
+        "max_cpu_percent": 10.0,
+        "min_ops_per_second": 100.0,
+        "iterations": 10,
+        "description": "Audio system performance benchmarks"
+      },
+      "input_system": {
+        "max_duration_ms": 100.0,
+        "max_memory_mb": 50.0,
+        "max_cpu_percent": 5.0,
+        "min_ops_per_second": 100.0,
+        "iterations": 10,
+        "description": "Input system performance benchmarks"
+      },
+      "game_state": {
+        "max_duration_ms": 50.0,
+        "max_memory_mb": 20.0,
+        "max_cpu_percent": 5.0,
+        "min_ops_per_second": 500.0,
+        "iterations": 10,
+        "description": "Game state management performance benchmarks"
+      },
+      "puzzle_engine": {
+        "max_duration_ms": 500.0,
+        "max_memory_mb": 200.0,
+        "max_cpu_percent": 15.0,
+        "min_ops_per_second": 10.0,
+        "iterations": 5,
+        "description": "Puzzle engine performance benchmarks"
+      },
+      "load_testing": {
+        "max_concurrent_operations": 10,
+        "max_duration_ms": 5000.0,
+        "max_failed_operations": 0,
+        "description": "Load testing configuration"
+      }
+    },
+    
+    "regression_detection": {
+      "degradation_threshold_percent": 20.0,
+      "baseline_file": "performance_baseline.json",
+      "regression_actions": ["log", "warn"],
+      "description": "Performance regression detection settings"
+    },
+    
+    "monitoring": {
+      "enable_memory_monitoring": true,
+      "enable_cpu_monitoring": true,
+      "enable_timing_monitoring": true,
+      "log_level": "INFO",
+      "description": "Performance monitoring settings"
+    },
+    
+    "test_categories": {
+      "unit_performance": {
+        "enabled": true,
+        "timeout_seconds": 30,
+        "description": "Unit-level performance tests"
+      },
+      "integration_performance": {
+        "enabled": true,
+        "timeout_seconds": 60,
+        "description": "Integration performance tests"
+      },
+      "load_performance": {
+        "enabled": true,
+        "timeout_seconds": 120,
+        "description": "Load and stress tests"
+      },
+      "regression_performance": {
+        "enabled": true,
+        "timeout_seconds": 300,
+        "description": "Performance regression tests"
+      }
+    }
+  }
+}

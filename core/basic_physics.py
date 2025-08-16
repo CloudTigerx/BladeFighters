@@ -131,6 +131,10 @@ class BasicPhysics:
         main_x, main_y = piece_position
         attached_x, attached_y = self.get_attached_position_coords(piece_position, attached_position)
         
+        # Don't separate pieces that are still spawning (above the grid)
+        if main_y < 0 or attached_y < 0:
+            return False, None
+        
         # Check if we're at the bottom boundary
         if main_y + 1 >= self.grid_height or attached_y + 1 >= self.grid_height:
             return True, 'main' if main_y + 1 >= self.grid_height else 'attached'

@@ -15,7 +15,7 @@ from ..logging_module.error_handler import (
     safe_file_operation
 )
 from ..logging_module.logger import get_logger
-from core.scaling import true_resolution_scaler, resolution_manager
+# from core.scaling import true_resolution_scaler, resolution_manager  # Disabled - using simple system
 
 logger = get_logger(__name__)
 
@@ -70,7 +70,7 @@ class MenuSystem(MenuSystemInterface):
         self.glow_intensity = 0.3  # Static glow intensity
         
         # Load background images
-        self.main_background = self.load_background("colorful.png")
+        self.main_background = self.load_background("puzzlebackground.png")
         self.story_background = self.load_background("storybackground.png")
         # Menus asset path and optional assets
         self.menus_path = os.path.join(self.asset_path, "menus")
@@ -86,7 +86,7 @@ class MenuSystem(MenuSystemInterface):
             "Quit": self.load_image("banner.png")
         }
         # Use simplified scaling system
-        self.ui_scale = resolution_manager.get_ui_scale_factor()
+        self.ui_scale = 1.0  # Simple fixed scale
         
         # Fallback to banner.png if any button image is missing
         self.button_normal = self.load_image("banner.png")
@@ -131,14 +131,10 @@ class MenuSystem(MenuSystemInterface):
     def load_background(self, filename: str) -> Optional[pygame.Surface]:
         """Load a background image using the new resolution-aware system."""
         try:
-            # Use the new true resolution scaler
-            base_name = filename.replace('.png', '')  # Remove extension
-            background = true_resolution_scaler.load_background(
-                base_name,
-                fallback_path=os.path.join(self.asset_path, filename)
-            )
+            # Use simple direct loading
+            background = pygame.image.load(os.path.join(self.asset_path, filename))
             if background:
-                logger.info(f"✅ Loaded resolution-appropriate background: {base_name}")
+                logger.info(f"✅ Loaded background: {filename}")
                 return background
             else:
                 # Fallback to old method

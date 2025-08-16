@@ -65,7 +65,7 @@ class GameStateManager:
                 return
             
             # Load weapons
-            from modules.items_module.catalog import create_weapon_by_name
+            from modules.items_module.item_system import create_weapon_by_name
             
             p_name = items_cfg.get('player_weapon', 'Rusted Sword')
             e_name = items_cfg.get('enemy_weapon', 'Rusted Sword')

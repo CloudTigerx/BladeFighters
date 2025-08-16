@@ -20,12 +20,10 @@ class GameClientIntegrationExample:
         """Initialize the game client with screen state integration."""
         self.logger = get_logger(__name__)
         
-        # Initialize pygame
         pygame.init()
         self.screen = pygame.display.set_mode((800, 600))
         self.font = pygame.font.SysFont('Arial', 24)
         
-        # Initialize state management
         self.state_manager = GameStateManager()
         self.screen_integration = ScreenStateIntegration(self.state_manager)
         
@@ -39,7 +37,6 @@ class GameClientIntegrationExample:
         # Register screen callbacks
         self._register_screen_callbacks()
         
-        # Initialize screen manager with integration
         self.screen_manager = self._create_screen_manager()
         
         self.logger.info("GameClientIntegrationExample initialized")

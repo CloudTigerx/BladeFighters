@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from utils.clock import FakeClock
 from modules.audio_module import AudioSystem
-from modules.input_module import InputManager
+from modules.input_module import UnifiedInputManager
 from modules.screen_module import ScreenManager
 from modules.game_state_module.game_state_manager import GameStateManager
 from modules.menu_module.scaled_menu_system import ScaledMenuSystem
@@ -41,7 +41,7 @@ class EndToEndTestFramework:
         self.screen = Mock()
         self.font = Mock()
         self.audio_system = AudioSystem(self.test_asset_path)
-        self.input_manager = InputManager(clock=self.clock)
+        self.input_manager = UnifiedInputManager(clock=self.clock)
         self.state_manager = GameStateManager()
         self.screen_manager = ScreenManager()
         

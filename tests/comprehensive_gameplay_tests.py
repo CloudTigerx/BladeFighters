@@ -39,7 +39,6 @@ class PuzzleMechanicsTests(BladeFightersTestSuite):
     def test_space_bar_acceleration(self):
         """Test space bar acceleration functionality."""
         try:
-            # Set up game state for puzzle mechanics
             self.state_manager.set("puzzle.game_active", True, source="test")
             self.state_manager.set("puzzle.current_piece", "I_piece", source="test")
             self.state_manager.set("puzzle.piece_position", [5, 0], source="test")
@@ -64,7 +63,6 @@ class PuzzleMechanicsTests(BladeFightersTestSuite):
     def test_up_down_rotation(self):
         """Test up/down rotation functionality."""
         try:
-            # Set up piece for rotation
             self.state_manager.set("puzzle.game_active", True, source="test")
             self.state_manager.set("puzzle.current_piece", "T_piece", source="test")
             self.state_manager.set("puzzle.piece_rotation", 0, source="test")
@@ -89,7 +87,6 @@ class PuzzleMechanicsTests(BladeFightersTestSuite):
     def test_piece_movement(self):
         """Test piece movement functionality."""
         try:
-            # Set up piece for movement
             self.state_manager.set("puzzle.game_active", True, source="test")
             self.state_manager.set("puzzle.current_piece", "L_piece", source="test")
             self.state_manager.set("puzzle.piece_position", [5, 0], source="test")
@@ -114,7 +111,6 @@ class PuzzleMechanicsTests(BladeFightersTestSuite):
     def test_attack_system(self):
         """Test attack system functionality."""
         try:
-            # Set up attack system state
             self.state_manager.set("puzzle.game_active", True, source="test")
             self.state_manager.set("puzzle.attack_mode", False, source="test")
             self.state_manager.set("puzzle.attack_charge", 0, source="test")

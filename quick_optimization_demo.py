@@ -94,17 +94,11 @@ class OptimizedGameClient:
 
 def demo_optimization():
     """Demonstrate the optimization benefits."""
-    print("🎯 Lazy Loading Optimization Demo")
-    print("=" * 50)
     
     # Test 1: Traditional initialization (all at once)
-    print("\n📊 Test 1: Traditional Initialization")
-    print("-" * 40)
-    
     start_time = time.time()
     
     # Simulate traditional approach
-    print("⏳ Initializing all components...")
     time.sleep(0.1)  # Menu system
     time.sleep(0.05)  # Settings UI
     time.sleep(0.2)  # Puzzle engine
@@ -112,65 +106,36 @@ def demo_optimization():
     time.sleep(0.02)  # Audio system
     
     traditional_time = (time.time() - start_time) * 1000
-    print(f"✅ Traditional initialization: {traditional_time:.0f}ms")
     
     # Test 2: Lazy loading initialization
-    print("\n📊 Test 2: Lazy Loading Initialization")
-    print("-" * 40)
-    
     start_time = time.time()
     client = OptimizedGameClient()
     lazy_init_time = (time.time() - start_time) * 1000
-    print(f"✅ Lazy loading initialization: {lazy_init_time:.0f}ms")
     
     # Test 3: Access components on demand
-    print("\n📊 Test 3: On-Demand Component Access")
-    print("-" * 40)
-    
     # Access menu system (triggers loading)
     start_time = time.time()
     menu = client.get_menu_system()
     menu_time = (time.time() - start_time) * 1000
-    print(f"✅ Menu system access: {menu_time:.0f}ms")
     
     # Access settings UI (triggers loading)
     start_time = time.time()
     settings = client.get_settings_ui()
     settings_time = (time.time() - start_time) * 1000
-    print(f"✅ Settings UI access: {settings_time:.0f}ms")
     
     # Access puzzle engine (triggers loading)
     start_time = time.time()
     puzzle = client.get_puzzle_engine()
     puzzle_time = (time.time() - start_time) * 1000
-    print(f"✅ Puzzle engine access: {puzzle_time:.0f}ms")
     
     # Test 4: Subsequent access (no loading)
-    print("\n📊 Test 4: Subsequent Access (Cached)")
-    print("-" * 40)
-    
     start_time = time.time()
     menu2 = client.get_menu_system()  # Already loaded
     cached_time = (time.time() - start_time) * 1000
-    print(f"✅ Cached menu access: {cached_time:.3f}ms")
     
     # Performance comparison
-    print("\n📈 PERFORMANCE COMPARISON")
-    print("=" * 50)
-    
     total_lazy_time = lazy_init_time + menu_time + settings_time + puzzle_time
     improvement = ((traditional_time - total_lazy_time) / traditional_time) * 100
-    
-    print(f"Traditional Initialization: {traditional_time:.0f}ms")
-    print(f"Lazy Loading Total: {total_lazy_time:.0f}ms")
-    print(f"Performance Improvement: {improvement:.1f}%")
-    print(f"Time Saved: {traditional_time - total_lazy_time:.0f}ms")
-    
-    print(f"\n🎯 Key Benefits:")
-    print(f"   • Initial startup: {lazy_init_time:.0f}ms vs {traditional_time:.0f}ms")
-    print(f"   • Components load only when needed")
-    print(f"   • Subsequent access is instant ({cached_time:.3f}ms)")
-    print(f"   • Better user experience - game starts faster")
     
     return improvement > 0
 

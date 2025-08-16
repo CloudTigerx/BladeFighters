@@ -76,9 +76,7 @@ class TestMode(TestModeInterface):
         self.GRAY = (100, 100, 100)
         self.LIGHT_BLUE = (100, 150, 255)
         
-        # Create player puzzle engine
         self.player_engine = PuzzleEngine(screen, font, audio, asset_path, settings_system)
-        # Create enemy puzzle engine (no audio to avoid conflicts)
         self.enemy_engine = PuzzleEngine(screen, font, None, asset_path, settings_system)
         
         # Set test_mode attribute so puzzle module knows to use landing-based transformation
@@ -90,7 +88,6 @@ class TestMode(TestModeInterface):
         self.enemy_engine.on_piece_landed = lambda: self.on_piece_landed(2)
         # Ensure both engines can call back to TestMode
         
-        # Create renderers for both engines
         self.player_renderer = PuzzleRenderer(self.player_engine, clock=self.clock)
         self.enemy_renderer = PuzzleRenderer(self.enemy_engine, clock=self.clock)
         
@@ -98,11 +95,9 @@ class TestMode(TestModeInterface):
         self.player_renderer.preview_side = 'left'  # Player on the left
         self.enemy_renderer.preview_side = 'right'  # Enemy on the right
         
-        # Initialize Enemy AI (decoupled controller) with default difficulty
         self.ai_difficulty: int = 10
         self.enemy_ai = HeuristicAI(config_for_difficulty(self.ai_difficulty))
         
-        # Initialize attack manager (centralized system) and facade service
         self.attack_manager = AttackManager()
         self.attacks_service = AttacksService(clock=self.clock, attack_manager=self.attack_manager, item_system=None, settings=self.settings_system)
         # Database indicator for UI (AttackManager uses internal calculator; keep flag for UI)
@@ -130,24 +125,20 @@ class TestMode(TestModeInterface):
         
         # Load background images
         try:
-            self.puzzle_background = pygame.image.load(os.path.join(asset_path, "puzzlebackground.jpg"))
+            self.puzzle_background = pygame.image.load(os.path.join(asset_path, "puzzlebackground.png"))
         except pygame.error:
             self.puzzle_background = None
         
         # Set up board positions and dimensions
         self.setup_board_positions()
         
-        # Initialize garbage block tracking
         self.garbage_block_brightness = {}
         
-        # Initialize persistent column rotators for each player
         self.player_column_rotator = ColumnRotator(grid_width=6)
         self.enemy_column_rotator = ColumnRotator(grid_width=6)
         
-        # Initialize attack flow tracker for clean debug output
         self.attack_tracker = AttackFlowTracker(clock=self.clock)
 
-        # Initialize per-player item systems and equip from persisted config
         self.player_items = ItemSystem()
         self.enemy_items = ItemSystem()
         try:

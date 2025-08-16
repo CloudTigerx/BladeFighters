@@ -113,3 +113,4 @@ Both tests pass, validating:
 
 ## Summary
 This PR delivers smooth, paced horizontal sliding animations that eliminate teleportation effects during cluster breaks. The implementation is performant, well-tested, and integrates seamlessly with the existing animation system.
+

@@ -137,11 +137,9 @@ class PerformanceValidator:
         from game_client import GameClient
         
         def puzzle_test():
-            # Initialize pygame
             pygame.init()
             screen = pygame.display.set_mode((800, 600))
             
-            # Create game client and initialize puzzle engine
             client = GameClient()
             client._initialize_font()
             client._initialize_audio_system()
@@ -175,11 +173,9 @@ class PerformanceValidator:
         from game_client import GameClient
         
         def settings_test():
-            # Initialize pygame
             pygame.init()
             screen = pygame.display.set_mode((800, 600))
             
-            # Create game client and initialize settings
             client = GameClient()
             client._initialize_font()
             client._initialize_settings_ui()
@@ -214,11 +210,9 @@ class PerformanceValidator:
         from game_client import GameClient
         
         def audio_test():
-            # Initialize pygame
             pygame.init()
             screen = pygame.display.set_mode((800, 600))
             
-            # Create game client and initialize audio
             client = GameClient()
             client._initialize_audio_system()
             

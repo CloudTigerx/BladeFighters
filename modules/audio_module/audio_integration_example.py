@@ -29,34 +29,29 @@ class AudioSystemWithStateIntegration:
         self.font = font
         self.asset_path = asset_path
         
-        # Initialize state manager if not provided
         if state_manager is None:
             self.state_manager = GameStateManager()
         else:
             self.state_manager = state_manager
         
-        # Initialize audio system
         self.audio_system = AudioSystem(
             root_path=".",
             asset_path=asset_path,
             state_manager=self.state_manager
         )
         
-        # Initialize state integrator
         self.state_integrator = AudioStateIntegrator(self.state_manager, self.audio_system)
         
         # Start integration
         self.state_integrator.start_integration()
         self.state_integrator.register_state_callbacks()
         
-        # Initialize UI state
         self.volume_sliders = {
             "master": {"value": 0.7, "rect": pygame.Rect(50, 100, 200, 20)},
             "music": {"value": 0.6, "rect": pygame.Rect(50, 150, 200, 20)},
             "sfx": {"value": 0.8, "rect": pygame.Rect(50, 200, 200, 20)}
         }
         
-        # Initialize buttons
         self.buttons = {
             "play_sound": {"text": "Play Click", "rect": pygame.Rect(50, 250, 120, 30)},
             "play_music": {"text": "Toggle Music", "rect": pygame.Rect(180, 250, 120, 30)},

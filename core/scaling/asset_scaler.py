@@ -124,7 +124,7 @@ class AssetScaler:
     def get_background_image(self, background_type: str = 'puzzle') -> Optional[pygame.Surface]:
         """Get a scaled background image."""
         background_files = {
-            'puzzle': 'puzzlebackground.jpg',
+            'puzzle': 'puzzlebackground.png',
             'menu': 'menus/bg_noise_tile.png',
             'story': 'storybackground.png',
         }

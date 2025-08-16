@@ -14,7 +14,7 @@ import pygame
 # Add project root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from tests.integration.test_suite_framework import BladeFightersTestSuite
+from tests.consolidated.integration.test_suite_framework import BladeFightersTestSuite
 from modules.game_state_module.game_state_manager import GameStateManager
 from modules.game_state_module.state_schema import ScreenType, GameMode
 
@@ -26,16 +26,16 @@ class InputModuleIntegrationTests(BladeFightersTestSuite):
         super().setUp()
         try:
             from modules.input_module.unified_input_manager import UnifiedInputManager
-            from modules.input_module.compatibility_layer import InputCompatibilityLayer
+            from modules.input_module.compatibility_layer import InputHandlerCompat
             self.UnifiedInputManager = UnifiedInputManager
-            self.InputCompatibilityLayer = InputCompatibilityLayer
+            self.InputHandlerCompat = InputHandlerCompat
         except ImportError as e:
             self.skipTest(f"Input module not available: {e}")
     
     def test_input_manager_initialization(self):
         """Test input manager initialization with game state integration."""
-        # Create input manager
-        input_manager = self.UnifiedInputManager(self.state_manager)
+        # Create input manager with proper parameters
+        input_manager = self.UnifiedInputManager(state_manager=self.state_manager)
         
         # Verify basic initialization
         self.assertIsNotNone(input_manager)
@@ -131,7 +131,7 @@ class InputModuleIntegrationTests(BladeFightersTestSuite):
     def test_input_compatibility_layer(self):
         """Test input compatibility layer."""
         try:
-            compatibility_layer = self.InputCompatibilityLayer(self.state_manager)
+            compatibility_layer = self.InputHandlerCompat(self.state_manager)
             
             # Test legacy input handling
             legacy_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_SPACE})
@@ -141,7 +141,7 @@ class InputModuleIntegrationTests(BladeFightersTestSuite):
             self.assertIsInstance(result, bool)
             
         except Exception as e:
-            self.skipTest(f"InputCompatibilityLayer not available: {e}")
+            self.skipTest(f"InputHandlerCompat not available: {e}")
     
     def test_input_error_handling(self):
         """Test input system error handling."""

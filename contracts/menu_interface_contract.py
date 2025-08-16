@@ -122,7 +122,7 @@ class MenuSystemRequirements:
     REQUIRED_BUTTONS = ["Quickplay", "Story Mode", "Test Mode", "Quit"]
     
     # Required background images
-    REQUIRED_BACKGROUNDS = ["colorful.png", "storybackground.png"]
+    REQUIRED_BACKGROUNDS = ["puzzlebackground.png", "storybackground.png"]
     
     # Required button images
     REQUIRED_BUTTON_IMAGES = ["banner.png", "mainmenutitle.png"]

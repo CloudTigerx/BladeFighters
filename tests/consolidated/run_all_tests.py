@@ -17,6 +17,9 @@ from typing import List, Dict, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# Set environment variable for pytest to find the correct configuration
+os.environ['PYTHONPATH'] = str(project_root)
+
 class ConsolidatedTestRunner:
     """Manages running all tests in the consolidated structure."""
     
@@ -75,11 +78,12 @@ class ConsolidatedTestRunner:
                 print(f"\nRunning: {test_file}")
                 try:
                     # Run the test file with pytest
-                    cmd = [sys.executable, '-m', 'pytest', test_file]
+                    cmd = [sys.executable, '-m', 'pytest', test_file, '--import-mode=importlib']
                     if verbose:
                         cmd.append('-v')
                     
-                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    # Set the working directory to the project root for proper module resolution
+                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
                     
                     if result.returncode == 0:
                         print(f"✅ PASSED: {test_file}")
@@ -104,11 +108,12 @@ class ConsolidatedTestRunner:
             
         print(f"Running specific test: {test_path}")
         try:
-            cmd = [sys.executable, '-m', 'pytest', test_path]
+            cmd = [sys.executable, '-m', 'pytest', test_path, '--import-mode=importlib']
             if verbose:
                 cmd.append('-v')
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            # Set the working directory to the project root for proper module resolution
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(project_root))
             
             if result.returncode == 0:
                 print(f"✅ PASSED: {test_path}")

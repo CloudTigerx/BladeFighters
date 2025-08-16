@@ -303,10 +303,8 @@ def main():
     
     args = parser.parse_args()
     
-    # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Initialize runner
     runner = TestSuiteRunner()
     
     # Determine which tests to run

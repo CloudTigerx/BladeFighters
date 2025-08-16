@@ -56,7 +56,8 @@ class BoardManager:
         # Initialize boards
         self._create_engines()
         self._load_background()
-        self._setup_board_positions()
+        # Move _setup_board_positions() to after renderers are created
+        # self._setup_board_positions()
         
     def _create_engines(self):
         """Create player and enemy puzzle engines."""
@@ -84,6 +85,9 @@ class BoardManager:
         
         # Provide clock to engines so subsystems can consume it
         self._set_engine_clocks()
+        
+        # Set up board positions after renderers are created
+        self._setup_board_positions()
 
     @safe_operation("set engine clocks", None, "WARNING")
     def _set_engine_clocks(self) -> None:
@@ -99,7 +103,7 @@ class BoardManager:
         """Load background image for the boards."""
         try:
             self.puzzle_background = pygame.image.load(
-                os.path.join(self.asset_path, "puzzlebackground.jpg")
+                os.path.join(self.asset_path, "puzzlebackground.png")
             )
         except pygame.error as e:
             logger.warning(f"Failed to load puzzle background: {str(e)}")
@@ -107,38 +111,50 @@ class BoardManager:
     
     def _setup_board_positions(self):
         """Set up the positions for the player and enemy puzzle boards."""
-        # Use actual engine grid specs so containers/backgrounds match rendered grids
-        grid_width = getattr(self.player_engine, 'grid_width', 6)
+        # Ensure both engines have the same grid dimensions
+        player_grid_width = getattr(self.player_engine, 'grid_width', 6)
+        player_grid_height = getattr(self.player_engine, 'grid_height', 12)
+        enemy_grid_width = getattr(self.enemy_engine, 'grid_width', 6)
+        enemy_grid_height = getattr(self.enemy_engine, 'grid_height', 12)
         
-        # If engines differ, take the max height to avoid clipping
-        p_h = getattr(self.player_engine, 'grid_height', 15)
-        e_h = getattr(self.enemy_engine, 'grid_height', p_h)
-        grid_height = max(p_h, e_h)
+        # Use consistent grid dimensions for both boards
+        grid_width = max(player_grid_width, enemy_grid_width)
+        grid_height = max(player_grid_height, enemy_grid_height)
+        
+        # Ensure both engines use the same grid dimensions
+        self.player_engine.grid_width = grid_width
+        self.player_engine.grid_height = grid_height
+        self.enemy_engine.grid_width = grid_width
+        self.enemy_engine.grid_height = grid_height
         
         # Use the actual block sizes from the engines instead of hardcoded values
         cell_width = self.player_engine.block_width
         cell_height = self.player_engine.block_height
-        border_size = 10  # Space between container edge and the actual grid
-        
-        # Calculate board dimensions
-        board_width = grid_width * cell_width
-        board_height = grid_height * cell_height
-        
-        # Calculate proper centered positions
-        screen_width = self.width
-        board_spacing = 60  # Increased spacing between boards for better visual separation
-        
-        # Center calculation - include borders in the total width
-        total_width_needed = (board_width * 2) + board_spacing + (border_size * 4)
-        start_x = (screen_width - total_width_needed) // 2
-        
-        # Player board position (left side)
-        player_x = start_x + border_size
-        player_y = 100  # Moved down slightly for better positioning
-        
-        # Enemy board position (right side) 
-        enemy_x = start_x + board_width + board_spacing + (border_size * 3)
-        enemy_y = 100  # Moved down slightly for better positioning
+
+        # Prefer centralized asset/coordinate layout for positions
+        try:
+            from core.scaling import asset_scaler, coordinate_system
+            coordinate_system.set_block_size(cell_width)
+            layout = asset_scaler.calculate_dual_grid_layout((self.width, self.height))
+            player_x, player_y = layout['player']
+            enemy_x, enemy_y = layout['enemy']
+            # Ensure attached pieces visible across resolutions
+            extra_height_for_attached = int(cell_height * 2.5)
+            player_y = player_y + extra_height_for_attached
+            enemy_y = enemy_y + extra_height_for_attached
+        except Exception:
+            # Fallback manual layout
+            border_size = 10
+            board_width = grid_width * cell_width
+            board_spacing = 60
+            screen_width = self.width
+            total_width_needed = (board_width * 2) + board_spacing + (border_size * 4)
+            start_x = (screen_width - total_width_needed) // 2
+            player_x = start_x + border_size
+            extra_height_for_attached = int(cell_height * 2.5)
+            player_y = 100 + extra_height_for_attached
+            enemy_x = start_x + board_width + board_spacing + (border_size * 3)
+            enemy_y = 100 + extra_height_for_attached
         
         # Store positions
         self.player_grid_position = {"x": player_x, "y": player_y}
@@ -157,8 +173,8 @@ class BoardManager:
         # Store cell dimensions for use in drawing
         self.cell_width = cell_width
         self.cell_height = cell_height
-        self.board_width = board_width
-        self.board_height = board_height
+        self.board_width = grid_width * cell_width
+        self.board_height = grid_height * cell_height
     
     def set_piece_landed_callbacks(self, player_callback, enemy_callback):
         """Set callbacks for when pieces land on each board."""

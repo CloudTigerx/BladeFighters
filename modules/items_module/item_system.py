@@ -163,31 +163,12 @@ def create_weapon_by_name(name: str) -> Optional[Weapon]:
     if factory:
         return factory()
     
-    # Fallback: build from catalog entry if available
+    # Fallback: use catalog's create_weapon_by_name function
     try:
-        from .catalog import CURATED_WEAPONS
-        for entry in CURATED_WEAPONS:
-            if entry.get('name') == name and 'columns' in entry:
-                cols = entry['columns']
-                if isinstance(cols, list) and len(cols) == 6:
-                    col_map = {i: (c if c in VALID_COLORS else VALID_COLORS[i % len(VALID_COLORS)]) for i, c in enumerate(cols)}
-                    # Optional row_cycles: 6 lists, each expanded to 12 rows
-                    rows_per_column = None
-                    row_cycles = entry.get('row_cycles')
-                    if isinstance(row_cycles, list) and len(row_cycles) == 6:
-                        rows_per_column = {}
-                        for i in range(6):
-                            cycle = row_cycles[i] if isinstance(row_cycles[i], list) else []
-                            if not cycle:
-                                base = col_map.get(i, VALID_COLORS[i % len(VALID_COLORS)])
-                                cycle = [base]
-                            # sanitize colors
-                            cycle = [c if c in VALID_COLORS else col_map.get(i, VALID_COLORS[i % len(VALID_COLORS)]) for c in cycle]
-                            # expand to 12 rows
-                            rows = [cycle[r % len(cycle)] for r in range(12)]
-                            rows_per_column[i] = rows
-                    pattern = WeaponPattern(column_to_color=col_map, rows_per_column=rows_per_column)
-                    return Weapon(name=name, pattern=pattern)
+        from .catalog import create_weapon_by_name as catalog_create_weapon
+        weapon = catalog_create_weapon(name)
+        if weapon:
+            return weapon
     except Exception as e:
         logger.warning(f"Failed to create weapon from catalog for {name}: {str(e)}")
     

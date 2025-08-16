@@ -123,7 +123,6 @@ class PerformanceBenchmarker:
         suite = self.suites[suite_name]
         self.logger.info(f"Running benchmark suite: {suite.name}")
         
-        # Create state manager with/without optimizations
         state_manager = GameStateManager(enable_performance_optimization=enable_optimizations)
         
         results = {

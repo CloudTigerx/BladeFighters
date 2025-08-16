@@ -16,9 +16,10 @@ def color_counts_for_pattern(pattern: WeaponPattern, grid_height: int = 12) -> D
     return counts
 
 
-def validate_max_color_ratio(pattern: WeaponPattern, grid_height: int = 12, max_ratio: float = 0.45) -> Tuple[bool, str]:
+def validate_max_color_ratio(pattern: WeaponPattern, grid_height: int = 12, max_ratio: float = 0.70) -> Tuple[bool, str]:
     """
     Returns (allowed, reason). Disallow if any single color occupies >= max_ratio of the grid.
+    Increased limit to 70% to accommodate weapon patterns with strong color dominance.
     """
     total_cells = 6 * grid_height
     counts = color_counts_for_pattern(pattern, grid_height)

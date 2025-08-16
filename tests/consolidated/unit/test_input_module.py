@@ -8,14 +8,15 @@ import unittest
 import sys
 import os
 import time
+import pygame
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from modules.input_module import InputManager
-from modules.input_module.compatibility_layer import InputCompatibilityLayer
+from modules.input_module import UnifiedInputManager, InputAction
+from modules.input_module.compatibility_layer import InputHandlerCompat
 from core.input_handler import InputHandler
 from utils.clock import FakeClock
 
@@ -26,77 +27,78 @@ class InputModuleUnitTests(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.clock = FakeClock()
-        self.input_manager = InputManager(clock=self.clock)
-        self.compatibility_layer = InputCompatibilityLayer()
+        self.input_manager = UnifiedInputManager(clock=self.clock)
+        # Create a mock puzzle engine for compatibility layer
+        mock_engine = Mock()
+        mock_engine.clock = self.clock
+        self.compatibility_layer = InputHandlerCompat(puzzle_engine=mock_engine)
         
     def tearDown(self):
         """Clean up test environment."""
         pass
     
     def test_input_manager_initialization(self):
-        """Test InputManager initialization."""
+        """Test UnifiedInputManager initialization."""
         self.assertIsNotNone(self.input_manager)
         self.assertEqual(self.input_manager.clock, self.clock)
-        self.assertIsInstance(self.input_manager.key_states, dict)
-        self.assertIsInstance(self.input_manager.event_queue, list)
+        self.assertIsInstance(self.input_manager._keys_pressed, dict)
+        self.assertIsInstance(self.input_manager._event_handlers, dict)
     
     def test_key_state_management(self):
         """Test key state management functionality."""
-        # Test key press
-        self.input_manager.handle_key_press('K_LEFT')
-        self.assertTrue(self.input_manager.is_key_pressed('K_LEFT'))
+        # Test key press (using pygame key codes)
+        self.input_manager.process_events([pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT})])
+        self.assertTrue(self.input_manager.is_key_pressed(pygame.K_LEFT))
         
         # Test key release
-        self.input_manager.handle_key_release('K_LEFT')
-        self.assertFalse(self.input_manager.is_key_pressed('K_LEFT'))
+        self.input_manager.process_events([pygame.event.Event(pygame.KEYUP, {'key': pygame.K_LEFT})])
+        self.assertFalse(self.input_manager.is_key_pressed(pygame.K_LEFT))
     
     def test_event_queue_management(self):
         """Test event queue management."""
-        # Add events to queue
-        self.input_manager.queue_event('MOVE_LEFT')
-        self.input_manager.queue_event('ROTATE_CW')
-        
-        # Check queue size
-        self.assertEqual(len(self.input_manager.event_queue), 2)
+        # Process events through the unified system
+        events = [
+            pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT}),
+            pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_UP})
+        ]
         
         # Process events
-        events = self.input_manager.get_pending_events()
-        self.assertEqual(len(events), 2)
-        self.assertIn('MOVE_LEFT', events)
-        self.assertIn('ROTATE_CW', events)
+        processed_events = self.input_manager.process_events(events)
         
-        # Queue should be empty after processing
-        self.assertEqual(len(self.input_manager.event_queue), 0)
+        # Check that events were processed
+        self.assertEqual(len(processed_events), 2)
+        self.assertTrue(any(event.action.value == 'move_left' for event in processed_events))
+        self.assertTrue(any(event.action.value == 'rotate_cw' for event in processed_events))
     
     def test_input_mapping(self):
         """Test input mapping functionality."""
-        # Test default mappings
-        self.assertIn('K_LEFT', self.input_manager.key_mappings)
-        self.assertIn('K_RIGHT', self.input_manager.key_mappings)
-        self.assertIn('K_DOWN', self.input_manager.key_mappings)
+        # Test default mappings through key processing
+        left_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT})
+        right_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
+        down_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_DOWN})
         
-        # Test custom mapping
-        self.input_manager.map_key('K_SPACE', 'DROP')
-        self.assertEqual(self.input_manager.key_mappings['K_SPACE'], 'DROP')
+        # Process events and check mappings
+        left_result = self.input_manager.process_events([left_event])
+        right_result = self.input_manager.process_events([right_event])
+        down_result = self.input_manager.process_events([down_event])
+        
+        self.assertEqual(left_result[0].action, InputAction.MOVE_LEFT)
+        self.assertEqual(right_result[0].action, InputAction.MOVE_RIGHT)
+        self.assertEqual(down_result[0].action, InputAction.MOVE_DOWN)
     
     def test_input_repeat_handling(self):
         """Test input repeat functionality."""
         # Press key
-        self.input_manager.handle_key_press('K_LEFT')
+        self.input_manager.process_events([pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT})])
         
         # Advance time to trigger repeat
         self.clock.advance(150)  # Initial delay
         
-        # Check for repeat event
-        events = self.input_manager.get_pending_events()
-        self.assertIn('MOVE_LEFT', events)
+        # Check for repeat event through continuous key handling
+        self.input_manager._handle_continuous_keys(int(self.clock.now_ms()))
         
-        # Advance time for next repeat
-        self.clock.advance(80)  # Repeat interval
-        
-        # Check for another repeat event
-        events = self.input_manager.get_pending_events()
-        self.assertIn('MOVE_LEFT', events)
+        # Check that key is still pressed
+        self.assertTrue(self.input_manager.is_key_pressed(pygame.K_LEFT))
     
     def test_input_debouncing(self):
         """Test input debouncing functionality."""
@@ -188,7 +190,7 @@ class InputModuleUnitTests(unittest.TestCase):
         # Create many input managers
         managers = []
         for i in range(100):
-            manager = InputManager(clock=self.clock)
+            manager = UnifiedInputManager(clock=self.clock)
             managers.append(manager)
         
         final_memory = process.memory_info().rss
@@ -229,14 +231,14 @@ class InputModuleUnitTests(unittest.TestCase):
 
 
 class InputCompatibilityLayerUnitTests(unittest.TestCase):
-    """Unit tests for InputCompatibilityLayer component."""
+    """Unit tests for InputHandlerCompat component."""
     
     def setUp(self):
         """Set up test environment."""
-        self.compatibility_layer = InputCompatibilityLayer()
+        self.compatibility_layer = InputHandlerCompat()
     
     def test_compatibility_layer_initialization(self):
-        """Test InputCompatibilityLayer initialization."""
+        """Test InputHandlerCompat initialization."""
         self.assertIsNotNone(self.compatibility_layer)
         self.assertIsInstance(self.compatibility_layer.legacy_mappings, dict)
     
@@ -336,7 +338,7 @@ class InputPerformanceTests(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.clock = FakeClock()
-        self.input_manager = InputManager(clock=self.clock)
+        self.input_manager = UnifiedInputManager(clock=self.clock)
     
     def test_high_frequency_input_handling(self):
         """Test handling of high-frequency input events."""

@@ -3,15 +3,48 @@ Curated weapon catalog (initial 60 patterns).
 Each entry defines bottom-row column colors; vertical pattern is flat for v0.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
+from .item_system import Weapon, WeaponPattern, VALID_COLORS
 
 
-def create_weapon_by_name(name: str) -> Dict:
+def create_weapon_by_name(name: str) -> Optional[Weapon]:
     """Create a weapon by name from the curated catalog."""
-    for weapon in CURATED_WEAPONS:
-        if weapon["name"] == name:
-            return weapon
+    for weapon_data in CURATED_WEAPONS:
+        if weapon_data["name"] == name:
+            return _build_weapon_from_data(weapon_data)
     return None
+
+
+def _build_weapon_from_data(weapon_data: Dict) -> Weapon:
+    """Build a Weapon object from catalog data."""
+    name = weapon_data["name"]
+    cols = weapon_data["columns"]
+    
+    # Validate and sanitize column colors
+    if isinstance(cols, list) and len(cols) == 6:
+        col_map = {i: (c if c in VALID_COLORS else VALID_COLORS[i % len(VALID_COLORS)]) for i, c in enumerate(cols)}
+    else:
+        # Fallback to default pattern
+        col_map = {i: VALID_COLORS[i % len(VALID_COLORS)] for i in range(6)}
+    
+    # Handle row_cycles if present
+    rows_per_column = None
+    row_cycles = weapon_data.get('row_cycles')
+    if isinstance(row_cycles, list) and len(row_cycles) == 6:
+        rows_per_column = {}
+        for i in range(6):
+            cycle = row_cycles[i] if isinstance(row_cycles[i], list) else []
+            if not cycle:
+                base = col_map.get(i, VALID_COLORS[i % len(VALID_COLORS)])
+                cycle = [base]
+            # Sanitize colors
+            cycle = [c if c in VALID_COLORS else col_map.get(i, VALID_COLORS[i % len(VALID_COLORS)]) for c in cycle]
+            # Expand to 12 rows
+            rows = [cycle[r % len(cycle)] for r in range(12)]
+            rows_per_column[i] = rows
+    
+    pattern = WeaponPattern(column_to_color=col_map, rows_per_column=rows_per_column)
+    return Weapon(name=name, pattern=pattern)
 
 
 CURATED_WEAPONS: List[Dict] = [

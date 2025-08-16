@@ -2,7 +2,7 @@ import os
 import pygame
 
 from utils.clock import FakeClock
-from modules.testmode_module.test_mode import TestMode
+from modules.testmode_module.test_mode import TestModeRefactored as TestMode
 
 
 def test_fixture_payload_falls_for_multiple_frames():

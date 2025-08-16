@@ -192,17 +192,14 @@ class AttacksService:
         spawn_mode = (str(spawn_mode).strip().lower() if spawn_mode else 'animated')
 
         target_key = side_key
-        print(f"[DEBUG] deliver_with_ready_attacks: side_key={side_key}, target_key={target_key}, total_garbage={total_garbage}")
         if hasattr(mode, 'queue_attack_spawn') and spawn_mode == 'animated':
             # Animated path: enqueue DTO-like spawn events; no grid mutation here
             if total_garbage > 0:
                 try:
-                    print(f"[DEBUG] deliver_with_ready_attacks: calling queue_attack_spawn({target_key}, 'garbage', {total_garbage})")
                     mode.queue_attack_spawn(target_key, 'garbage', total_garbage)
                     if hasattr(mode, 'attack_tracker'):
                         mode.attack_tracker.track_queued(side_key, 'garbage', total_garbage)
-                except Exception as e:
-                    print(f"[DEBUG] deliver_with_ready_attacks: exception in queue_attack_spawn: {e}")
+                except Exception:
                     pass
             if strike_details:
                 try:

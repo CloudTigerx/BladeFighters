@@ -13,7 +13,6 @@ try:
     from contracts.testmode_interface_contract import TestModeInterface, validate_testmode_interface
     interface_available = True
 except ImportError:
-    # Create a dummy interface if not available
     class TestModeInterface:
         pass
     
@@ -29,6 +28,7 @@ from .game_state_manager import GameStateManager
 from .input_handler import InputHandler
 from .attack_coordinator import AttackCoordinator
 from .render_coordinator import RenderCoordinator
+from .board_runtime import BoardRuntime
 
 @validate_testmode_interface
 class TestModeRefactored(TestModeInterface):
@@ -50,60 +50,66 @@ class TestModeRefactored(TestModeInterface):
         self.width = screen.get_width()
         self.height = screen.get_height()
         
-        # Initialize all components
         self._initialize_components()
-        
-        # Connect components
         self._connect_components()
         
         print("🎯 TestModeRefactored initialized with component-based architecture")
         
     def _initialize_components(self):
         """Initialize all refactored components."""
-        # Board management
         self.board_manager = BoardManager(
             self.screen, self.font, self.audio, self.asset_path, 
             self.settings_system, self.clock
         )
         
-        # AI management
         self.ai_manager = AIManager(initial_difficulty=10)
         
-        # Game state management
         self.game_state_manager = GameStateManager()
+        # Initialize per-board runtime locks for input/chain locking
+        try:
+            from .board_runtime import BoardRuntime
+            self.game_state_manager.player_runtime = BoardRuntime(board_id=1)
+            self.game_state_manager.enemy_runtime = BoardRuntime(board_id=2)
+        except Exception:
+            pass
         
-        # Input handling
         self.input_handler = InputHandler(self.ai_manager, self.game_state_manager)
         
-        # Attack coordination
         self.attack_coordinator = AttackCoordinator(
             clock=self.clock,
             settings_system=self.settings_system,
             item_system=self.game_state_manager.get_player_items()
         )
         
-        # Render coordination
         self.render_coordinator = RenderCoordinator(self.screen, self.board_manager)
+        
+        # Back-compat: expose commonly used attributes for tests/legacy
+        try:
+            from .board_runtime import BoardRuntime
+            # Use the same runtime objects as game_state_manager
+            self.player_runtime = self.game_state_manager.player_runtime
+            self.enemy_runtime = self.game_state_manager.enemy_runtime
+            if hasattr(self.attack_coordinator, 'get_attacks_service'):
+                self.attacks_service = self.attack_coordinator.get_attacks_service()
+            elif hasattr(self.attack_coordinator, 'attacks_service'):
+                self.attacks_service = self.attack_coordinator.attacks_service
+        except Exception:
+            pass
         
     def _connect_components(self):
         """Connect all components together."""
-        # Get engines and renderers
         player_engine, enemy_engine = self.board_manager.get_engines()
         player_renderer, enemy_renderer = self.board_manager.get_renderers()
         
-        # Set up piece landed callbacks
         self.board_manager.set_piece_landed_callbacks(
             lambda: self._on_piece_landed(1),
             lambda: self._on_piece_landed(2)
         )
         
-        # Set up attack system handlers
         self.attack_coordinator.set_blocks_broken_handlers(player_engine, enemy_engine)
         
-        # Set test mode reference on engines for attack spawning
         self.attack_coordinator.set_test_mode_reference(self, player_engine, enemy_engine)
         
-        # Store engine and renderer references in attack coordinator for attack delivery
         self.attack_coordinator.player_engine = player_engine
         self.attack_coordinator.enemy_engine = enemy_engine
         self.attack_coordinator.player_renderer = player_renderer
@@ -120,7 +126,8 @@ class TestModeRefactored(TestModeInterface):
         self.enemy_grid_position = self.board_manager.enemy_grid_position
         
         # Initialize pending attacks for attack spawning
-        self.pending_attacks = {'player': [], 'enemy': []}
+        # Use attack flow manager's pending_attacks for consistency
+        self.pending_attacks = self.attack_coordinator.attack_flow_manager.pending_attacks
         
         # Initialize garbage block transformation tracking
         self.garbage_block_brightness = {}  # (x, y, player) -> {'landings': int, 'color': str, 'is_strike': bool}
@@ -160,10 +167,6 @@ class TestModeRefactored(TestModeInterface):
 
         # Use attack flow manager to queue the attack
         self.attack_coordinator.attack_flow_manager.queue_attack(target_player, attack_data)
-        
-        # Also add to pending attacks for backward compatibility
-        if target_player in self.pending_attacks:
-            self.pending_attacks[target_player].append(attack_data)
         
         # Record in recent attack log for HUD
         try:
@@ -415,15 +418,15 @@ class TestModeRefactored(TestModeInterface):
     def _update_attack_spawning(self):
         """Update attack spawning for visual feedback and animation updates."""
         current_time = self.clock.now_ms()
-        
+
         # Update renderer animations to clean up expired animations
         self.player_renderer.update_animations()
         self.enemy_renderer.update_animations()
-        
+
         # Process pending attacks for actual placement
         for player_key in ['player', 'enemy']:
             engine = self.player_engine if player_key == 'player' else self.enemy_engine
-            
+
             # Process each pending attack for placement
             attacks_to_remove = []
             for attack in self.pending_attacks[player_key]:
@@ -431,7 +434,7 @@ class TestModeRefactored(TestModeInterface):
                 if current_time - attack['spawn_time'] > 10000:  # 10 seconds
                     attacks_to_remove.append(attack)
                     continue
-                
+
                 # Place attacks on the board
                 if attack['type'] == 'strike':
                     # Place strikes
@@ -447,7 +450,7 @@ class TestModeRefactored(TestModeInterface):
                         attack['blocks_remaining'] = max(0, attack['blocks_remaining'] - blocks_placed)
                         if attack['blocks_remaining'] <= 0:
                             attacks_to_remove.append(attack)
-            
+
             # Remove completed attacks
             for attack in attacks_to_remove:
                 if attack in self.pending_attacks[player_key]:
@@ -459,52 +462,86 @@ class TestModeRefactored(TestModeInterface):
                                 break
                     except Exception:
                         pass
+
+        # Commit landings after animations complete (no on-grid spawn before this)
+        for player_key in ['player', 'enemy']:
+            engine = self.player_engine if player_key == 'player' else self.enemy_engine
+            pending = list(self.pending_landings.get(player_key, [])) if hasattr(self, 'pending_landings') else []
+            if not pending:
+                continue
+
+            new_pending = []
+            for (col, row, block_type, end_ms) in pending:
+                if current_time >= end_ms:
+                    # Place only if still empty; otherwise the block is wasted
+                    if engine.puzzle_grid[row][col] in (None, 'empty'):
+                        engine.puzzle_grid[row][col] = block_type
+                else:
+                    new_pending.append((col, row, block_type, end_ms))
+
+            self.pending_landings[player_key] = new_pending
+
+            # Clear spawn pause if nothing left pending
+            if not new_pending:
+                if player_key == 'player':
+                    self.player_spawn_pause_until = max(getattr(self, 'player_spawn_pause_until', 0), current_time)
+                else:
+                    self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), current_time)
                         
     def _place_garbage_attack(self, engine, attack, player_key):
         """Place garbage blocks on the board by spawning them high above and letting them fall."""
         grid = engine.puzzle_grid
         blocks_to_place = attack.get('blocks_remaining', 0)
         blocks_placed = 0
-        
+
         # Set sweep order by side
         side = attack.get('sprinkle_side', 'R')
         cols_order = list(range(engine.grid_width))
         if side == 'R':
             cols_order = list(reversed(cols_order))
-        
+
         # Get renderer and animation state manager
         renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
         if not hasattr(renderer, 'animation_state_manager'):
             # Fallback to direct placement if no animation system available
             return self._place_garbage_attack_direct(engine, attack, player_key)
-        
+
         asm = renderer.animation_state_manager
+        # Use unified ms clock for logic timing; visuals still use seconds
+        now_ms = int(self.clock.now_ms()) if hasattr(self, 'clock') and self.clock else int(time.time() * 1000)
         current_time = time.time()
-        
+
+        # Ensure landing queue exists
+        if not hasattr(self, 'pending_landings'):
+            self.pending_landings = {'player': [], 'enemy': []}
+
         # Calculate spawn height above the board (negative row positions)
         spawn_height = -3  # Spawn 3 rows above the visible board
-        
+
+        max_end_ms = 0
+
         while blocks_to_place > 0:
             for column in cols_order:
                 if blocks_to_place <= 0:
                     break
-                    
+
                 # Find next landing spot in this column
                 landing_row = None
                 for row in range(engine.grid_height - 1, -1, -1):
                     if grid[row][column] in ['empty', None]:
                         landing_row = row
                         break
-                        
+
                 if landing_row is None:
                     # Column full, waste this block
                     blocks_to_place -= 1
                     continue
-                
+
                 # Calculate fall distance and duration
                 fall_distance = landing_row - spawn_height
                 fall_duration = asm.fall_animation_duration * fall_distance
-                
+                fall_duration_ms = int(asm.fall_animation_duration * 1000 * fall_distance)
+
                 # Set up falling animation
                 animation_key = (column, landing_row)
                 asm.visual_falling_blocks[animation_key] = {
@@ -516,11 +553,16 @@ class TestModeRefactored(TestModeInterface):
                     'phase': 'spawning',
                     'final_position': (column, landing_row)  # Track final position
                 }
-                
-                # Place the block in the top row temporarily for gravity to handle
-                # The animation system will handle the visual falling from above
-                grid[0][column] = 'garbage_block'
-                
+
+                # Queue landing commit instead of mutating grid immediately
+                end_ms = now_ms + fall_duration_ms
+                self.pending_landings[player_key].append((column, landing_row, 'garbage_block', end_ms))
+                if end_ms > max_end_ms:
+                    max_end_ms = end_ms
+
+                # REMOVE this (was causing "on-grid" spawn):
+                # grid[0][column] = 'garbage_block'
+
                 # Track the garbage block for transformation
                 player_id = 1 if player_key == 'player' else 2
                 pos_key = (column, landing_row, player_id)
@@ -529,10 +571,26 @@ class TestModeRefactored(TestModeInterface):
                     'color': 'blue',  # Default color, will be determined by item system
                     'is_strike': False
                 }
-                
+
                 blocks_placed += 1
                 blocks_to_place -= 1
-        
+
+        # Freeze updates for this side until payload finishes landing
+        if max_end_ms > 0:
+            if player_key == 'player':
+                self.player_spawn_pause_until = max(getattr(self, 'player_spawn_pause_until', 0), max_end_ms)
+            else:
+                self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), max_end_ms)
+
+        # Also lock player input for the duration of the animation window
+        try:
+            if max_end_ms > 0 and player_key == 'player' and hasattr(self, 'game_state_manager'):
+                freeze_ms = max(0, int(max_end_ms) - int(now_ms))
+                if freeze_ms > 0:
+                    self.game_state_manager.lock_player_input(freeze_ms, now_ms)
+        except Exception:
+            pass
+
         return blocks_placed
     
     def _place_garbage_attack_direct(self, engine, attack, player_key):
@@ -586,19 +644,27 @@ class TestModeRefactored(TestModeInterface):
         grid = engine.puzzle_grid
         strike_details = attack.get('strike_details', [])
         blocks_placed = 0
-        
+
         # Get renderer and animation state manager
         renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
         if not hasattr(renderer, 'animation_state_manager'):
             # Fallback to direct placement if no animation system available
             return self._place_strike_attack_direct(engine, attack, player_key)
-        
+
         asm = renderer.animation_state_manager
+        # Use unified ms clock for logic timing; visuals still use seconds
+        now_ms = int(self.clock.now_ms()) if hasattr(self, 'clock') and self.clock else int(time.time() * 1000)
         current_time = time.time()
-        
+
+        # Ensure landing queue exists
+        if not hasattr(self, 'pending_landings'):
+            self.pending_landings = {'player': [], 'enemy': []}
+
         # Calculate spawn height above the board (negative row positions)
         spawn_height = -3  # Spawn 3 rows above the visible board
-        
+
+        max_end_ms = 0
+
         for strike in strike_details:
             # Handle both dictionary and string formats for backward compatibility
             if isinstance(strike, dict):
@@ -613,7 +679,7 @@ class TestModeRefactored(TestModeInterface):
             else:
                 # Fallback to default values
                 width, height = 2, 4
-            
+
             # Find placement position (start from top)
             placed = False
             for start_row in range(engine.grid_height - height + 1):
@@ -627,31 +693,36 @@ class TestModeRefactored(TestModeInterface):
                                 break
                         if not can_place:
                             break
-                    
+
                     if can_place:
                         # Calculate fall distance and duration for the strike pattern
                         fall_distance = start_row - spawn_height
                         fall_duration = asm.fall_animation_duration * fall_distance
-                        
+                        fall_duration_ms = int(asm.fall_animation_duration * 1000 * fall_distance)
+                        end_ms = now_ms + fall_duration_ms
+                        if end_ms > max_end_ms:
+                            max_end_ms = end_ms
+
                         # Set up falling animations for each block in the strike pattern
                         for row in range(start_row, start_row + height):
                             for col in range(start_col, start_col + width):
-                                # Set up falling animation
                                 animation_key = (col, row)
                                 asm.visual_falling_blocks[animation_key] = {
                                     'start_time': current_time,
                                     'duration': fall_duration,
                                     'start_y': spawn_height + (row - start_row),  # Stagger the spawn heights
-                                    'block_type': 'strike_block',
+                                    'block_type': 'orange_strike',
                                     'payload': True,
                                     'phase': 'spawning',
                                     'final_position': (col, row)  # Track final position
                                 }
-                                
-                                # Place the block in the top row temporarily for gravity to handle
-                                # The animation system will handle the visual falling from above
-                                grid[0][col] = 'strike_block'
-                                
+
+                                # Queue landing commit instead of mutating grid immediately
+                                self.pending_landings[player_key].append((col, row, 'orange_strike', end_ms))
+
+                                # REMOVE this (was causing "on-grid" spawn):
+                                # grid[0][col] = 'strike_block'
+
                                 # Track the strike block for transformation
                                 player_id = 1 if player_key == 'player' else 2
                                 pos_key = (col, row, player_id)
@@ -660,13 +731,29 @@ class TestModeRefactored(TestModeInterface):
                                     'color': 'blue',  # Default color, will be determined by item system
                                     'is_strike': True
                                 }
-                                
+
                                 blocks_placed += 1
                         placed = True
                         break
                 if placed:
                     break
-        
+
+        # Freeze updates for this side until payload finishes landing
+        if max_end_ms > 0:
+            if player_key == 'player':
+                self.player_spawn_pause_until = max(getattr(self, 'player_spawn_pause_until', 0), max_end_ms)
+            else:
+                self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), max_end_ms)
+
+        # Also lock player input for the duration of the strike animation window
+        try:
+            if max_end_ms > 0 and player_key == 'player' and hasattr(self, 'game_state_manager'):
+                freeze_ms = max(0, int(max_end_ms) - int(now_ms))
+                if freeze_ms > 0:
+                    self.game_state_manager.lock_player_input(freeze_ms, now_ms)
+        except Exception:
+            pass
+
         return blocks_placed
     
     def _place_strike_attack_direct(self, engine, attack, player_key):
@@ -708,7 +795,7 @@ class TestModeRefactored(TestModeInterface):
                         # Place strike blocks
                         for row in range(start_row, start_row + height):
                             for col in range(start_col, start_col + width):
-                                grid[row][col] = 'strike_block'
+                                grid[row][col] = 'orange_strike'
                                 
                                 # Track the strike block for transformation
                                 player_id = 1 if player_key == 'player' else 2
@@ -768,3 +855,6 @@ class TestModeRefactored(TestModeInterface):
     def get_enemy_items(self):
         """Get enemy item system."""
         return self.game_state_manager.get_enemy_items() 
+
+# Back-compat alias for legacy imports expecting `TestMode` in this module
+TestMode = TestModeRefactored

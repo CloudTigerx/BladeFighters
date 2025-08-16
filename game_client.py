@@ -28,7 +28,7 @@ from modules.asset_module.preflight import AssetPreflight
 from modules.replay_module.record import InputRecorder
 from modules.replay_module.replay import InputReplayer
 
-print("✅ All extracted modules loaded successfully")
+# All extracted modules loaded successfully
 
 from core.puzzle_module import PuzzleEngine
 from core.puzzle_renderer import PuzzleRenderer
@@ -42,15 +42,10 @@ ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 class GameClient:
     def __init__(self, clock: Clock = None):
         """Initialize the game client."""
-        # Initialize pygame
         pygame.init()
-        # Unified time source
         self.clock: Clock = clock or PygameClock()
         
-        # Set V-Sync environment variable at startup
         os.environ['SDL_VIDEO_VSYNC'] = '1'  # Default to V-Sync enabled
-        
-        # Set the asset path
         self.asset_path = ASSET_PATH
         
         # Use enhanced resolution system
@@ -70,22 +65,14 @@ class GameClient:
             # Parse resolution string (e.g., "2560x1440")
             width_str, height_str = resolution_setting.split("x")
             self.width, self.height = int(width_str), int(height_str)
-            print(f"🎮 Using resolution from settings: {self.width} x {self.height}")
         except (ValueError, AttributeError):
             # Fallback to optimal resolution if settings parsing fails
             self.width, self.height = resolution_enhancer.get_optimal_resolution(desktop_width, desktop_height)
-            print(f"🎮 Using fallback resolution: {self.width} x {self.height}")
-        
-        print(f"🎮 Selected resolution: {self.width} x {self.height}")
-        print(f"🖥️ Display capabilities: {'High-resolution' if resolution_enhancer.is_high_resolution_display() else 'Standard'}")
-        if resolution_enhancer.is_retina:
-            print(f"🍎 Retina scaling: {resolution_enhancer.get_scale_factor()}x")
         
         # Create window with default resolution
         self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
         pygame.display.set_caption("Blade Fighters")
         
-        # Initialize basic attributes
         self.font = None
         self.audio = None
         self.menu_system = None
@@ -148,7 +135,6 @@ class GameClient:
         # Current screen (will be set after loading)
         self.current_screen = "loading"
         
-        # Initialize brightness setting
         self.brightness = 1.0  # Default brightness
 
         # Seed RNG if CLI arg provided
@@ -247,19 +233,15 @@ class GameClient:
             font_path = os.path.join(ASSET_PATH, "fonts", "PermanentMarker-Regular.ttf")
             if os.path.exists(font_path):
                 self.font = pygame.font.Font(font_path, font_size)
-                print(f"✅ Loaded PermanentMarker font ({font_size}px) from: {font_path}")
             else:
                 self.font = pygame.font.SysFont('Arial', font_size)
-                print(f"⚠️ PermanentMarker font not found, using Arial fallback ({font_size}px)")
         except Exception as e:
             fallback_size = resolution_enhancer.get_font_size_for_resolution(36, self.width, self.height)
             self.font = pygame.font.SysFont('Arial', fallback_size)
-            print(f"⚠️ Error loading PermanentMarker font: {e}, using Arial fallback ({fallback_size}px)")
     
     def _initialize_audio_system(self):
         """Initialize the audio system."""
         self.audio = AudioSystem(".", ASSET_PATH)
-        print("✅ Audio system initialized")
     
     def _initialize_menu_system(self):
         """Initialize the menu system."""
@@ -269,7 +251,6 @@ class GameClient:
             self.menu_system.ui_scale = float(self.config.get('ui_scale', 1.0))
         except Exception:
             pass
-        print("✅ Menu system initialized")
     
     def _initialize_settings_ui(self):
         """Initialize the modern settings UI overlay."""
@@ -294,7 +275,6 @@ class GameClient:
             self.config,
             callbacks
         )
-        print("✅ Modern settings UI initialized")
         
         # Create input tuner overlay (depends on settings/config and input handler later)
         # DISABLED: Input tuner overlay completely disabled
@@ -324,9 +304,8 @@ class GameClient:
                     self.add_notification(f"⚔️ Equipped: {weapon.name}", (120, 255, 120))
                 self.test_mode.player_items.add_equip_callback(equip_notification_callback)
             
-            print("✅ Test mode initialized")
+            pass
         except Exception as e:
-            print(f"⚠️ Test mode initialization failed: {e}")
             self.test_mode = None
     
     def _initialize_screen_manager(self):
@@ -341,33 +320,53 @@ class GameClient:
     
     def _initialize_puzzle_engine(self):
         """Initialize the puzzle engine."""
-        self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui)
-        # Provide unified clock to the engine for subsystems (e.g., input handler)
         try:
-            setattr(self.puzzle_engine, 'clock', self.clock)
-        except Exception:
+            self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui)
+            
+            # Provide unified clock to the engine for subsystems (e.g., input handler)
+            try:
+                setattr(self.puzzle_engine, 'clock', self.clock)
+            except Exception:
+                pass
+            # Ensure input tuner overlay is wired with the actual input handler
+            # DISABLED: Input tuner overlay completely disabled
             pass
-        # Ensure input tuner overlay is wired with the actual input handler
-        # DISABLED: Input tuner overlay completely disabled
-        pass
-        print("✅ Puzzle engine initialized")
+            print("✅ Puzzle engine initialized successfully")
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize puzzle engine: {e}")
+            import traceback
+            traceback.print_exc()
+            self.puzzle_engine = None
+            raise
     
     def _initialize_puzzle_renderer(self):
         """Initialize the puzzle renderer."""
-        self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine, clock=self.clock)
-        print("✅ Puzzle renderer initialized")
+        try:
+            # Always create a puzzle renderer for quickplay mode
+            # TestMode can create its own renderers separately if needed
+            
+            # Check if puzzle engine was initialized successfully
+            if not hasattr(self, 'puzzle_engine') or self.puzzle_engine is None:
+                raise RuntimeError("Puzzle engine must be initialized before renderer")
+            
+            self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine, clock=self.clock)
+            print("✅ Puzzle renderer initialized successfully")
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize puzzle renderer: {e}")
+            import traceback
+            traceback.print_exc()
+            self.puzzle_renderer = None
+            raise
     
     def _load_background_images(self):
-        """Load background images using the new resolution-aware system."""
+        """Load background images using simple direct loading."""
         try:
-            # Use the new true resolution scaler for main menu background
-            from core.scaling import true_resolution_scaler
-            self.main_background = true_resolution_scaler.load_background(
-                'Official_mainmenu_background',
-                fallback_path=os.path.join(ASSET_PATH, "menus", "Official_mainmenu_background.png")
-            )
+            # Simple direct loading like the working Dev2 system
+            self.main_background = pygame.image.load(os.path.join(ASSET_PATH, "menus", "Official_mainmenu_background.png"))
             if self.main_background:
-                print("✅ Loaded resolution-appropriate main menu background")
+                print("✅ Loaded main menu background")
             else:
                 print("⚠️ Failed to load main menu background")
         except Exception as e:
@@ -375,7 +374,7 @@ class GameClient:
             print(f"⚠️ Failed to load main menu background: {e}")
         
         try:
-            self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "bkg.png"))
+            self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "puzzlebackground.png"))
             print("✅ Loaded puzzle background")
         except pygame.error:
             self.puzzle_background = None
@@ -390,7 +389,6 @@ class GameClient:
     
     def _complete_initialization(self):
         """Complete the initialization process."""
-        # Initialize item system and equip default Rusted Sword
         try:
             from modules.items_module.item_system import create_rusted_sword
             self.item_system = ItemSystem()
@@ -565,10 +563,43 @@ class GameClient:
     
     def start_quickplay(self):
         """Start the game in quickplay mode."""
-        print("Starting quickplay mode")
-        self.set_screen("game")
-        self.puzzle_renderer.preview_side = 'left' # Configure for single player
-        self.puzzle_engine.start_game()
+        print("🎮 Starting quickplay mode")
+        
+        # Ensure components are initialized - create them if missing
+        try:
+            # Initialize puzzle engine if missing
+            if not hasattr(self, 'puzzle_engine') or self.puzzle_engine is None:
+                print("🔧 Creating puzzle engine for quickplay...")
+                from core.puzzle_module import PuzzleEngine
+                
+                # Create a basic font if missing
+                if not hasattr(self, 'font') or self.font is None:
+                    import pygame
+                    self.font = pygame.font.Font(None, 36)
+                
+                self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui)
+                if hasattr(self, 'clock'):
+                    setattr(self.puzzle_engine, 'clock', self.clock)
+                print("✅ Puzzle engine created for quickplay")
+            
+            # Initialize puzzle renderer if missing  
+            if not hasattr(self, 'puzzle_renderer') or self.puzzle_renderer is None:
+                print("🔧 Creating puzzle renderer for quickplay...")
+                from core.puzzle_renderer import PuzzleRenderer
+                self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine, clock=getattr(self, 'clock', None))
+                print("✅ Puzzle renderer created for quickplay")
+            
+            # Configure and start
+            print("🎮 Configuring quickplay mode...")
+            self.set_screen("game")
+            self.puzzle_renderer.preview_side = 'left'  # Configure for single player
+            self.puzzle_engine.start_game()
+            print("✅ Quickplay mode started successfully")
+            
+        except Exception as e:
+            print(f"❌ Failed to start quickplay: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _apply_intents(self, intents):
         try:

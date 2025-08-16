@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 # Use absolute imports to avoid relative import issues
 from modules.input_module.unified_input_manager import (
-    UnifiedInputManager, InputAction, InputEvent, InputPriority, KeyRepeatConfig
+    UnifiedInputManager, InputAction, InputEvent, InputPriority
 )
 from modules.input_module.compatibility_layer import InputHandlerCompat
 from modules.settings_module.unified_config import UnifiedConfigManager

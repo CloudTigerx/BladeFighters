@@ -274,26 +274,14 @@ class InputHandlerCompat:
     
     def _handle_spacebar_press(self):
         """Handle spacebar press for acceleration."""
-        if self.debug_spacebar:
-            print(f"SPACE PRESSED: normal_speed={self.engine.normal_fall_speed}, accel_speed={self.engine.accelerated_fall_speed}")
-        
         # Increase fall speed for micro-movements
         self.engine.current_fall_speed = self.engine.accelerated_fall_speed
         self.engine.micro_fall_time = self.engine._calculate_micro_fall_time(self.engine.current_fall_speed)
-        
-        if self.debug_spacebar:
-            print(f"AFTER SPACE: current_speed={self.engine.current_fall_speed}, micro_time={self.engine.micro_fall_time}")
     
     def _handle_spacebar_release(self):
         """Handle spacebar release to reset fall speed."""
-        if self.debug_spacebar:
-            print(f"SPACE RELEASED: Setting speed back to normal={self.engine.normal_fall_speed}")
-        
         self.engine.current_fall_speed = self.engine.normal_fall_speed
         self.engine.micro_fall_time = self.engine._calculate_micro_fall_time(self.engine.current_fall_speed)
-        
-        if self.debug_spacebar:
-            print(f"AFTER RELEASE: current_speed={self.engine.current_fall_speed}, micro_time={self.engine.micro_fall_time}")
     
     def set_debug_spacebar(self, debug):
         """Enable or disable spacebar debug output."""
@@ -313,9 +301,6 @@ class InputHandlerCompat:
     
     def _log_diag(self, kind: str, key_code: int, ts_ms: int) -> None:
         """Log diagnostic information."""
-        if self.debug_spacebar and key_code == pygame.K_SPACE:
-            print(f"[DIAG] {kind} at {ts_ms}ms")
-        
         # Store in diagnostic events
         self._diag_events.append({
             'kind': kind,

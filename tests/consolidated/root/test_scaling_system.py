@@ -110,7 +110,7 @@ def test_scaling_system():
         
         # Test asset loading (if assets exist)
         print("\n📦 Testing Asset Loading:")
-        test_assets = ['redblock.png', 'blueblock.png', 'puzzlebackground.jpg']
+        test_assets = ['redblock.png', 'blueblock.png', 'puzzlebackground.png']
         for asset in test_assets:
             if os.path.exists(os.path.join('puzzleassets', asset)):
                 print(f"   ✅ {asset} exists")

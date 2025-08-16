@@ -73,7 +73,6 @@ class GameStateManager:
         self.history.on_snapshot_created = self._on_snapshot_created
         self.history.on_change_recorded = self._on_change_recorded
         
-        # Create initial snapshot
         self.history.create_snapshot(self._state, "Initial state", ["initial"])
         
         self.logger.info("GameStateManager initialized with performance optimization: {enable_performance_optimization}")
@@ -130,7 +129,6 @@ class GameStateManager:
             # Update change count
             self._change_count += 1
             
-            # Create periodic snapshots
             current_time = time.time()
             if current_time - self._last_snapshot_time >= self._snapshot_interval:
                 self.history.create_snapshot(self._state, f"Periodic snapshot ({self._change_count} changes)")

@@ -20,7 +20,6 @@ from modules.logging_module.logger import get_logger
 
 def validate_basic_state_operations():
     """Validate basic state operations performance."""
-    print("🔍 Validating Basic State Operations...")
     
     try:
         # Create state manager without performance optimizations first
@@ -49,9 +48,6 @@ def validate_basic_state_operations():
         set_target_met = set_latency < 10.0  # <10ms
         get_target_met = get_latency < 1.0   # <1ms
         
-        print(f"✅ Single Set Latency: {set_latency:.3f}ms {'✅' if set_target_met else '❌'}")
-        print(f"✅ Single Get Latency: {get_latency:.3f}ms {'✅' if get_target_met else '❌'}")
-        
         return {
             'set_latency': set_latency,
             'get_latency': get_latency,
@@ -59,13 +55,11 @@ def validate_basic_state_operations():
         }
         
     except Exception as e:
-        print(f"❌ Basic state operations validation failed: {e}")
         return {'error': str(e), 'targets_met': False}
 
 
 def validate_memory_usage():
     """Validate memory usage."""
-    print("\n💾 Validating Memory Usage...")
     
     try:
         # Get initial memory
@@ -87,15 +81,12 @@ def validate_memory_usage():
         # Validate target
         target_met = memory_mb < 100.0  # <100MB
         
-        print(f"✅ Memory Usage: {memory_mb:.1f}MB {'✅' if target_met else '❌'}")
-        
         return {
             'memory_mb': memory_mb,
             'targets_met': target_met
         }
         
     except Exception as e:
-        print(f"❌ Memory usage validation failed: {e}")
         return {'error': str(e), 'targets_met': False}
 
 
@@ -132,9 +123,6 @@ def validate_frame_rate_simulation():
         avg_fps_target = avg_fps >= 55.0  # >=55 FPS
         min_fps_target = min_fps >= 50.0  # >=50 FPS minimum
         
-        print(f"✅ Average FPS: {avg_fps:.1f} {'✅' if avg_fps_target else '❌'}")
-        print(f"✅ Minimum FPS: {min_fps:.1f} {'✅' if min_fps_target else '❌'}")
-        
         return {
             'avg_fps': avg_fps,
             'min_fps': min_fps,
@@ -142,13 +130,11 @@ def validate_frame_rate_simulation():
         }
         
     except Exception as e:
-        print(f"❌ Frame rate simulation validation failed: {e}")
         return {'error': str(e), 'targets_met': False}
 
 
 def validate_cross_module_simulation():
     """Validate cross-module simulation."""
-    print("\n🔗 Validating Cross-Module Simulation...")
     
     try:
         # Create state manager
@@ -170,21 +156,17 @@ def validate_cross_module_simulation():
         # Validate target
         target_met = avg_time_per_operation < 5.0  # <5ms per operation
         
-        print(f"✅ Cross-Module Latency: {avg_time_per_operation:.3f}ms {'✅' if target_met else '❌'}")
-        
         return {
             'avg_latency': avg_time_per_operation,
             'targets_met': target_met
         }
         
     except Exception as e:
-        print(f"❌ Cross-module simulation validation failed: {e}")
         return {'error': str(e), 'targets_met': False}
 
 
 def validate_system_performance():
     """Validate system performance impact."""
-    print("\n🖥️ Validating System Performance...")
     
     try:
         # Get initial system metrics
@@ -213,9 +195,6 @@ def validate_system_performance():
         cpu_target = cpu_impact < 20.0      # <20% CPU increase
         memory_target = memory_impact < 100.0  # <100MB memory increase
         
-        print(f"✅ CPU Impact: {cpu_impact:.1f}% {'✅' if cpu_target else '❌'}")
-        print(f"✅ Memory Impact: {memory_impact:.1f}MB {'✅' if memory_target else '❌'}")
-        
         return {
             'cpu_impact': cpu_impact,
             'memory_impact': memory_impact,
@@ -223,14 +202,11 @@ def validate_system_performance():
         }
         
     except Exception as e:
-        print(f"❌ System performance validation failed: {e}")
         return {'error': str(e), 'targets_met': False}
 
 
 def run_simple_validation():
     """Run simple Round 2 performance validation."""
-    print("🚀 Simple Round 2 Performance Validation - All 4 Modules Integrated")
-    print("=" * 70)
     
     validation_results = {}
     
@@ -248,30 +224,14 @@ def run_simple_validation():
             result = test_func()
             validation_results[test_name] = result
         except Exception as e:
-            print(f"❌ {test_name} validation failed: {e}")
             validation_results[test_name] = {
                 'error': str(e),
                 'targets_met': False
             }
     
     # Generate summary
-    print("\n" + "=" * 70)
-    print("📊 Simple Round 2 Performance Validation Summary")
-    print("=" * 70)
-    
     passed_tests = sum(1 for result in validation_results.values() if result.get('targets_met', False))
     total_tests = len(validation_results)
-    
-    for test_name, result in validation_results.items():
-        if 'error' in result:
-            status = "❌ ERROR"
-        else:
-            status = "✅ PASS" if result.get('targets_met', False) else "❌ FAIL"
-        print(f"{status} {test_name}")
-    
-    print(f"\n🎯 Overall Results:")
-    print(f"  Tests Passed: {passed_tests}/{total_tests}")
-    print(f"  Success Rate: {(passed_tests/total_tests*100):.1f}%")
     
     # Check critical requirements
     critical_requirements = {
@@ -282,18 +242,10 @@ def run_simple_validation():
     }
     
     critical_passed = sum(critical_requirements.values())
-    print(f"\n🔴 Critical Requirements:")
-    for req, passed in critical_requirements.items():
-        status = "✅ PASS" if passed else "❌ FAIL"
-        print(f"  {status} {req}")
-    
-    print(f"\n  Critical Requirements Passed: {critical_passed}/{len(critical_requirements)}")
     
     if passed_tests == total_tests and critical_passed == len(critical_requirements):
-        print("\n🎉 All validations passed! Round 2 performance requirements met.")
         return True
     else:
-        print(f"\n⚠️  {total_tests - passed_tests} validations failed. Review performance issues.")
         return False
 
 
@@ -306,23 +258,13 @@ def main():
         
         if success:
             logger.info("Simple Round 2 performance validation completed successfully")
-            print("\n✅ Simple Round 2 Performance Validation Complete!")
-            print("\n📋 Performance Status:")
-            print("  ✅ Basic State Operations: <10ms latency")
-            print("  ✅ Memory Usage: <100MB additional across all modules")
-            print("  ✅ Frame Rate Simulation: Maintain 55+ FPS during heavy operations")
-            print("  ✅ Cross-Module Simulation: <5ms per operation")
-            print("  ✅ System Performance: <5% regression")
-            print("\n🚀 Ready for production deployment!")
         else:
             logger.error("Simple Round 2 performance validation failed")
-            print("\n❌ Performance validation failed. Address issues before deployment.")
         
         return success
         
     except Exception as e:
         logger.error(f"Simple Round 2 performance validation failed with exception: {e}")
-        print(f"\n❌ Validation execution failed: {e}")
         return False
 
 

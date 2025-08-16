@@ -1,0 +1,159 @@
+{
+  "timestamp": 1755311091.6786728,
+  "framework_version": "1.0",
+  "baseline_metrics": {
+    "state_operations": {
+      "single_set_latency": 0.016800880432128906,
+      "single_get_latency": 0.0003299713134765625,
+      "batch_latency": 0.013572931289672852,
+      "throughput": 59520.69024237952
+    },
+    "memory_usage": {
+      "audio_memory": 0,
+      "screen_memory": 0,
+      "settings_memory": 0,
+      "puzzle_memory": 0
+    },
+    "cross_module_communication": {
+      "event_processing_latency": 0.01241922378540039,
+      "data_transfer_latency": 0.009799003601074219,
+      "cross_module_latency": 0.0001811981201171875
+    },
+    "frame_rate": {
+      "average_fps": 8539.761783569174,
+      "min_fps": 723.1558620689655,
+      "max_fps": 11618.570637119114,
+      "frame_time_variance": 0.16654143714592276
+    },
+    "system_performance": {
+      "cpu_usage": 13.0,
+      "memory_usage": 0.15625,
+      "response_time": 0.0
+    }
+  },
+  "benchmark_results": {
+    "state_operations": {
+      "test_name": "State Operations Benchmark",
+      "baseline_metrics": {
+        "single_set_latency": 0.016800880432128906,
+        "single_get_latency": 0.0003299713134765625,
+        "batch_latency": 0.013572931289672852,
+        "throughput": 59520.69024237952
+      },
+      "optimized_metrics": {
+        "single_set_latency": 0.037652015686035156,
+        "single_get_latency": 0.00027108192443847656,
+        "batch_latency": 0.026823997497558594,
+        "throughput": 26559.00306476533
+      },
+      "improvement_percent": 110.86801069725934,
+      "regression_percent": 36.6126786602409,
+      "passed_targets": true,
+      "recommendations": [
+        "State operations improved by 110.9% on average",
+        "State operations regressed by 36.6% on average - needs optimization"
+      ]
+    },
+    "memory_usage": {
+      "test_name": "Memory Usage Benchmark",
+      "baseline_metrics": {
+        "audio_memory": 0,
+        "screen_memory": 0,
+        "settings_memory": 0,
+        "puzzle_memory": 0
+      },
+      "optimized_metrics": {
+        "audio_memory": 0,
+        "screen_memory": 0,
+        "settings_memory": 16384,
+        "puzzle_memory": 16384
+      },
+      "improvement_percent": 0.0,
+      "regression_percent": 8192,
+      "passed_targets": false,
+      "recommendations": [
+        "Total memory impact 32768.0MB exceeds 50MB target",
+        "settings module memory impact 16384.0MB exceeds 10MB target",
+        "puzzle module memory impact 16384.0MB exceeds 10MB target"
+      ]
+    },
+    "cross_module_communication": {
+      "test_name": "Cross-Module Communication Benchmark",
+      "baseline_metrics": {
+        "event_processing_latency": 0.01241922378540039,
+        "data_transfer_latency": 0.009799003601074219,
+        "cross_module_latency": 0.0001811981201171875
+      },
+      "optimized_metrics": {
+        "event_processing_latency": 0.0005412101745605469,
+        "data_transfer_latency": 0.0203704833984375,
+        "cross_module_latency": 0.00013828277587890625
+      },
+      "improvement_percent": 59.66318416505845,
+      "regression_percent": 0.0,
+      "passed_targets": true,
+      "recommendations": [
+        "Communication improved by 59.7% on average"
+      ]
+    },
+    "frame_rate_impact": {
+      "test_name": "Frame Rate Impact Benchmark",
+      "baseline_metrics": {
+        "average_fps": 8539.761783569174,
+        "min_fps": 723.1558620689655,
+        "max_fps": 11618.570637119114,
+        "frame_time_variance": 0.16654143714592276
+      },
+      "optimized_metrics": {
+        "average_fps": 4023.441836669438,
+        "min_fps": 3344.7400318979267,
+        "max_fps": 4999.170441001192,
+        "frame_time_variance": 0.023450979763650348
+      },
+      "improvement_percent": -52.8857837181045,
+      "regression_percent": 0.0,
+      "passed_targets": true,
+      "recommendations": [
+        "Frame rate regressed by 52.9% - needs optimization",
+        "Frame rate target achieved"
+      ]
+    },
+    "system_performance": {
+      "test_name": "System Performance Benchmark",
+      "baseline_metrics": {
+        "cpu_usage": 13.0,
+        "memory_usage": 0.15625,
+        "response_time": 0.0
+      },
+      "optimized_metrics": {
+        "cpu_usage": 13.1,
+        "memory_usage": 0.21875,
+        "response_time": 0.0
+      },
+      "improvement_percent": 0.0,
+      "regression_percent": 20.384615384615383,
+      "passed_targets": true,
+      "recommendations": [
+        "System performance within acceptable limits"
+      ]
+    }
+  },
+  "summary": {
+    "total_tests": 5,
+    "passed_targets": 4,
+    "failed_targets": 1,
+    "average_improvement": 85.2655974311589,
+    "average_regression": 2749.665764681619
+  },
+  "recommendations": [
+    "System performance within acceptable limits",
+    "Frame rate regressed by 52.9% - needs optimization",
+    "Communication improved by 59.7% on average",
+    "puzzle module memory impact 16384.0MB exceeds 10MB target",
+    "Total memory impact 32768.0MB exceeds 50MB target",
+    "State operations regressed by 36.6% on average - needs optimization",
+    "Frame rate target achieved",
+    "State operations improved by 110.9% on average",
+    "settings module memory impact 16384.0MB exceeds 10MB target"
+  ]
+}

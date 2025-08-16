@@ -143,7 +143,6 @@ class UnifiedInputManager:
         # Register default event handlers
         self._register_default_handlers()
         
-        # Initialize state manager if provided
         if self.state_manager:
             self._initialize_state_manager()
         
@@ -157,7 +156,6 @@ class UnifiedInputManager:
         # Register state change callbacks for specific input fields
         self.state_manager.add_change_callback("input.input_locked", self._on_state_change, "Input lock state change callback")
         
-        # Initialize input state
         self._update_state_manager()
         
         logger.info("State manager integration initialized")
