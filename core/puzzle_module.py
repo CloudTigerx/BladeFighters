@@ -216,21 +216,21 @@ class PuzzleEngine:
                     # Choose a random breaker color
                     piece = random.choice(breaker_colors)
                     breaker_count += 1
-                    print(f"[GRID DEBUG] Created breaker block at ({x}, {y}): {piece}")
+                    # logger.debug(f"Created breaker block at ({x}, {y}): {piece}")
                 else:
                     # Choose a random regular color
                     piece = random.choice(regular_colors)
                 row.append(piece)
             grid.append(row)
         
-        print(f"[GRID DEBUG] Created test grid with {breaker_count} breaker blocks")
+        # logger.debug(f"Created test grid with {breaker_count} breaker blocks")
         return grid
         
     # Core game mechanics methods
     
     def start_game(self):
         """Start a new puzzle game."""
-        print(f"🔄 Starting new game for engine...")
+        # logger.info("Starting new game for engine...")
         self.game_active = True
         self.puzzle_grid = self.create_empty_grid(self.grid_width, self.total_grid_height)
         
@@ -253,7 +253,7 @@ class PuzzleEngine:
         
         # Generate new piece after state is reset
         self.generate_new_piece()
-        print(f"✅ New game started successfully")
+        # logger.info("New game started successfully")
         
     def would_fit_below(self):
         """
@@ -520,10 +520,11 @@ class PuzzleEngine:
 
         # Trigger garbage block transformation based on landings
         if hasattr(self, 'on_piece_landed'):
-            print(f"[PUZZLE DEBUG] Calling on_piece_landed callback for engine")
+            # logger.debug("Calling on_piece_landed callback for engine")
             self.on_piece_landed()
         else:
-            print(f"[PUZZLE DEBUG] No on_piece_landed callback found for engine")
+            # logger.debug("No on_piece_landed callback found for engine")
+            pass
 
         # Only clear both pieces if both were placed
         if separation_type == 'both':
@@ -609,10 +610,11 @@ class PuzzleEngine:
 
         # Trigger garbage block transformation based on landings
         if hasattr(self, 'on_piece_landed'):
-            print(f"[PUZZLE DEBUG] Calling on_piece_landed callback for engine")
+            # logger.debug("Calling on_piece_landed callback for engine")
             self.on_piece_landed()
         else:
-            print(f"[PUZZLE DEBUG] No on_piece_landed callback found for engine")
+            # logger.debug("No on_piece_landed callback found for engine")
+            pass
 
         # Clear the current piece (but don't generate a new one yet - will happen in update_falling_piece)
         self.main_piece = None
@@ -1594,11 +1596,8 @@ class PuzzleEngine:
                 elapsed_time > max(600, self.breaking_animation_duration + 200)
             ):
                 processed, remaining = self.clear_breaking_blocks()
-                if getattr(self, 'debug_breaks', False):
-                    try:
-                        print(f"[BREAK] processed={processed} remaining={remaining} chain={self.chain_count}")
-                    except Exception:
-                        pass
+                # if getattr(self, 'debug_breaks', False):
+                #     logger.debug(f"[BREAK] processed={processed} remaining={remaining} chain={self.chain_count}")
                 # Guard: if nothing processed and no future remain, avoid re-entering breaking
                 if processed == 0 and remaining == 0:
                     # Fast finalize: try one gravity pass and end if no more breakers
@@ -1606,7 +1605,8 @@ class PuzzleEngine:
                     if not gravity_applied and not self.find_breakers_to_activate():
                         if getattr(self, 'debug_breaks', False):
                             try:
-                                print("[BREAK-END] fast finalize: no gravity, no breakers -> idle")
+                                # logger.debug("[BREAK-END] fast finalize: no gravity, no breakers -> idle")
+                                pass
                             except Exception:
                                 pass
                         self.chain_reaction_in_progress = False

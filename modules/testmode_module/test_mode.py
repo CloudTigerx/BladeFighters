@@ -6,6 +6,7 @@ Replaces the monolithic TestMode with a clean, component-based architecture.
 import time
 import pygame
 import sys
+import logging
 from typing import List, Optional
 
 # Try to import the interface contract
@@ -30,6 +31,9 @@ from .attack_coordinator import AttackCoordinator
 from .render_coordinator import RenderCoordinator
 from .board_runtime import BoardRuntime
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 @validate_testmode_interface
 class TestModeRefactored(TestModeInterface):
     """Streamlined TestMode using extracted components."""
@@ -53,7 +57,14 @@ class TestModeRefactored(TestModeInterface):
         self._initialize_components()
         self._connect_components()
         
-        print("🎯 TestModeRefactored initialized with component-based architecture")
+        # Validate interface contract if available
+        try:
+            from contracts.testmode_interface_contract import validate_testmode_interface
+            validate_testmode_interface(self)
+        except ImportError:
+            logger.warning("TestMode interface contract not found, running without validation")
+
+        logger.info("TestModeRefactored initialized with component-based architecture")
         
     def _initialize_components(self):
         """Initialize all refactored components."""
@@ -347,7 +358,7 @@ class TestModeRefactored(TestModeInterface):
         
     def initialize_test(self):
         """Initialize or reset the test mode game state."""
-        print("🔄 COMPREHENSIVE GAME RESET INITIATED...")
+        logger.info("COMPREHENSIVE GAME RESET INITIATED...")
         
         # Reset attack queues
         self.attack_coordinator.reset_attack_queues()
@@ -368,7 +379,7 @@ class TestModeRefactored(TestModeInterface):
         # Update renderers
         self.board_manager.update_renderers()
         
-        print("✅ COMPREHENSIVE GAME RESET COMPLETED")
+        logger.info("COMPREHENSIVE GAME RESET COMPLETED")
         
     def update(self) -> Optional[str]:
         """Update the test mode state."""

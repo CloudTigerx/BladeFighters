@@ -9,6 +9,10 @@ Replaces scattered debug messages with organized summaries.
 import time
 from typing import Dict, List, Any
 from utils.clock import Clock, PygameClock
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class AttackFlowTracker:
     """Tracks attack flow between players with clean summary output."""
@@ -98,8 +102,8 @@ class AttackFlowTracker:
         return "\n".join(lines)
     
     def print_summary(self):
-        """Print the attack flow summary."""
-        print(self.get_summary())
+        """Print a summary of the attack flow."""
+        logger.info(self.get_summary())
     
     def should_print_summary(self) -> bool:
         """Check if enough time has passed to print another summary."""
@@ -111,12 +115,11 @@ class AttackFlowTracker:
     
     def track_combo_result(self, player: str, combo_info: Dict[str, Any]):
         """Track combo results with clean output."""
-        if combo_info.get('strikes', 0) > 0 or combo_info.get('garbage', 0) > 0:
-            print(f"🎯 {player.upper()} COMBO: {combo_info.get('chain_pos', 1)}x chain")
-            if combo_info.get('strikes', 0) > 0:
-                print(f"   → {combo_info['strikes']} strikes")
-            if combo_info.get('garbage', 0) > 0:
-                print(f"   → {combo_info['garbage']} garbage")
+        logger.info(f"{player.upper()} COMBO: {combo_info.get('chain_pos', 1)}x chain")
+        if combo_info.get('strikes', 0) > 0:
+            logger.info(f"   → {combo_info['strikes']} strikes")
+        if combo_info.get('garbage', 0) > 0:
+            logger.info(f"   → {combo_info['garbage']} garbage")
 
     def _now_ms(self) -> int:
         return int(self.clock.now_ms())

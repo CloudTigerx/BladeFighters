@@ -4,7 +4,11 @@ Extracted from TestMode to manage rendering coordination.
 """
 
 import pygame
+import logging
 from typing import Dict, List, Optional, Any, Tuple
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class RenderCoordinator:
     """
@@ -54,10 +58,10 @@ class RenderCoordinator:
                 if config:
                     self.character_animation_manager.initialize_character(character_name, config)
             
-            print("✅ Character system initialized successfully")
+            logger.info("Character system initialized successfully")
             
         except Exception as e:
-            print(f"⚠️ Character system initialization failed: {e}")
+            logger.warning(f"Character system initialization failed: {e}")
             self.character_sprite_manager = None
             self.character_animation_manager = None
         
@@ -123,7 +127,7 @@ class RenderCoordinator:
             self.screen.blit(sprite, (char_x, char_y))
             
         except Exception as e:
-            print(f"⚠️ Error drawing character {character_name}: {e}")
+            logger.warning(f"Error drawing character {character_name}: {e}")
             
     def _draw_attack_indicator(self, board_position: Dict, attacks: List, current_time: int, board_width: int):
         """Draw attack indicators above a specific board."""

@@ -10,6 +10,14 @@ A sophisticated puzzle combat game featuring Tetris-style gameplay with advanced
 
 BladeFighters combines classic puzzle gameplay with innovative combat mechanics. Players clear blocks to generate attacks against opponents, using strategic thinking and quick reflexes to dominate the battlefield.
 
+### Latest Release (v2.0.0)
+- **🎬 Animated Attack Delivery**: Smooth, paced attack spawning with no teleportation
+- **🔒 Input Lock Windows**: Synchronized input locking during attack animations
+- **📐 Resolution Independence**: Consistent grid coordinates across all screen sizes
+- **🎯 Paced Sliding**: Smooth horizontal block sliding during cluster breaks
+- **🧪 Comprehensive Testing**: 200+ tests covering core mechanics and edge cases
+- **📚 Complete Documentation**: Full API docs, integration guides, and developer references
+
 ### Key Features
 
 - **🎯 Advanced Combat System**: Mathematical attack calculations with cluster strikes and garbage blocks

@@ -1,13 +1,16 @@
 """
-TestMode Module - Extracted Core Puzzle Battle System
-Provides clean puzzle battle functionality: 2 grids, piece previews, backgrounds.
-Simplified to focus on core gameplay without attack system complexity.
+TestMode Module - Comprehensive PvP Testing Environment
 """
+
+import logging
 
 # Version and metadata
 __version__ = "1.0.0"
 __author__ = "BladeFighters Development Team"
 __description__ = "Extracted Core Puzzle Battle Module"
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Import and export the main class
 from .test_mode import TestModeRefactored as TestMode
@@ -21,4 +24,4 @@ __all__ = [
 ]
 
 # Module initialization message
-print("🎮 TestMode Module v{} initialized".format(__version__)) 
+logger.info("TestMode Module v{} initialized".format(__version__)) 
