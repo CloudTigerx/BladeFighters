@@ -51,7 +51,7 @@ class AnimationRenderer:
                 self.red_explosion_frames = explosion_sprites.get('yellow_explode', [])
                 self.yellow_explosion_frames = explosion_sprites.get('orange_explode', [])
                 
-                print(f"DEBUG: Loaded explosion sprites - Blue: {len(self.explosion_frames)}, Green: {len(self.green_explosion_frames)}, Red: {len(self.red_explosion_frames)}, Yellow: {len(self.yellow_explosion_frames)}")
+
             else:
                 self.explosion_frames = []
                 self.green_explosion_frames = []
@@ -59,7 +59,8 @@ class AnimationRenderer:
                 self.yellow_explosion_frames = []
                 
             # Explosion animation settings
-            self.explosion_repeat_frames = 3
+            # Tighten early explosion repeat to reduce perceived replay/lag
+            self.explosion_repeat_frames = 1
             self.explosion_initial_frames = 2
             self.explosion_scale_start = 0.8
             self.explosion_scale_end = 1.5
@@ -69,6 +70,16 @@ class AnimationRenderer:
             self.explosion_frames = []
             self.green_explosion_frames = []
             self.red_explosion_frames = []
+            self.yellow_explosion_frames = []
+        
+        # If no frames loaded, disable explosion effects gracefully
+        if not hasattr(self, 'explosion_frames'):
+            self.explosion_frames = []
+        if not hasattr(self, 'green_explosion_frames'):
+            self.green_explosion_frames = []
+        if not hasattr(self, 'red_explosion_frames'):
+            self.red_explosion_frames = []
+        if not hasattr(self, 'yellow_explosion_frames'):
             self.yellow_explosion_frames = []
     
     def render_breaking_block(self, pos: Tuple[int, int], block_data: Dict[str, Any], 
@@ -92,17 +103,23 @@ class AnimationRenderer:
         block_x = x_offset + (x * block_width)
         block_y = y_offset + (y * block_height)
         
-        # Draw the block with shrinking effect in early animation stages
-        if progress < 0.3:
-            self._render_shrinking_block(block_data, block_x, block_y, block_width, block_height, progress)
+        # Draw the block with shrinking effect across the first half of the animation
+        if progress < 0.5:
+            try:
+                self._render_shrinking_block(block_data, block_x, block_y, block_width, block_height, progress)
+            except Exception:
+                pass
         
         # Draw particles
         if 'particles' in block_data and block_data['particles']:
             self._render_breaking_particles(block_data, block_x, block_y, block_width, block_height)
         
-        # Draw explosion sprite effects for different block types
+        # Draw explosion sprite effects during the first half of the break
         if progress < 0.5:
-            self._render_explosion_effects(block_type, block_x, block_y, block_width, block_height, progress)
+            try:
+                self._render_explosion_effects(block_type, block_x, block_y, block_width, block_height, progress)
+            except Exception:
+                pass
     
     def _render_shrinking_block(self, block_data: Dict[str, Any], block_x: int, block_y: int, 
                                block_width: int, block_height: int, progress: float):
@@ -250,7 +267,6 @@ class AnimationRenderer:
             explosion_frames = self.yellow_explosion_frames
         
         if not explosion_frames or len(explosion_frames) == 0:
-            print(f"DEBUG: No explosion frames found for block type: {block_type}")
             return
         
         # Calculate frame to display
@@ -259,11 +275,16 @@ class AnimationRenderer:
         
         # Calculate frame index with repetition for initial frames
         if explosion_progress < 0.3:
-            frame_index = (int(explosion_progress * self.explosion_repeat_frames * self.explosion_initial_frames)) % self.explosion_initial_frames
+            frame_index = (int(explosion_progress * self.explosion_repeat_frames * self.explosion_initial_frames)) % max(1, self.explosion_initial_frames)
         else:
-            remaining_frames = frame_count - self.explosion_initial_frames
-            frame_progress = (explosion_progress - 0.3) / 0.7
-            frame_index = self.explosion_initial_frames + int(frame_progress * remaining_frames)
+            remaining_frames = max(1, frame_count - self.explosion_initial_frames)
+            frame_progress = max(0.0, min(1.0, (explosion_progress - 0.3) / 0.7))
+            frame_index = self.explosion_initial_frames + int(frame_progress * (remaining_frames - 1))
+        # Clamp index to valid range
+        if frame_index < 0:
+            frame_index = 0
+        if frame_index >= frame_count:
+            frame_index = frame_count - 1
         
         # Get current frame
         current_frame = explosion_frames[frame_index]
@@ -305,9 +326,49 @@ class AnimationRenderer:
             # Draw the block
             self._draw_block(screen_x, interp_y, block_width, block_height, block_data['block_type'])
 
-            # Remove completed animations
+            # Handle completed animations
             if progress >= 1.0:
+                # For attack blocks, ensure they are placed in their final position
+                if block_data.get('payload', False) and 'final_position' in block_data:
+                    final_x, final_y = block_data['final_position']
+                    # Ensure the block is in the correct final position in the grid
+                    if (0 <= final_x < self.engine.grid_width and 
+                        0 <= final_y < self.engine.grid_height):
+                        self.engine.puzzle_grid[final_y][final_x] = block_data['block_type']
+                
+                # Remove the animation
                 self.state_manager.visual_falling_blocks.pop(pos)
+
+    def render_sliding_blocks(self, x_offset: int, y_offset: int, block_width: int, block_height: int):
+        """Render all horizontal sliding block animations (paced to breaking)."""
+        current_time = time.time()
+
+        for pos, block_data in list(getattr(self.state_manager, 'visual_sliding_blocks', {}).items()):
+            x, y = pos
+            # If entry is a mask for source, skip drawing but let expiration clean it up
+            if block_data.get('mask_only'):
+                if (current_time - float(block_data.get('start_time', current_time))) >= float(block_data.get('duration', 0.1)):
+                    self.state_manager.visual_sliding_blocks.pop(pos, None)
+                continue
+            start_x = block_data.get('start_x', x)
+            duration = max(0.001, float(block_data.get('duration', 0.1)))
+            elapsed = current_time - float(block_data.get('start_time', current_time))
+            progress = min(1.0, max(0.0, elapsed / duration))
+            eased = 1 - (1 - progress) ** 3
+
+            # Interpolate X in grid coordinates then convert to pixels
+            interp_grid_x = float(start_x) + (float(x) - float(start_x)) * eased
+            screen_x = x_offset + interp_grid_x * block_width
+            screen_y = y_offset + y * block_height
+
+            # Draw the block at interpolated x
+            self._draw_block(screen_x, screen_y, block_width, block_height, block_data.get('block_type', 'red_block'))
+
+            if progress >= 1.0:
+                # Sliding completed, remove animation
+                self.state_manager.visual_sliding_blocks.pop(pos, None)
+
+    # Lightning visual effects removed (effects disabled)
     
     def render_player_piece(self, x_offset: int, y_offset: int, block_width: int, block_height: int):
         """Renders the player-controlled piece (main and attached) using state from the state manager."""
@@ -318,9 +379,37 @@ class AnimationRenderer:
         main_pos = self.state_manager.visual_piece_position
         main_block_type = self.engine.main_piece  # Get the actual falling piece type
         
+        # Optional suppression: skip drawing the falling piece for one frame window after land
+        try:
+            clk = getattr(self.engine, 'clock', None)
+            now_ms = int(clk.now_ms()) if clk and hasattr(clk, 'now_ms') else int(pygame.time.get_ticks())
+            if now_ms < int(getattr(self.state_manager, 'suppress_falling_draw_until_ms', 0)):
+                return
+        except Exception:
+            pass
+
         if main_block_type:
             screen_x = x_offset + main_pos[0] * block_width
             screen_y = y_offset + main_pos[1] * block_height
+            # Clamp to not draw below the next cell boundary while falling
+            try:
+                eps_px = float(getattr(self.state_manager, 'landing_epsilon_px', 0.0))
+                # If we cannot move down, snap to exact grid row
+                cannot_move_down = False
+                if hasattr(self.engine, 'would_fit_below'):
+                    cannot_move_down = not bool(self.engine.would_fit_below())
+                if getattr(self.state_manager, 'snap_on_land', True) and cannot_move_down:
+                    # On the landing frame, draw at the top of the landing cell (final resting position)
+                    base_y = int(self.state_manager.visual_piece_position[1])
+                    screen_y = y_offset + base_y * block_height
+                else:
+                    # Enforce upper bound at boundary of next row
+                    current_row = int(self.state_manager.visual_piece_position[1])
+                    boundary = y_offset + (current_row + 1) * block_height - eps_px
+                    if screen_y > boundary:
+                        screen_y = boundary
+            except Exception:
+                pass
             self._draw_block(screen_x, screen_y, block_width, block_height, main_block_type)
 
         # Draw the attached piece using smooth visual positioning
@@ -331,6 +420,23 @@ class AnimationRenderer:
             if attached_block_type:
                 screen_x = x_offset + attached_pos[0] * block_width
                 screen_y = y_offset + attached_pos[1] * block_height
+                # Apply same clamp rules to the attached piece
+                try:
+                    eps_px = float(getattr(self.state_manager, 'landing_epsilon_px', 0.0))
+                    cannot_move_down = False
+                    if hasattr(self.engine, 'would_fit_below'):
+                        cannot_move_down = not bool(self.engine.would_fit_below())
+                    if getattr(self.state_manager, 'snap_on_land', True) and cannot_move_down:
+                        # On the landing frame, draw attached at the top of its landing cell
+                        base_y = int(self.state_manager.visual_attached_piece_position[1]) if hasattr(self.state_manager, 'visual_attached_piece_position') and self.state_manager.visual_attached_piece_position else int(attached_pos[1])
+                        screen_y = y_offset + base_y * block_height
+                    else:
+                        current_row = int(attached_pos[1])
+                        boundary = y_offset + (current_row + 1) * block_height - eps_px
+                        if screen_y > boundary:
+                            screen_y = boundary
+                except Exception:
+                    pass
                 self._draw_block(screen_x, screen_y, block_width, block_height, attached_block_type)
 
     def render_combo_texts(self):
@@ -393,9 +499,9 @@ class AnimationRenderer:
         asset_key = ''
         block_image = None
         
-        if '_garbage' in block_type:
-            # Use the colored garbage block images for better visual distinction
-            asset_key = block_type  # e.g., 'red_garbage', 'blue_garbage'
+        if '_garbage' in block_type or block_type == 'garbage_block':
+            # Use the colored garbage block images if specified; otherwise neutral garbage
+            asset_key = block_type if '_garbage' in block_type else 'garbage_block'
             block_image = self.engine.puzzle_pieces.get(asset_key)
         elif '_strike' in block_type:
             # Use the strike block image for all strike types
@@ -412,9 +518,12 @@ class AnimationRenderer:
         if block_image:
             # Scale the image to fit the block size
             scaled_image = pygame.transform.scale(block_image, (width, height))
-            self.screen.blit(scaled_image, (x, y))
+            # Align to integer pixels to avoid subpixel jitter
+            xi = int(x)
+            yi = int(y)
+            self.screen.blit(scaled_image, (xi, yi))
         else:
-            # Fallback: draw colored rectangle
+            # Fallback: draw colored rectangle and outline for clarity
             color_map = {
                 'red_block': (255, 0, 0),
                 'blue_block': (0, 0, 255),
@@ -430,7 +539,15 @@ class AnimationRenderer:
                 'yellow_strike': (255, 255, 0)    # Bright yellow for strikes
             }
             color = color_map.get(block_type, (128, 128, 128))
-            pygame.draw.rect(self.screen, color, (x, y, width, height))
+            xi = int(x)
+            yi = int(y)
+            rect = pygame.Rect(xi, yi, width, height)
+            pygame.draw.rect(self.screen, color, rect)
+            # Add high-contrast outline for strike/garbage
+            if '_strike' in block_type:
+                pygame.draw.rect(self.screen, (255, 255, 255), rect, 2)
+            elif '_garbage' in block_type:
+                pygame.draw.rect(self.screen, (0, 0, 0), rect, 1)
     
     def _apply_brightness(self, surface: pygame.Surface, brightness: float) -> pygame.Surface:
         """Apply brightness adjustment to a surface."""

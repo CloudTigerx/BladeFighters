@@ -52,8 +52,8 @@ class AssetLoader:
             'yellow_breaker': self.load_block("yellowbreaker.png", "yellowblock.png", False)
         })
         
-        # Create colored garbage blocks for better visual distinction
-        # These will be tinted versions of the garbage block texture
+        # Create/load colored garbage blocks for better visual distinction
+        # Prefer per-color images if available; otherwise tint the base garbage texture
         self.block_images.update({
             'red_garbage': self._create_colored_garbage_block("red"),
             'blue_garbage': self._create_colored_garbage_block("blue"), 
@@ -68,6 +68,7 @@ class AssetLoader:
             'greenblock': self.block_images.get('green_block'),
             'yellowblock': self.block_images.get('yellow_block'),
             'garbage_block': self.block_images.get('garbage_block'),
+            'garbageblock': self.block_images.get('garbage_block'),
             'red_garbage': self.block_images.get('red_garbage'),
             'blue_garbage': self.block_images.get('blue_garbage'),
             'green_garbage': self.block_images.get('green_garbage'),
@@ -76,15 +77,16 @@ class AssetLoader:
             'bluebreaker': self.block_images.get('blue_breaker'),
             'greenbreaker': self.block_images.get('green_breaker'),
             'yellowbreaker': self.block_images.get('yellow_breaker'),
-            'strikeblock': self.block_images.get('strike_block')
+            'strikeblock': self.block_images.get('strike_block'),   # legacy key
+            'strike_block': self.block_images.get('strike_block')   # renderer key
         }
         
         # Load background images
-        self.background_images['puzzle_background'] = self.load_background("puzzlebackground.jpg")
+        self.background_images['puzzle_background'] = self.load_background("puzzlebackground.png")
     
     def load_block(self, filename: str, fallback_filename: Optional[str] = None, is_breaker: bool = False) -> Optional[pygame.Surface]:
         """
-        Load and scale a block image.
+        Load and scale a block image using the new resolution-aware system.
         
         Args:
             filename: Primary image filename
@@ -95,7 +97,7 @@ class AssetLoader:
             Loaded and scaled pygame Surface or None if failed
         """
         try:
-            # Try primary image
+            # Simple direct loading like Dev2
             image_path = os.path.join(self.asset_path, filename)
             if os.path.exists(image_path):
                 original_img = pygame.image.load(image_path)
@@ -120,7 +122,7 @@ class AssetLoader:
                     
                     return scaled_img
                     
-        except pygame.error as e:
+        except Exception as e:
             print(f"Error loading block image {filename}: {e}")
         
         # If all loading attempts fail, raise an error
@@ -139,7 +141,26 @@ class AssetLoader:
         return result
     
     def _create_colored_garbage_block(self, color: str) -> pygame.Surface:
-        """Create a colored garbage block by tinting the base garbage block texture."""
+        """Create or load a colored garbage block for the given color.
+        Prefer `puzzleassets/strikes/<color>_garbage.png`,
+        otherwise try `puzzleassets/strikes/garbage_<color>.png`,
+        otherwise tint the base garbage texture.
+        """
+        # Try color-specific file first
+        try:
+            specific_primary = os.path.join(self.asset_path, "strikes", f"{color}_garbage.png")
+            specific_fallback = os.path.join(self.asset_path, "strikes", f"garbage_{color}.png")
+            image_path = None
+            if os.path.exists(specific_primary):
+                image_path = specific_primary
+            elif os.path.exists(specific_fallback):
+                image_path = specific_fallback
+            if image_path:
+                original_img = pygame.image.load(image_path)
+                return pygame.transform.scale(original_img, (self.block_size, self.block_size))
+        except Exception:
+            pass
+
         base_garbage = self.block_images.get('garbage_block')
         if base_garbage is None:
             # Fallback to a colored rectangle if no base texture
@@ -153,24 +174,17 @@ class AssetLoader:
             surface.fill(color_map.get(color, (128, 128, 128)))
             return surface
         
-        # Create a copy and tint it
+        # Tint base texture to target color (temporary until per-color images provided)
         result = base_garbage.copy()
-        
-        # Define color tints (RGB values)
-        color_tints = {
+        tint_surface = pygame.Surface(result.get_size())
+        tint_map = {
             'red': (255, 150, 150),
             'blue': (150, 150, 255),
-            'green': (150, 255, 150), 
+            'green': (150, 255, 150),
             'yellow': (255, 255, 150)
         }
-        
-        tint_color = color_tints.get(color, (255, 255, 255))
-        
-        # Apply tint by blending with the tint color
-        tint_surface = pygame.Surface(result.get_size())
-        tint_surface.fill(tint_color)
+        tint_surface.fill(tint_map.get(color, (220, 220, 220)))
         result.blit(tint_surface, (0, 0), special_flags=pygame.BLEND_MULT)
-        
         return result
     
     def load_background(self, filename: str, target_size: Optional[Tuple[int, int]] = None) -> Optional[pygame.Surface]:

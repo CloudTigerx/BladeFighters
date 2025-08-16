@@ -150,7 +150,7 @@ SCREEN_MANAGER_REQUIREMENTS = {
         "Cross-screen data persistence"
     ],
     "integration_points": [
-        "Works with extracted modules (Menu, Settings, TestMode)", 
+        "Works with extracted modules (Menu, TestMode)", 
         "Preserves MP3 player in game_client",
         "Supports story system integration",
         "Handles fallback scenarios"
@@ -160,9 +160,8 @@ SCREEN_MANAGER_REQUIREMENTS = {
 # Screen types and their responsibilities
 SCREEN_TYPES = {
     "main_menu": "Main game menu with navigation",
-    "settings": "Settings configuration screen", 
     "game": "Main gameplay screen",
     "test": "Test mode for puzzle battles",
     "story": "Story menu selection",
     "story_content": "Story content display with scrolling"
-} 
+}

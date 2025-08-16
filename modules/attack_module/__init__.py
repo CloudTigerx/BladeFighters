@@ -1,12 +1,39 @@
 """
-Simple Attack System Module
+Attack Module
 
-A simplified attack system that rewards chaining attacks without complexity.
+Exports the primary attack system components used by the game:
+- AttackManager (main orchestration)
+- Data structures for payloads and combos
+- Calculator and utilities
 """
 
-from .simple_attack_system import SimpleAttackSystem, AttackData, ComboData
+from .attack_manager import AttackManager, create_attack_manager, process_combo_simple
 from .attack_calculator import AttackCalculator
 from .column_rotator import ColumnRotator
-from .attack_database import AttackDatabase, AttackCombo, AttackOutput
+from .data_structures import (
+    ComboData,
+    ClusterData,
+    AttackPayload,
+    GarbageBlockPayload,
+    ClusterStrikePayload,
+    AttackType,
+    ClusterType,
+)
+from .attacks_service import AttacksService
 
-__all__ = ['SimpleAttackSystem', 'AttackData', 'ComboData', 'AttackCalculator', 'ColumnRotator', 'AttackDatabase', 'AttackCombo', 'AttackOutput'] 
+__all__ = [
+    'AttackManager',
+    'create_attack_manager',
+    'process_combo_simple',
+    'AttackCalculator',
+    'ColumnRotator',
+    'AttacksService',
+    # AttackDatabase family removed (rule-based engine; file deleted)
+    'ComboData',
+    'ClusterData',
+    'AttackPayload',
+    'GarbageBlockPayload',
+    'ClusterStrikePayload',
+    'AttackType',
+    'ClusterType',
+]

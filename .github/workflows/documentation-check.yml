@@ -1,0 +1,191 @@
+name: Documentation Quality Check
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'modules/**/README.md'
+      - 'modules/**/MIGRATION_GUIDE.md'
+      - 'modules/**/INTEGRATION_GUIDE.md'
+      - '**/*_INTEGRATION_REPORT.md'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'modules/**/README.md'
+      - 'modules/**/MIGRATION_GUIDE.md'
+      - 'modules/**/INTEGRATION_GUIDE.md'
+      - '**/*_INTEGRATION_REPORT.md'
+
+jobs:
+  documentation-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install documentation tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install markdown-link-check
+          python -m pip install mdformat
+          python -m pip install yamllint
+
+      - name: Check for required documentation files
+        run: |
+          echo "🔍 Checking for required documentation files..."
+          
+          # Check if all modules have README.md
+          for module_dir in modules/*/; do
+            if [ -d "$module_dir" ]; then
+              module_name=$(basename "$module_dir")
+              if [ ! -f "$module_dir/README.md" ]; then
+                echo "❌ Missing README.md in module: $module_name"
+                exit 1
+              else
+                echo "✅ Found README.md in module: $module_name"
+              fi
+            fi
+          done
+          
+          # Check if main docs directory exists
+          if [ ! -d "docs" ]; then
+            echo "❌ Missing docs directory"
+            exit 1
+          fi
+          
+          echo "✅ All required documentation files present"
+
+      - name: Validate markdown formatting
+        run: |
+          echo "📝 Checking markdown formatting..."
+          find . -name "*.md" -not -path "./.git/*" -not -path "./.venv/*" | while read file; do
+            echo "Checking: $file"
+            mdformat --check "$file" || {
+              echo "❌ Markdown formatting issues in: $file"
+              exit 1
+            }
+          done
+          echo "✅ All markdown files properly formatted"
+
+      - name: Check for broken links
+        run: |
+          echo "🔗 Checking for broken links..."
+          find . -name "*.md" -not -path "./.git/*" -not -path "./.venv/*" | while read file; do
+            echo "Checking links in: $file"
+            markdown-link-check "$file" --config .markdown-link-check.json || {
+              echo "❌ Broken links found in: $file"
+              exit 1
+            }
+          done
+          echo "✅ All links valid"
+
+      - name: Validate module template compliance
+        run: |
+          echo "📋 Checking module README compliance..."
+          python -c "
+          import os
+          import re
+          
+          template_sections = [
+              '## Overview',
+              '## 🎯 Key Features', 
+              '## 📁 Module Structure',
+              '## 🚀 Quick Start',
+              '## 📋 API Reference'
+          ]
+          
+          for module_dir in os.listdir('modules'):
+              if os.path.isdir(f'modules/{module_dir}'):
+                  readme_path = f'modules/{module_dir}/README.md'
+                  if os.path.exists(readme_path):
+                      with open(readme_path, 'r') as f:
+                          content = f.read()
+                          
+                      missing_sections = []
+                      for section in template_sections:
+                          if section not in content:
+                              missing_sections.append(section)
+                      
+                      if missing_sections:
+                          print(f'❌ Module {module_dir} missing sections: {missing_sections}')
+                          exit(1)
+                      else:
+                          print(f'✅ Module {module_dir} README compliant')
+          "
+          echo "✅ All module READMEs follow template structure"
+
+      - name: Check developer logs freshness
+        run: |
+          echo "📔 Checking developer logs..."
+          if [ -d "docs/developer_logs" ]; then
+            # Check if logs are updated within last 7 days
+            find docs/developer_logs -name "*.md" -mtime +7 | while read log; do
+              echo "⚠️  Warning: Developer log may be stale: $log"
+            done
+          fi
+          echo "✅ Developer logs check complete"
+
+      - name: Generate documentation coverage report
+        run: |
+          echo "📊 Generating documentation coverage report..."
+          python -c "
+          import os
+          import json
+          
+          coverage_data = {
+              'modules_with_readme': 0,
+              'total_modules': 0,
+              'modules_with_migration_guides': 0,
+              'modules_with_integration_guides': 0,
+              'modules_with_tests': 0,
+              'missing_documentation': []
+          }
+          
+          for module_dir in os.listdir('modules'):
+              if os.path.isdir(f'modules/{module_dir}'):
+                  coverage_data['total_modules'] += 1
+                  
+                  if os.path.exists(f'modules/{module_dir}/README.md'):
+                      coverage_data['modules_with_readme'] += 1
+                  else:
+                      coverage_data['missing_documentation'].append(f'{module_dir}/README.md')
+                  
+                  if os.path.exists(f'modules/{module_dir}/MIGRATION_GUIDE.md'):
+                      coverage_data['modules_with_migration_guides'] += 1
+                  
+                  if os.path.exists(f'modules/{module_dir}/INTEGRATION_GUIDE.md'):
+                      coverage_data['modules_with_integration_guides'] += 1
+                  
+                  if os.path.exists(f'modules/{module_dir}/tests'):
+                      coverage_data['modules_with_tests'] += 1
+          
+          coverage_percentage = (coverage_data['modules_with_readme'] / coverage_data['total_modules']) * 100
+          
+          print(f'Documentation Coverage: {coverage_percentage:.1f}%')
+          print(f'Modules with README: {coverage_data['modules_with_readme']}/{coverage_data['total_modules']}')
+          print(f'Modules with migration guides: {coverage_data['modules_with_migration_guides']}')
+          print(f'Modules with integration guides: {coverage_data['modules_with_integration_guides']}')
+          print(f'Modules with tests: {coverage_data['modules_with_tests']}')
+          
+          if coverage_data['missing_documentation']:
+              print('Missing documentation:')
+              for missing in coverage_data['missing_documentation']:
+                  print(f'  - {missing}')
+          
+          # Save report
+          os.makedirs('build/docs', exist_ok=True)
+          with open('build/docs/coverage_report.json', 'w') as f:
+              json.dump(coverage_data, f, indent=2)
+          "
+
+      - name: Upload documentation coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-coverage
+          path: build/docs/coverage_report.json

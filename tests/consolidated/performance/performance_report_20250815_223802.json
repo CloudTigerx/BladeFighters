@@ -1,0 +1,33 @@
+{
+  "test_suite_info": {
+    "name": "BladeFighters Performance Test Suite",
+    "version": "1.0.0",
+    "timestamp": "2025-08-15T22:38:02.014142",
+    "total_duration_ms": 1482.6860427856445,
+    "config_file": "performance_config.json"
+  },
+  "summary": {
+    "categories_tested": 1,
+    "total_tests": 13,
+    "passed_tests": 13,
+    "failed_tests": 0,
+    "error_tests": 0,
+    "success_rate": 100.0
+  },
+  "category_results": {
+    "test_framework": {
+      "status": "completed",
+      "tests_run": 13,
+      "tests_passed": 13,
+      "tests_failed": 0,
+      "tests_errors": 0,
+      "duration_ms": 1482.6860427856445,
+      "return_code": 0,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- /Library/Frameworks/Python.framework/Versions/3.13/bin/python3\ncachedir: .pytest_cache\nrootdir: /Users/justinearp/Downloads/BladeFighters-cluster-fix-working copy 6/tests/consolidated\nconfigfile: pytest.ini\ncollecting ... collected 13 items\n\ntests/consolidated/performance/test_performance_framework.py::AudioPerformanceTests::test_audio_system_initialization_performance PASSED [  7%]\ntests/consolidated/performance/test_performance_framework.py::AudioPerformanceTests::test_sound_loading_performance PASSED [ 15%]\ntests/consolidated/performance/test_performance_framework.py::AudioPerformanceTests::test_volume_control_performance PASSED [ 23%]\ntests/consolidated/performance/test_performance_framework.py::InputPerformanceTests::test_input_event_processing_performance PASSED [ 30%]\ntests/consolidated/performance/test_performance_framework.py::InputPerformanceTests::test_input_repeat_performance PASSED [ 38%]\ntests/consolidated/performance/test_performance_framework.py::InputPerformanceTests::test_key_state_management_performance PASSED [ 46%]\ntests/consolidated/performance/test_performance_framework.py::GameStatePerformanceTests::test_state_queries_performance PASSED [ 53%]\ntests/consolidated/performance/test_performance_framework.py::GameStatePerformanceTests::test_state_updates_performance PASSED [ 61%]\ntests/consolidated/performance/test_performance_framework.py::PuzzleEnginePerformanceTests::test_puzzle_engine_initialization_performance PASSED [ 69%]\ntests/consolidated/performance/test_performance_framework.py::PuzzleEnginePerformanceTests::test_puzzle_update_performance PASSED [ 76%]\ntests/consolidated/performance/test_performance_framework.py::LoadPerformanceTests::test_concurrent_audio_operations PASSED [ 84%]\ntests/consolidated/performance/test_performance_framework.py::LoadPerformanceTests::test_concurrent_input_operations PASSED [ 92%]\ntests/consolidated/performance/test_performance_framework.py::PerformanceRegressionTests::test_performance_regression_detection PASSED [100%]\n\n============================== 13 passed in 1.28s ==============================\n",
+      "stderr": ""
+    }
+  },
+  "recommendations": [
+    "All performance tests passed - system performing well"
+  ]
+}

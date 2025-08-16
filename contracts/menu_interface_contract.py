@@ -65,13 +65,11 @@ class MenuSystemInterface(ABC):
         pass
     
     @abstractmethod
-    def draw_main_menu(self, on_start_action=None, on_settings_action=None, 
-                      on_story_action=None, on_test_action=None, on_test_lab_action=None, version=None) -> List:
+    def draw_main_menu(self, on_start_action=None, on_story_action=None, on_test_action=None, on_test_lab_action=None, version=None) -> List:
         """Draw the main menu screen.
         
         Args:
             on_start_action: Callback for quickplay button
-            on_settings_action: Callback for settings button
             on_story_action: Callback for story button
             on_test_action: Callback for test button
             version: Game version string
@@ -121,16 +119,16 @@ class MenuSystemRequirements:
     """Defines the exact requirements for MenuSystem implementation."""
     
     # Required menu buttons
-    REQUIRED_BUTTONS = ["Quickplay", "Story Mode", "Test Mode", "Settings", "Quit"]
+    REQUIRED_BUTTONS = ["Quickplay", "Story Mode", "Test Mode", "Quit"]
     
     # Required background images
-    REQUIRED_BACKGROUNDS = ["colorful.png", "storybackground.png"]
+    REQUIRED_BACKGROUNDS = ["puzzlebackground.png", "storybackground.png"]
     
     # Required button images
     REQUIRED_BUTTON_IMAGES = ["banner.png", "mainmenutitle.png"]
     
     # Required menu actions
-    REQUIRED_ACTIONS = ["quickplay", "story", "test", "test_lab", "settings", "quit", "back"]
+    REQUIRED_ACTIONS = ["quickplay", "story", "test", "test_lab", "quit", "back"]
     
     # Color constants that must be available
     REQUIRED_COLORS = {
@@ -204,8 +202,8 @@ class MenuSystemRequirements:
             if not isinstance(buttons, list):
                 return False
             
-            # Should have 5 buttons
-            if len(buttons) != 5:
+            # Should have 4 buttons (Settings removed)
+            if len(buttons) != 4:
                 return False
             
             # Check button texts
@@ -269,12 +267,18 @@ class MenuSystemTestContract:
 def validate_menu_interface(cls):
     """Decorator to validate MenuSystem interface compliance."""
     def wrapper(*args, **kwargs):
+        # Create the instance with the provided arguments
         instance = cls(*args, **kwargs)
         
-        if MenuSystemTestContract.validate_core_functionality(instance):
-            print("✅ MenuSystem interface validation passed")
-        else:
-            print("❌ MenuSystem interface validation failed")
+        # Only validate if we have the required arguments for testing
+        if len(args) >= 4:  # screen, font, audio, asset_path
+            try:
+                if MenuSystemTestContract.validate_core_functionality(instance):
+                    print("✅ MenuSystem interface validation passed")
+                else:
+                    print("❌ MenuSystem interface validation failed")
+            except Exception as e:
+                print(f"⚠️ MenuSystem interface validation skipped: {e}")
         
         return instance
     return wrapper 

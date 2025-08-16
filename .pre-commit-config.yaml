@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: block-graveyard-additions
+        name: Block adding files under graveyard/
+        entry: bash -c 'git diff --cached --name-only | grep -E "^graveyard/" && echo "Refusing to add files under graveyard/" && exit 1 || exit 0'
+        language: system
+        stages: [commit]
+

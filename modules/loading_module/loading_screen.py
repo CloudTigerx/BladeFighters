@@ -1,94 +1,123 @@
 import pygame
 import os
-import time
-import threading
-from typing import Callable, List, Tuple
 import sys
+import time
+from typing import List, Tuple, Callable, Optional
+from ..logging_module.error_handler import (
+    safe_operation,
+    safe_file_operation
+)
+from ..logging_module.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class LoadingScreen:
     """
-    Manages the loading screen display with progress tracking and visual feedback.
+    Loading screen with progress bar and task display.
+    Provides visual feedback during game initialization.
     """
-    
-    def __init__(self, screen: pygame.Surface, asset_path: str):
+
+    def __init__(self, screen: pygame.Surface, asset_path: str = "puzzleassets"):
         self.screen = screen
         self.asset_path = asset_path
-        self.width, self.height = screen.get_size()
-        
-        # Loading screen image
-        self.loading_image = None
-        self.loading_image_path = os.path.join(asset_path, "fonts", "ChatGPT Image Jul 27, 2025, 05_01_16 AM.png")
-        
-        # Progress tracking
-        self.progress = 0.0  # 0.0 to 1.0
-        self.current_task = "Initializing..."
-        self.is_loading = False
-        
-        # Visual elements
-        self.progress_bar_width = int(self.width * 0.6)
-        self.progress_bar_height = 20
-        self.progress_bar_x = (self.width - self.progress_bar_width) // 2
-        self.progress_bar_y = int(self.height * 0.8)
+        self.width = screen.get_width()
+        self.height = screen.get_height()
         
         # Colors
         self.BLACK = (0, 0, 0)
         self.WHITE = (255, 255, 255)
         self.BLUE = (0, 100, 255)
         self.LIGHT_BLUE = (100, 150, 255)
-        self.GRAY = (100, 100, 100)
+        self.GRAY = (50, 50, 50)
         
-        # Load the loading image
+        # Progress bar dimensions
+        self.progress_bar_width = int(self.width * 0.6)
+        self.progress_bar_height = 20
+        self.progress_bar_x = (self.width - self.progress_bar_width) // 2
+        self.progress_bar_y = self.height // 2
+        
+        # State
+        self.is_loading = False
+        self.progress = 0.0
+        self.current_task = "Initializing..."
+        
+        # Load loading background image
+        self.loading_image = None
         self._load_loading_image()
+        
+        logger.info("LoadingScreen initialized")
     
     def _load_loading_image(self):
-        """Load the loading screen background image."""
+        """Load the loading background image."""
         try:
-            if os.path.exists(self.loading_image_path):
-                self.loading_image = pygame.image.load(self.loading_image_path)
-                # Scale to fit screen while maintaining aspect ratio
-                self.loading_image = self._scale_image_to_fit(self.loading_image)
-                print(f"✅ Loaded loading screen image: {self.loading_image_path}")
+            # Try to load loading.png as loading image
+            image_path = os.path.join(self.asset_path, "fonts", "loading.png")
+            if os.path.exists(image_path):
+                self.loading_image = pygame.image.load(image_path).convert_alpha()
+                logger.info("✅ Loaded loading background image: loading.png")
             else:
-                print(f"⚠️ Loading screen image not found: {self.loading_image_path}")
-                self.loading_image = None
+                logger.warning("⚠️ Loading background image not found: loading.png")
         except Exception as e:
-            print(f"⚠️ Error loading loading screen image: {e}")
+            logger.warning(f"⚠️ Failed to load loading background image: {e}")
             self.loading_image = None
-    
-    def _scale_image_to_fit(self, image: pygame.Surface) -> pygame.Surface:
-        """Scale image to fit screen while maintaining aspect ratio."""
-        img_width, img_height = image.get_size()
-        screen_width, screen_height = self.width, self.height
+
+    def update_screen(self, new_screen: pygame.Surface) -> None:
+        """Update the screen reference if it changes."""
+        self.screen = new_screen
+        self.width = new_screen.get_width()
+        self.height = new_screen.get_height()
         
-        # Calculate scaling factors
-        scale_x = screen_width / img_width
-        scale_y = screen_height / img_height
-        scale = min(scale_x, scale_y)
-        
-        # Calculate new dimensions
-        new_width = int(img_width * scale)
-        new_height = int(img_height * scale)
-        
-        # Scale the image
-        return pygame.transform.scale(image, (new_width, new_height))
-    
-    def update_progress(self, progress: float, task: str = None):
+        # Recalculate progress bar position
+        self.progress_bar_x = (self.width - self.progress_bar_width) // 2
+        self.progress_bar_y = self.height // 2
+
+    def update_progress(self, progress: float, task: str) -> None:
         """Update the loading progress and current task."""
         self.progress = max(0.0, min(1.0, progress))
-        if task:
-            self.current_task = task
-    
-    def draw(self):
+        self.current_task = task
+
+    def draw(self) -> None:
         """Draw the loading screen."""
         # Clear screen
         self.screen.fill(self.BLACK)
         
-        # Draw background image if available
+        # Draw loading background image if available
         if self.loading_image:
+            # Scale image to fit screen while maintaining aspect ratio
+            img_width, img_height = self.loading_image.get_size()
+            screen_ratio = self.width / self.height
+            img_ratio = img_width / img_height
+            
+            if img_ratio > screen_ratio:
+                # Image is wider than screen, fit to width
+                new_width = self.width
+                new_height = int(self.width / img_ratio)
+            else:
+                # Image is taller than screen, fit to height
+                new_height = self.height
+                new_width = int(self.height * img_ratio)
+            
+            # Scale the image
+            scaled_image = pygame.transform.smoothscale(self.loading_image, (new_width, new_height))
+            
             # Center the image
-            img_rect = self.loading_image.get_rect()
-            img_rect.center = (self.width // 2, self.height // 2)
-            self.screen.blit(self.loading_image, img_rect)
+            x = (self.width - new_width) // 2
+            y = (self.height - new_height) // 2
+            
+            # Draw the background image
+            self.screen.blit(scaled_image, (x, y))
+            
+            # Add a semi-transparent overlay for better text readability
+            overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))  # Semi-transparent black
+            self.screen.blit(overlay, (0, 0))
+        
+        # Draw title
+        title_font = self._get_font(36)
+        title_surface = title_font.render("BladeFighters", True, self.WHITE)
+        title_rect = title_surface.get_rect(center=(self.width // 2, self.height // 4))
+        self.screen.blit(title_surface, title_rect)
         
         # Draw progress bar background
         progress_bg_rect = pygame.Rect(
@@ -115,12 +144,9 @@ class LoadingScreen:
         
         # Draw progress text
         progress_text = f"{int(self.progress * 100)}%"
-        try:
-            font = pygame.font.Font(os.path.join(self.asset_path, "fonts", "PermanentMarker-Regular.ttf"), 24)
-        except:
-            font = pygame.font.SysFont('Arial', 24)
+        progress_font = self._get_font(24)
         
-        progress_surface = font.render(progress_text, True, self.WHITE)
+        progress_surface = progress_font.render(progress_text, True, self.WHITE)
         progress_rect = progress_surface.get_rect(center=(
             self.width // 2, 
             self.progress_bar_y + self.progress_bar_height + 30
@@ -128,7 +154,7 @@ class LoadingScreen:
         self.screen.blit(progress_surface, progress_rect)
         
         # Draw current task
-        task_surface = font.render(self.current_task, True, self.LIGHT_BLUE)
+        task_surface = progress_font.render(self.current_task, True, self.LIGHT_BLUE)
         task_rect = task_surface.get_rect(center=(
             self.width // 2, 
             self.progress_bar_y - 30
@@ -137,6 +163,19 @@ class LoadingScreen:
         
         # Update display
         pygame.display.flip()
+
+    @safe_file_operation("load font", None, "WARNING")
+    def _get_font(self, size: int) -> pygame.font.Font:
+        """Get a font with fallback to system font."""
+        try:
+            font_path = os.path.join(self.asset_path, "fonts", "PermanentMarker-Regular.ttf")
+            if os.path.exists(font_path):
+                return pygame.font.Font(font_path, size)
+        except Exception as e:
+            logger.warning(f"Failed to load custom font: {str(e)}")
+        
+        # Fallback to system font
+        return pygame.font.SysFont('Arial', size)
     
     def start_loading(self, loading_tasks: List[Tuple[str, Callable]], on_complete: Callable = None):
         """
@@ -159,11 +198,11 @@ class LoadingScreen:
             # Draw loading screen
             self.draw()
             
-            # Execute task
-            try:
-                task_func()
-            except Exception as e:
-                print(f"⚠️ Error in loading task '{task_name}': {e}")
+            # Execute task with error handling
+            self._execute_loading_task(task_name, task_func)
+            
+            # If the display surface changed during the task (e.g., set_mode), update reference
+            self._update_screen_reference()
             
             # Handle events
             for event in pygame.event.get():
@@ -181,4 +220,22 @@ class LoadingScreen:
         
         self.is_loading = False
         if on_complete:
-            on_complete() 
+            on_complete()
+
+    @safe_operation("execute loading task", None, "ERROR")
+    def _execute_loading_task(self, task_name: str, task_func: Callable) -> None:
+        """Execute a loading task with error handling."""
+        try:
+            task_func()
+        except Exception as e:
+            logger.error(f"Error in loading task '{task_name}': {str(e)}")
+
+    @safe_operation("update screen reference", None, "WARNING")
+    def _update_screen_reference(self) -> None:
+        """Update screen reference if it changed during task execution."""
+        try:
+            current_surface = pygame.display.get_surface()
+            if current_surface and current_surface is not self.screen:
+                self.update_screen(current_surface)
+        except Exception as e:
+            logger.warning(f"Failed to update screen reference: {str(e)}") 

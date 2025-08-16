@@ -25,7 +25,6 @@ class AnimationStateManager:
         self.width = self.screen.get_width()
         self.height = self.screen.get_height()
         
-        # Initialize all animation state variables
         self._initialize_animation_settings()
         self._initialize_combo_text_state()
         self._initialize_visual_piece_state()
@@ -44,6 +43,23 @@ class AnimationStateManager:
         self.animation_frame_duration = 1.0 / self.animation_frame_rate
         self.animation_update_counter = 0  # Counter to skip frames
         self.animation_update_frequency = 1  # Only update animations every 2 frames
+        # Renderer landing controls (read via settings if present)
+        self.snap_on_land: bool = True
+        self.landing_epsilon_px: float = 0.0
+        # One-frame suppression window to avoid double-draw on land
+        self.suppress_falling_draw_until_ms: int = 0
+        try:
+            settings = getattr(self.engine, 'settings_system', None)
+            if settings is not None and hasattr(settings, 'get'):
+                self.snap_on_land = bool(settings.get('renderer.snap_on_land', True))
+                eps = settings.get('renderer.landing_epsilon_px', 1)
+                try:
+                    self.landing_epsilon_px = max(0.0, float(eps))
+                except Exception:
+                    self.landing_epsilon_px = 0.0
+        except Exception:
+            # Defaults already set
+            pass
         
     def _initialize_combo_text_state(self):
         """Initialize combo text display state."""
@@ -73,6 +89,8 @@ class AnimationStateManager:
         """Initialize visual piece position tracking."""
         self.visual_piece_position = [0, 0]
         self.visual_attached_position = 0
+        # CRITICAL FIX: Initialize attached piece position properly
+        self.visual_attached_piece_position = [0, 0]
         self.is_animating = False
         self.target_position = [0, 0]
         self.anim_start_time = 0
@@ -81,7 +99,8 @@ class AnimationStateManager:
     def _initialize_breaking_animation_state(self):
         """Initialize breaking animation state."""
         self.breaking_blocks_animations = {}  # Format: {(x, y): {start_time, progress, total_duration}}
-        self.breaking_animation_duration = 0.3  # 300ms for breaking animation
+        # Longer visual so sprite animations are visible (engine gate remains 100ms but will wait on renderer)
+        self.breaking_animation_duration = 0.50  # seconds
         
         # Track recently broken blocks to prevent unwanted cluster animations
         self.recently_broken_positions = set()
@@ -97,6 +116,10 @@ class AnimationStateManager:
         
         # Track garbage block animations
         self.animated_garbage_blocks = set()
+
+        # Horizontal sliding animations (paced to breaking animation)
+        # Format: {(x, y): {start_x, start_time, duration, block_type}}
+        self.visual_sliding_blocks = {}
         
     def _initialize_particle_state(self):
         """Initialize particle system state."""
@@ -116,6 +139,8 @@ class AnimationStateManager:
         
         # Keep empty particles list for possible future use
         self.cluster_glow_particles = []
+
+        # Lightning visual state removed (effects disabled)
         
         # New rainbow trail effect settings
         self.rainbow_trail_enabled = True  # Enable/disable the effect
@@ -193,6 +218,8 @@ class AnimationStateManager:
         self.animation_update_counter = 0
         self.visual_piece_position = [0, 0]
         self.visual_attached_position = 0
+        # CRITICAL FIX: Reset attached piece position properly
+        self.visual_attached_piece_position = [0, 0]
         self.is_animating = False
         self.target_position = [0, 0]
         self.anim_start_time = 0
@@ -209,6 +236,8 @@ class AnimationStateManager:
         # Initialize collections if they don't exist
         if not hasattr(self, 'visual_falling_blocks'):
             self.visual_falling_blocks = {}
+        if not hasattr(self, 'visual_sliding_blocks'):
+            self.visual_sliding_blocks = {}
         if not hasattr(self, 'breaking_blocks_animations'):
             self.breaking_blocks_animations = {}
         if not hasattr(self, 'cluster_animations'):
@@ -220,7 +249,7 @@ class AnimationStateManager:
         if not hasattr(self, 'cluster_animation_duration'):
             self.cluster_animation_duration = 0.5
         if not hasattr(self, 'breaking_animation_duration'):
-            self.breaking_animation_duration = 0.3
+            self.breaking_animation_duration = 0.35
         if not hasattr(self, 'dust_particles'):
             self.dust_particles = {}
         if not hasattr(self, 'combo_texts'):
@@ -234,8 +263,8 @@ class AnimationStateManager:
         if not hasattr(self, 'animated_garbage_blocks'):
             self.animated_garbage_blocks = set()
             
-    def update_breaking_animations(self, current_time):
-        """Update and render any active breaking block animations."""
+    def update_breaking_animations(self, current_ms: int):
+        """Update breaking block animations using millisecond timing (monotonic)."""
         # Skip if we don't have breaking animations
         if not hasattr(self, 'breaking_blocks_animations'):
             self.breaking_blocks_animations = {}
@@ -243,17 +272,37 @@ class AnimationStateManager:
             
         # Process each breaking animation
         for pos, block_data in list(self.breaking_blocks_animations.items()):
-            # Calculate elapsed time
-            elapsed = current_time - block_data['start_time']
-            
+            # Resolve timing fields with backward compatibility
+            try:
+                start_ms = int(block_data.get('start_ms')) if 'start_ms' in block_data else int(float(block_data.get('start_time', 0)) * 1000.0)
+            except Exception:
+                start_ms = 0
+            try:
+                total_ms = int(block_data.get('total_duration_ms')) if 'total_duration_ms' in block_data else int(float(block_data.get('total_duration', self.breaking_animation_duration)) * 1000.0)
+            except Exception:
+                total_ms = int(self.breaking_animation_duration * 1000.0)
+
+            # Calculate elapsed time in ms
+            elapsed_ms = int(current_ms) - int(start_ms)
+
             # Check if the animation has expired
-            if elapsed > block_data['total_duration']:
+            if elapsed_ms > total_ms:
                 # Remove expired animation
                 self.breaking_blocks_animations.pop(pos)
+                # Record the completion timestamp to avoid immediate replays
+                try:
+                    if hasattr(self, 'recent_break_timestamps'):
+                        self.recent_break_timestamps[pos] = int(current_ms)
+                        self.recently_broken_positions.add(pos)
+                except Exception:
+                    pass
                 continue
                 
             # Update progress
-            block_data['progress'] = min(1.0, elapsed / block_data['total_duration'])
+            try:
+                block_data['progress'] = min(1.0, max(0.0, float(elapsed_ms) / float(max(1, total_ms))))
+            except Exception:
+                block_data['progress'] = 1.0
             
             # Update particles for this breaking block
             if 'particles' in block_data:
@@ -299,6 +348,15 @@ class AnimationStateManager:
                                     'start_y': y - 1, # It fell from the block above
                                     'block_type': self.engine.puzzle_grid[y][x]
                                 }
+        # Prune stale recently_broken_positions so they don't block animations forever
+        if hasattr(self, 'recent_break_timestamps') and self.recent_break_timestamps:
+            stale_keys = []
+            for pos, ts in list(self.recent_break_timestamps.items()):
+                if current_time - ts > self.recent_break_history_time * 1000.0:
+                    stale_keys.append(pos)
+            for pos in stale_keys:
+                self.recent_break_timestamps.pop(pos, None)
+                self.recently_broken_positions.discard(pos)
 
         # Store a snapshot of the current grid state for the next frame's comparison
         current_grid_snapshot = [row[:] for row in self.engine.puzzle_grid]
@@ -308,6 +366,7 @@ class AnimationStateManager:
         """Check if any animations are currently active."""
         return (
             bool(self.visual_falling_blocks) or 
+            bool(getattr(self, 'visual_sliding_blocks', {})) or
             bool(self.breaking_blocks_animations) or
             bool(self.cluster_animations) or
             bool(self.combo_texts) or
@@ -332,36 +391,77 @@ class AnimationStateManager:
             'has_active_animations': self.has_active_animations()
         }
         
-    def cleanup_expired_animations(self, current_time: float):
-        """Remove expired animations to prevent memory leaks."""
+    def cleanup_expired_animations(self, current_ms: int):
+        """Remove expired animations using millisecond timing to prevent memory leaks."""
         # Clean up breaking animations
         for pos, data in list(self.breaking_blocks_animations.items()):
-            if 'start_time' in data and 'total_duration' in data:
-                if current_time - data['start_time'] > data['total_duration'] * 1.2:
+            try:
+                start_ms = int(data.get('start_ms')) if 'start_ms' in data else int(float(data.get('start_time', 0)) * 1000.0)
+                total_ms = int(data.get('total_duration_ms')) if 'total_duration_ms' in data else int(float(data.get('total_duration', self.breaking_animation_duration)) * 1000.0)
+                if int(current_ms) - int(start_ms) > int(total_ms * 1.2):
                     self.breaking_blocks_animations.pop(pos, None)
+            except Exception:
+                pass
                     
         # Clean up recently broken positions
         for pos, timestamp in list(self.recent_break_timestamps.items()):
-            if current_time - timestamp > self.recent_break_history_time:
-                self.recent_break_timestamps.pop(pos, None)
-                self.recently_broken_positions.discard(pos)
+            try:
+                if int(current_ms) - int(timestamp) > int(self.recent_break_history_time * 1000.0):
+                    self.recent_break_timestamps.pop(pos, None)
+                    self.recently_broken_positions.discard(pos)
+            except Exception:
+                pass
                 
-        # Clean up expired combo texts
-        for combo_text in list(self.combo_texts):
-            if current_time - combo_text.get('start_time', 0) > self.combo_text_duration:
-                self.combo_texts.remove(combo_text)
+        # Clean up expired combo texts (combo_texts keep seconds-based start_time)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for combo_text in list(self.combo_texts):
+                if now_s - combo_text.get('start_time', 0) > self.combo_text_duration:
+                    self.combo_texts.remove(combo_text)
+        except Exception:
+            pass
                 
-        # Clean up expired dust particles
-        for pos, particle in list(self.dust_particles.items()):
-            if current_time - particle.get('start_time', 0) > particle.get('duration', 0):
-                self.dust_particles.pop(pos, None)
+        # Clean up expired dust particles (seconds-based fields)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for pos, particle in list(self.dust_particles.items()):
+                if now_s - particle.get('start_time', 0) > particle.get('duration', 0):
+                    self.dust_particles.pop(pos, None)
+        except Exception:
+            pass
                 
-        # Clean up expired cluster animations
-        for cluster_id in list(self.cluster_animations.keys()):
-            anim_data = self.cluster_animations[cluster_id]
-            elapsed = current_time - anim_data['start_time']
-            if elapsed > anim_data['duration']:
-                self.cluster_animations.pop(cluster_id, None)
+        # Clean up expired cluster animations (seconds-based fields)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for cluster_id in list(self.cluster_animations.keys()):
+                anim_data = self.cluster_animations[cluster_id]
+                elapsed = now_s - anim_data['start_time']
+                if elapsed > anim_data['duration']:
+                    self.cluster_animations.pop(cluster_id, None)
+        except Exception:
+            pass
+                
+        # Clean up expired visual falling blocks (seconds-based fields)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for pos, data in list(self.visual_falling_blocks.items()):
+                start_time = data.get('start_time', 0)
+                duration = data.get('duration', 0.1)
+                if now_s - start_time > duration:
+                    self.visual_falling_blocks.pop(pos, None)
+        except Exception:
+            pass
+
+        # Clean up expired visual sliding blocks (seconds-based fields)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for pos, data in list(getattr(self, 'visual_sliding_blocks', {}).items()):
+                start_time = data.get('start_time', 0)
+                duration = data.get('duration', 0.1)
+                if now_s - start_time > duration:
+                    self.visual_sliding_blocks.pop(pos, None)
+        except Exception:
+            pass
                 
     def update_visual_piece_state(self):
         """Update visual piece position state."""
@@ -373,8 +473,9 @@ class AnimationStateManager:
             
             # Clear all animations in columns where the active piece is
             if hasattr(self, 'visual_falling_blocks'):
-                main_x = int(self.visual_piece_position[0])
-                attached_x = int(self.visual_attached_piece_position[0])
+                main_x = int(self.visual_piece_position[0]) if self.visual_piece_position else 0
+                # CRITICAL FIX: Safely handle attached piece position
+                attached_x = int(self.visual_attached_piece_position[0]) if self.visual_attached_piece_position and len(self.visual_attached_piece_position) > 0 else main_x
                 
                 # Remove any animations in the same columns as active piece
                 to_remove = []
@@ -384,6 +485,15 @@ class AnimationStateManager:
                         
                 for pos in to_remove:
                     self.visual_falling_blocks.pop(pos, None)
+
+                # Also clear sliding animations in the same columns
+                if hasattr(self, 'visual_sliding_blocks'):
+                    to_remove_slide = []
+                    for pos in self.visual_sliding_blocks:
+                        if pos[0] == main_x or pos[0] == attached_x:
+                            to_remove_slide.append(pos)
+                    for pos in to_remove_slide:
+                        self.visual_sliding_blocks.pop(pos, None)
                     
     def update_player_piece_state(self):
         """
@@ -391,20 +501,58 @@ class AnimationStateManager:
         any conflicting gravity-fall animations in the same columns.
         """
         if self.engine.main_piece:
-            # Get pixel-perfect position from the engine
-            self.visual_piece_position = self.engine.get_visual_position()
-            self.visual_attached_position = self.engine.attached_position
-            self.visual_attached_piece_position = self.engine.get_attached_visual_position()
+            # Determine whether the piece would fit below right now
+            can_move_down: bool = True
+            try:
+                if hasattr(self.engine, 'would_fit_below'):
+                    can_move_down = bool(self.engine.would_fit_below())
+            except Exception:
+                can_move_down = True
+
+            # Snap on the same frame we detect no-fit-below
+            if self.snap_on_land and not can_move_down:
+                # Use exact grid cell without sub-grid interpolation
+                x, y = self.engine.piece_position
+                iy = int(y)
+                self.visual_piece_position = [float(x), float(iy)]
+                # Also snap attached piece visual Y to grid to stop any easing carryover
+                self.visual_attached_position = self.engine.attached_position
+                att_vis = self.engine.get_attached_visual_position()
+                if att_vis:
+                    self.visual_attached_piece_position = [float(att_vis[0]), float(int(att_vis[1]))]
+                else:
+                    self.visual_attached_piece_position = att_vis
+                # Start a short suppression window to prevent drawing the falling piece
+                # in the same frame that placed grid blocks are drawn.
+                try:
+                    clk = getattr(self.engine, 'clock', None)
+                    now_ms = int(clk.now_ms()) if clk and hasattr(clk, 'now_ms') else int(pygame.time.get_ticks())
+                except Exception:
+                    now_ms = int(pygame.time.get_ticks())
+                # ~1/60s suppression is enough to skip one draw cycle
+                self.suppress_falling_draw_until_ms = now_ms + 17
+            else:
+                # Get smooth position from engine
+                self.visual_piece_position = self.engine.get_visual_position()
+                self.visual_attached_position = self.engine.attached_position
+                self.visual_attached_piece_position = self.engine.get_attached_visual_position()
 
             # Clear any gravity-fall animations in the columns where the active piece is
             # This prevents visual overlap and ensures the player's piece is unobstructed
-            main_x = int(self.visual_piece_position[0])
-            attached_x = int(self.visual_attached_piece_position[0])
+            main_x = int(self.visual_piece_position[0]) if self.visual_piece_position else 0
+            # CRITICAL FIX: Safely handle attached piece position
+            attached_x = int(self.visual_attached_piece_position[0]) if self.visual_attached_piece_position and len(self.visual_attached_piece_position) > 0 else main_x
             
             # Remove any animations in the same columns as the active piece
             to_remove = [pos for pos in self.visual_falling_blocks if pos[0] in (main_x, attached_x)]
             for pos in to_remove:
                 self.visual_falling_blocks.pop(pos, None)
+
+            # Remove any sliding animations in the same columns as the active piece
+            if hasattr(self, 'visual_sliding_blocks'):
+                to_remove_slide = [pos for pos in self.visual_sliding_blocks if pos[0] in (main_x, attached_x)]
+                for pos in to_remove_slide:
+                    self.visual_sliding_blocks.pop(pos, None)
                 
     def animations_in_progress(self):
         """Check if any core visual animations are currently active."""
@@ -412,7 +560,7 @@ class AnimationStateManager:
         self.ensure_state_initialized()
         
         # Return true if any animation collections are not empty
-        return bool(self.breaking_blocks_animations or self.visual_falling_blocks)
+        return bool(self.breaking_blocks_animations or self.visual_falling_blocks or getattr(self, 'visual_sliding_blocks', {}))
                 
     def clear_animations_if_no_piece(self):
         """Clear animations if there's no active piece (for debugging)."""
@@ -422,7 +570,16 @@ class AnimationStateManager:
             self.animated_garbage_blocks.clear()
     
     def update_animations(self):
-        """Update all animations."""
-        current_time = time.time()
-        self.update_breaking_animations(current_time)
-        self.cleanup_expired_animations(current_time)
+        """Update all animations using a consistent millisecond time base."""
+        # Prefer engine clock if available; fall back to pygame.get_ticks or perf counter
+        now_ms = 0
+        try:
+            clk = getattr(self.engine, 'clock', None)
+            if clk and hasattr(clk, 'now_ms'):
+                now_ms = int(clk.now_ms())
+            else:
+                now_ms = int(pygame.time.get_ticks())
+        except Exception:
+            now_ms = int(time.perf_counter() * 1000.0)
+        self.update_breaking_animations(now_ms)
+        self.cleanup_expired_animations(now_ms)

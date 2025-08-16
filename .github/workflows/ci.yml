@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, "**" ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYTHONWARNINGS: default
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Reactor boundary guard
+        if: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+        shell: bash
+        run: |
+          git fetch origin main --depth=1 || true
+          CHANGED=$(git diff --name-only origin/main... || true)
+          echo "$CHANGED" | grep -E '^(core/puzzle_module\.py|modules/attack_module/attack_calculator\.py)$' && {
+            echo "Reactor files are read-only; changes detected. Failing CI.";
+            exit 1;
+          } || echo "No reactor violations detected."
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Black
+        run: black --check .
+
+      - name: Mypy
+        run: mypy .
+
+      - name: Pytest
+        run: pytest -q
+
+      - name: Documentation Quality Check
+        run: |
+          echo "📚 Checking documentation quality..."
+          
+          # Check if all modules have README.md
+          for module_dir in modules/*/; do
+            if [ -d "$module_dir" ]; then
+              module_name=$(basename "$module_dir")
+              if [ ! -f "$module_dir/README.md" ]; then
+                echo "⚠️  Warning: Missing README.md in module: $module_name"
+              else
+                echo "✅ Found README.md in module: $module_name"
+              fi
+            fi
+          done
+          
+          # Check for required documentation structure
+          if [ ! -d "docs" ]; then
+            echo "⚠️  Warning: Missing docs directory"
+          fi
+          
+          if [ ! -f "docs/MODULE_TEMPLATE.md" ]; then
+            echo "⚠️  Warning: Missing module template"
+          fi
+          
+          echo "✅ Documentation quality check complete"

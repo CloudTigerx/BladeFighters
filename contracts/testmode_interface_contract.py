@@ -86,7 +86,7 @@ class TestModeRequirements:
     CELL_HEIGHT = 54
     
     # Required background images
-    REQUIRED_BACKGROUNDS = ["puzzlebackground.jpg"]
+    REQUIRED_BACKGROUNDS = ["puzzlebackground.png"]
     
     # Core colors
     REQUIRED_COLORS = {

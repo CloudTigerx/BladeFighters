@@ -43,13 +43,34 @@ class ResolutionEnhancer:
                     import subprocess
                     result = subprocess.run(['system_profiler', 'SPDisplaysDataType'], 
                                           capture_output=True, text=True)
+                    
+                    # Check for specific MacBook Pro 16" Retina display
                     if '3456 x 2234' in result.stdout:
-                        print("🍎 Native Retina display detected: 3456 x 2234")
+                        print("🍎 MacBook Pro 16\" Retina display detected: 3456 x 2234")
                         self.is_retina = True
                         self.scale_factor = 2.0
                         # Use native resolution for high-quality rendering
                         screen_width = 3456
                         screen_height = 2234
+                    elif '3072 x 1920' in result.stdout:
+                        print("🍎 MacBook Pro 16\" Retina display detected: 3072 x 1920")
+                        self.is_retina = True
+                        self.scale_factor = 2.0
+                        # Use native resolution for high-quality rendering
+                        screen_width = 3072
+                        screen_height = 1920
+                    elif '2880 x 1800' in result.stdout:
+                        print("🍎 MacBook Pro 15\" Retina display detected: 2880 x 1800")
+                        self.is_retina = True
+                        self.scale_factor = 2.0
+                        screen_width = 2880
+                        screen_height = 1800
+                    elif '2560 x 1600' in result.stdout:
+                        print("🍎 MacBook Pro 13\" Retina display detected: 2560 x 1600")
+                        self.is_retina = True
+                        self.scale_factor = 2.0
+                        screen_width = 2560
+                        screen_height = 1600
                 except:
                     pass
                 
@@ -77,9 +98,9 @@ class ResolutionEnhancer:
         if self.is_retina:
             high_res_options = [
                 (2560, 1440),  # 2K
-                (2880, 1800),  # MacBook Pro Retina
-                (3072, 1920),  # MacBook Pro 16"
-                (3456, 2234),  # Your Mac's resolution
+                (2880, 1800),  # MacBook Pro 15" Retina
+                (3456, 2234),  # MacBook Pro 16" Retina (Your Mac!)
+                (3072, 1920),  # MacBook Pro 16" (alternative)
                 (3840, 2160),  # 4K
             ]
             
@@ -88,15 +109,21 @@ class ResolutionEnhancer:
                     if res not in self.enhanced_resolutions:
                         self.enhanced_resolutions.append(res)
         
-        # Add common Mac resolutions
+        # Add common Mac resolutions (both Retina and non-Retina)
         mac_resolutions = [
-            (1440, 900),   # MacBook Air
+            # Non-Retina Macs
+            (1440, 900),   # MacBook Air 13"
             (1680, 1050),  # MacBook Pro 15"
-            (1792, 1120),  # MacBook Air 13"
+            (1792, 1120),  # MacBook Air 13" (newer)
             (1920, 1200),  # MacBook Pro 13"
+            
+            # Retina Macs
             (2048, 1280),  # MacBook Air 13" Retina
             (2304, 1440),  # MacBook Pro 13" Retina
-            (2560, 1600),  # MacBook Pro 15" Retina
+            (2560, 1600),  # MacBook Pro 13" Retina
+            (2880, 1800),  # MacBook Pro 15" Retina
+            (3456, 2234),  # MacBook Pro 16" Retina (Your Mac!)
+            (3072, 1920),  # MacBook Pro 16" (alternative)
         ]
         
         for res in mac_resolutions:
@@ -111,15 +138,27 @@ class ResolutionEnhancer:
         for i, res in enumerate(self.enhanced_resolutions[:5]):  # Show top 5
             print(f"   {i+1}. {res[0]} x {res[1]}")
     
-    def get_optimal_resolution(self, screen_width, screen_height):
-        """Get the optimal resolution for the current display."""
-        # Find the best resolution that fits the screen
-        for res in self.enhanced_resolutions:
-            if res[0] <= screen_width and res[1] <= screen_height:
-                return res
+    def get_optimal_resolution(self, desktop_width, desktop_height):
+        """Get optimal resolution that fits the screen."""
+        # For MacBook Pro 16" Retina, use scaled resolution to avoid zoomed appearance
+        if self.is_retina and desktop_width >= 3456:
+            # Use scaled resolution that looks correct on Retina display
+            # This prevents the "zoomed in" appearance
+            return 1728, 1117  # Scaled down from native (3456/2, 2234/2)
+        elif self.is_retina and desktop_width >= 3072:
+            return 1536, 960   # Scaled down from 3072x1920
+        elif self.is_retina and desktop_width >= 2880:
+            return 1440, 900   # Scaled down from 2880x1800
+        elif self.is_retina and desktop_width >= 2560:
+            return 1280, 800   # Scaled down from 2560x1600
         
-        # Fallback to the highest available resolution
-        return self.enhanced_resolutions[0] if self.enhanced_resolutions else (1920, 1080)
+        # For other Retina displays, use a reasonable scaled resolution
+        if self.is_retina and desktop_width > 2000:
+            # Use scaled resolution instead of native for better performance
+            return min(1680, desktop_width), min(1050, desktop_height)
+        
+        # For standard displays, use the desktop resolution
+        return desktop_width, desktop_height
     
     def get_resolution_list(self):
         """Get the list of available resolutions."""

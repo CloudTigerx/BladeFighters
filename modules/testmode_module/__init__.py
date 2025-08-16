@@ -10,7 +10,7 @@ __author__ = "BladeFighters Development Team"
 __description__ = "Extracted Core Puzzle Battle Module"
 
 # Import and export the main class
-from .test_mode import TestMode
+from .test_mode import TestModeRefactored as TestMode
 
 # Public API exports
 __all__ = [

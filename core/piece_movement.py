@@ -52,14 +52,22 @@ class PieceMovement:
         # Calculate the position where the attached piece would be after rotation
         attached_x, attached_y = self._calculate_attached_position(main_x, main_y, new_position)
         
-        # Check if this position is valid
+        # Prefer safe physics check with 1-cell wall kick
+        try:
+            ok, dx = self.engine.physics.would_fit_after_rotate(self.engine.piece_position, self.engine.attached_position, direction)
+            if ok:
+                if dx and dx != 0:
+                    self.engine.piece_position[0] += int(dx)
+                self.engine.attached_position = (self.engine.attached_position + direction) % 4
+                self.wall_kick_count = 0
+                return True
+        except Exception:
+            pass
+        # Fallback to existing logic
         if self.engine.is_valid_position(attached_x, attached_y):
             self.engine.attached_position = new_position
-            # Reset wall kick count when normal rotation occurs
             self.wall_kick_count = 0
             return True
-        
-        # Try wall kick if normal rotation failed
         return self._attempt_wall_kick(direction, new_position)
     
     def _calculate_attached_position(self, main_x: int, main_y: int, attached_position: int) -> Tuple[int, int]:
