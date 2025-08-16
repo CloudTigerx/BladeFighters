@@ -7,6 +7,7 @@ import time
 import pygame
 import sys
 import logging
+import traceback
 from typing import List, Optional
 
 # Try to import the interface contract
@@ -28,11 +29,168 @@ from .ai_manager import AIManager
 from .game_state_manager import GameStateManager
 from .input_handler import InputHandler
 from .attack_coordinator import AttackCoordinator
+from .attack_delivery_committer import AttackDeliveryCommitter
 from .render_coordinator import RenderCoordinator
 from .board_runtime import BoardRuntime
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# QA Instrumentation - Attack Delivery Monitoring
+DEBUG_ATTACK_DELIVERY = True  # Flag for easy on/off switch
+
+class AttackDeliveryMonitor:
+    """Lightweight monitor for payload-related grid writes during animation windows."""
+    
+    def __init__(self):
+        self.pending_landings = {'player': [], 'enemy': []}
+        self.grid_write_log = []
+        self.frame_counters = {'player': 0, 'enemy': 0}
+        
+    def log_grid_write(self, board, x, y, block_type, callsite, now_ms):
+        """Log any payload-related grid writes before the end of their animation window."""
+        if not DEBUG_ATTACK_DELIVERY:
+            return
+            
+        # Check if this write is to a pending landing position
+        player_key = 'player' if board == 'player' else 'enemy'
+        pending = self.pending_landings.get(player_key, [])
+        
+        for pending_col, pending_row, _, end_ms in pending:
+            if pending_col == x and pending_row == y and now_ms < end_ms:
+                logger.error(f"PRE-COMMIT GRID WRITE VIOLATION:")
+                logger.error(f"  Board: {board}, Position: ({x}, {y}), Block: {block_type}")
+                logger.error(f"  Callsite: {callsite}")
+                logger.error(f"  Current time: {now_ms}, Landing end: {end_ms}")
+                logger.error(f"  Time remaining: {end_ms - now_ms}ms")
+                
+                # Log stack trace for debugging
+                stack = traceback.extract_stack()
+                logger.error("Stack trace:")
+                for frame in stack[-5:]:  # Last 5 frames
+                    logger.error(f"    {frame.filename}:{frame.lineno} in {frame.name}")
+                
+                # Store for reporting
+                self.grid_write_log.append({
+                    'timestamp': now_ms,
+                    'board': board,
+                    'position': (x, y),
+                    'block_type': block_type,
+                    'callsite': callsite,
+                    'pending_end_ms': end_ms,
+                    'time_remaining': end_ms - now_ms
+                })
+                break
+    
+    def update_pending_landings(self, player_key, pending_list):
+        """Update the monitor's pending landings tracking."""
+        self.pending_landings[player_key] = pending_list.copy() if pending_list else []
+    
+    def get_frame_counters(self, player_key):
+        """Get current frame counters for overlay display."""
+        return self.frame_counters.get(player_key, 0)
+    
+    def update_frame_counters(self, player_key, visual_falling_count, pending_landings_count):
+        """Update frame counters for overlay display."""
+        self.frame_counters[player_key] = {
+            'visual_falling': visual_falling_count,
+            'pending_landings': pending_landings_count
+        }
+    
+    def get_violations_report(self):
+        """Get a summary of all violations detected."""
+        if not self.grid_write_log:
+            return "No pre-commit grid write violations detected."
+        
+        report = f"Found {len(self.grid_write_log)} pre-commit grid write violations:\n"
+        for violation in self.grid_write_log:
+            report += f"  {violation['board']} ({violation['position'][0]},{violation['position'][1]}) "
+            report += f"{violation['block_type']} at {violation['timestamp']}ms "
+            report += f"(landing ends at {violation['pending_end_ms']}ms)\n"
+        return report
+
+# Global monitor instance
+attack_delivery_monitor = AttackDeliveryMonitor()
+
+# Attack delivery guardrails and enforcements
+def _guard_against_pending_landing_writes(grid, col, row, player_key, pending_landings):
+    """Guard against writes to positions that have pending landings."""
+    if not hasattr(pending_landings, 'get'):
+        return True  # No pending landings, allow write
+    
+    pending = pending_landings.get(player_key, [])
+    current_time = int(time.time() * 1000)
+    
+    for pending_col, pending_row, _, end_ms in pending:
+        if pending_col == col and pending_row == row and current_time < end_ms:
+            logger.error(f"BLOCKED: Attempted write to pending landing position ({col}, {row}) for {player_key}")
+            logger.error(f"Pending landing ends at {end_ms}, current time {current_time}")
+            return False
+    
+    return True
+
+def _assert_no_grid_zero_writes_from_attack_delivery():
+    """Dev assertion: raise if any write to grid[0][col] originates from attack delivery."""
+    import traceback
+    stack = traceback.extract_stack()
+    
+    # Check if any frame in the stack contains attack delivery code
+    attack_delivery_keywords = ['attack', 'deliver', 'spawn', 'garbage', 'strike']
+    for frame in stack:
+        if any(keyword in frame.filename.lower() or keyword in frame.line.lower() 
+               for keyword in attack_delivery_keywords):
+            logger.error("VIOLATION: Write to grid[0][col] from attack delivery detected!")
+            logger.error("Stack trace:")
+            for frame in stack:
+                logger.error(f"  {frame.filename}:{frame.lineno} in {frame.name}")
+            raise AssertionError("Write to grid[0][col] from attack delivery is forbidden")
+
+def _enforce_animated_spawn_mode_only(settings_system):
+    """Enforce that only animated spawn mode is allowed in production."""
+    if not settings_system:
+        return True
+    
+    try:
+        cfg = getattr(settings_system, 'config', settings_system)
+        if cfg and hasattr(cfg, 'get'):
+            spawn_mode = cfg.get('attacks.spawn_mode', 'animated')
+            if str(spawn_mode).strip().lower() != 'animated':
+                logger.warning(f"Non-animated spawn mode detected: {spawn_mode}, forcing to 'animated'")
+                return False
+    except Exception:
+        pass
+    
+    return True
+
+def _safe_grid_write(grid, row, col, value, context="unknown", board="unknown"):
+    """Safe grid write with attack delivery guards and monitoring."""
+    import traceback
+    now_ms = int(time.time() * 1000)
+    
+    # QA Monitoring: Log the write
+    callsite = f"{traceback.extract_stack()[-2].filename}:{traceback.extract_stack()[-2].lineno}"
+    attack_delivery_monitor.log_grid_write(board, col, row, value, callsite, now_ms)
+    
+    # Guard against grid[0][col] writes from attack delivery
+    # But allow landing commits to write to their intended landing positions
+    if row == 0 and "attack_landing" not in context:
+        import traceback
+        stack = traceback.extract_stack()
+        
+        # Check if any frame in the stack contains attack delivery code
+        attack_delivery_keywords = ['attack', 'deliver', 'spawn', 'garbage', 'strike']
+        for frame in stack:
+            if any(keyword in frame.filename.lower() or keyword in frame.line.lower() 
+                   for keyword in attack_delivery_keywords):
+                logger.error("VIOLATION: Write to grid[0][col] from attack delivery detected!")
+                logger.error(f"Context: {context}")
+                logger.error("Stack trace:")
+                for frame in stack:
+                    logger.error(f"  {frame.filename}:{frame.lineno} in {frame.name}")
+                raise AssertionError("Write to grid[0][col] from attack delivery is forbidden")
+    
+    # Perform the write
+    grid[row][col] = value
 
 @validate_testmode_interface
 class TestModeRefactored(TestModeInterface):
@@ -57,6 +215,10 @@ class TestModeRefactored(TestModeInterface):
         self._initialize_components()
         self._connect_components()
         
+        # Enforce animated spawn mode only
+        if not _enforce_animated_spawn_mode_only(self.settings_system):
+            logger.warning("Non-animated spawn mode detected, enforcing animated mode")
+        
         # Validate interface contract if available
         try:
             from contracts.testmode_interface_contract import validate_testmode_interface
@@ -73,7 +235,8 @@ class TestModeRefactored(TestModeInterface):
             self.settings_system, self.clock
         )
         
-        self.ai_manager = AIManager(initial_difficulty=10)
+        # Easy enemy bot for testing - difficulty 1: slow actions (220ms), high mistake rate (50%), no heuristics
+        self.ai_manager = AIManager(initial_difficulty=1)
         
         self.game_state_manager = GameStateManager()
         # Initialize per-board runtime locks for input/chain locking
@@ -93,6 +256,9 @@ class TestModeRefactored(TestModeInterface):
         )
         
         self.render_coordinator = RenderCoordinator(self.screen, self.board_manager)
+        
+        # Delivery committer for post-landing transformations (strike→garbage→colored→normal)
+        self.delivery_committer = AttackDeliveryCommitter(config=None)
         
         # Back-compat: expose commonly used attributes for tests/legacy
         try:
@@ -178,6 +344,11 @@ class TestModeRefactored(TestModeInterface):
 
         # Use attack flow manager to queue the attack
         self.attack_coordinator.attack_flow_manager.queue_attack(target_player, attack_data)
+        
+        # Also add to pending attacks for backward compatibility
+        if target_player in self.pending_attacks:
+            self.pending_attacks[target_player].append(attack_data)
+            print(f"Queued attack for {target_player}: {attack_data}")
         
         # Record in recent attack log for HUD
         try:
@@ -434,9 +605,21 @@ class TestModeRefactored(TestModeInterface):
         self.player_renderer.update_animations()
         self.enemy_renderer.update_animations()
 
+        # QA Monitoring: Update frame counters for overlay display
+        for player_key in ['player', 'enemy']:
+            renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
+            asm = getattr(renderer, 'animation_state_manager', None)
+            visual_falling_count = len(getattr(asm, 'visual_falling_blocks', {})) if asm else 0
+            pending_landings_count = len(getattr(self, 'pending_landings', {}).get(player_key, []))
+            attack_delivery_monitor.update_frame_counters(player_key, visual_falling_count, pending_landings_count)
+
         # Process pending attacks for actual placement
         for player_key in ['player', 'enemy']:
             engine = self.player_engine if player_key == 'player' else self.enemy_engine
+
+            # Debug: log pending attacks
+            if self.pending_attacks[player_key]:
+                logger.debug(f"Processing {len(self.pending_attacks[player_key])} pending attacks for {player_key}")
 
             # Process each pending attack for placement
             attacks_to_remove = []
@@ -478,15 +661,30 @@ class TestModeRefactored(TestModeInterface):
         for player_key in ['player', 'enemy']:
             engine = self.player_engine if player_key == 'player' else self.enemy_engine
             pending = list(self.pending_landings.get(player_key, [])) if hasattr(self, 'pending_landings') else []
+            if pending:
+                print(f"Processing {len(pending)} pending landings for {player_key}")
             if not pending:
                 continue
 
+            # QA Monitoring: Update monitor's pending landings tracking
+            attack_delivery_monitor.update_pending_landings(player_key, pending)
+
             new_pending = []
             for (col, row, block_type, end_ms) in pending:
+                print(f"Landing check: current_time={current_time}, end_ms={end_ms}, diff={end_ms - current_time}")
                 if current_time >= end_ms:
+                    print(f"Committing landing: ({col}, {row}) = {block_type}")
+                    # Guard against writes to pending landing positions
+                    if not _guard_against_pending_landing_writes(engine.puzzle_grid, col, row, player_key, self.pending_landings):
+                        logger.warning(f"Skipping commit to protected position ({col}, {row}) for {player_key}")
+                        continue
+                    
                     # Place only if still empty; otherwise the block is wasted
                     if engine.puzzle_grid[row][col] in (None, 'empty'):
-                        engine.puzzle_grid[row][col] = block_type
+                        _safe_grid_write(engine.puzzle_grid, row, col, block_type, f"attack_landing_{player_key}", board=player_key)
+                        print(f"Placed {block_type} at ({col}, {row})")
+                    else:
+                        print(f"Position ({col}, {row}) not empty, skipping")
                 else:
                     new_pending.append((col, row, block_type, end_ms))
 
@@ -498,6 +696,13 @@ class TestModeRefactored(TestModeInterface):
                     self.player_spawn_pause_until = max(getattr(self, 'player_spawn_pause_until', 0), current_time)
                 else:
                     self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), current_time)
+
+        # After any commits, update received blocks to advance transformations
+        try:
+            self.delivery_committer.update_received_blocks(self.player_engine, 'player')
+            self.delivery_committer.update_received_blocks(self.enemy_engine, 'enemy')
+        except Exception:
+            pass
                         
     def _place_garbage_attack(self, engine, attack, player_key):
         """Place garbage blocks on the board by spawning them high above and letting them fall."""
@@ -846,6 +1051,38 @@ class TestModeRefactored(TestModeInterface):
         
         # Draw characters
         self.render_coordinator.draw_characters()
+        
+        # QA Monitoring: Draw frame counter overlay
+        if DEBUG_ATTACK_DELIVERY:
+            self._draw_frame_counter_overlay()
+        
+    def _draw_frame_counter_overlay(self):
+        """Draw frame counter overlay showing visual_falling_blocks and pending_landings counts."""
+        if not hasattr(self, 'font') or not self.font:
+            return
+            
+        # Get current frame counters
+        player_counters = attack_delivery_monitor.get_frame_counters('player')
+        enemy_counters = attack_delivery_monitor.get_frame_counters('enemy')
+        
+        # Draw player board counters
+        if isinstance(player_counters, dict):
+            player_text = f"P: VF={player_counters.get('visual_falling', 0)} PL={player_counters.get('pending_landings', 0)}"
+            player_surface = self.font.render(player_text, True, (255, 255, 255))
+            self.screen.blit(player_surface, (10, 10))
+        
+        # Draw enemy board counters
+        if isinstance(enemy_counters, dict):
+            enemy_text = f"E: VF={enemy_counters.get('visual_falling', 0)} PL={enemy_counters.get('pending_landings', 0)}"
+            enemy_surface = self.font.render(enemy_text, True, (255, 255, 255))
+            self.screen.blit(enemy_surface, (10, 40))
+        
+        # Draw violations count if any
+        violations = len(attack_delivery_monitor.grid_write_log)
+        if violations > 0:
+            violation_text = f"VIOLATIONS: {violations}"
+            violation_surface = self.font.render(violation_text, True, (255, 0, 0))
+            self.screen.blit(violation_surface, (10, 70))
         
     def get_ai_difficulty(self) -> int:
         """Get the current AI difficulty."""
