@@ -4,8 +4,17 @@ Handles committing attack payloads to the grid with piercing and transformation 
 Extracted from TestMode to separate commit logic from planning and animation.
 """
 
+import time
+import traceback
 from typing import Dict, Any, List, Set, Tuple
 from dataclasses import dataclass
+
+# Import the monitor from test_mode
+try:
+    from .test_mode import attack_delivery_monitor
+except ImportError:
+    # Fallback if import fails
+    attack_delivery_monitor = None
 
 
 @dataclass
@@ -26,14 +35,20 @@ class AttackDeliveryCommitter:
         """Commit garbage blocks to the grid."""
         blocks_placed = 0
         written_positions = set()
+        now_ms = int(time.time() * 1000)
         
         for block in plan.garbage_blocks:
             if (0 <= block.row < engine.grid_height and 
                 0 <= block.column < engine.grid_width and
                 engine.puzzle_grid[block.row][block.column] in ['empty', None]):
                 
-                # Apply neutral garbage first
-                engine.puzzle_grid[block.row][block.column] = 'garbage_block'
+                # QA Monitoring: Log the write
+                if attack_delivery_monitor:
+                    callsite = f"{traceback.extract_stack()[-2].filename}:{traceback.extract_stack()[-2].lineno}"
+                    attack_delivery_monitor.log_grid_write(player_key, block.column, block.row, f"{block.color}_garbage", callsite, now_ms)
+                
+                # Apply colored garbage directly - NO NEUTRAL GREY STATE
+                engine.puzzle_grid[block.row][block.column] = f"{block.color}_garbage"
                 
                 # Track for brightness/transformation
                 player_id = 1 if player_key == 'player' else 2
@@ -58,6 +73,7 @@ class AttackDeliveryCommitter:
         blocks_placed = 0
         blocks_pierced = 0
         written_positions = set()
+        now_ms = int(time.time() * 1000)
         
         # Compute cluster cells to respect non-piercing rule
         cluster_cells = self._compute_cluster_cells(engine)
@@ -86,6 +102,12 @@ class AttackDeliveryCommitter:
                     # Place strike block
                     color = pattern.color_map.get((col, row), 'yellow')
                     block_type = f"{color}_strike"
+                    
+                    # QA Monitoring: Log the write
+                    if attack_delivery_monitor:
+                        callsite = f"{traceback.extract_stack()[-2].filename}:{traceback.extract_stack()[-2].lineno}"
+                        attack_delivery_monitor.log_grid_write(player_key, col, row, block_type, callsite, now_ms)
+                    
                     engine.puzzle_grid[row][col] = block_type
                     
                     # Track for brightness/transformation
@@ -142,7 +164,6 @@ class AttackDeliveryCommitter:
                 # Check if this tracked block is still in the grid
                 if (0 <= y < len(grid) and 0 <= x < len(grid[0]) and 
                     grid[y][x] and (('_garbage' in grid[y][x]) or 
-                                   (grid[y][x] == 'garbage_block') or 
                                    ('_strike' in grid[y][x]))):
                     blocks_to_increment.append(pos_key)
         
@@ -153,7 +174,6 @@ class AttackDeliveryCommitter:
         # Apply transformation rules
         to_demote_strikes = []  # (pos_key, new_block_type)
         to_finalize_garbage = []
-        to_colorize_garbage = []
         
         for pos_key, data in list(brightness_data.items()):
             x, y, block_player = pos_key
@@ -170,17 +190,14 @@ class AttackDeliveryCommitter:
             
             # Stage 1: strike demotion after 1 landing
             if is_strike and data['landings'] >= 1:
-                to_demote_strikes.append((pos_key, 'garbage_block'))
+                to_demote_strikes.append((pos_key, f"{color}_garbage"))
             
-            # Stage 2: neutral garbage -> colored garbage after 1 landing
+            # Stage 2: colored garbage -> normal block after 1 landing (since no neutral state)
             if (not is_strike) and data['landings'] >= 1:
-                if current_block == 'garbage_block':
-                    to_colorize_garbage.append((pos_key, f"{color}_garbage"))
-            
-            # Stage 3: colored garbage -> normal block after 2 landings
-            if (not is_strike) and data['landings'] >= 2:
                 if isinstance(current_block, str) and current_block.startswith(f"{color}_garbage"):
                     to_finalize_garbage.append((pos_key, f"{color}_block"))
+            
+
         
         # Apply transformations
         for pos_key, new_block_type in to_demote_strikes:
@@ -191,10 +208,7 @@ class AttackDeliveryCommitter:
                 brightness_data[pos_key]['is_strike'] = False
                 brightness_data[pos_key]['landings'] = 0
         
-        for pos_key, new_block_type in to_colorize_garbage:
-            x, y, _ = pos_key
-            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-                grid[y][x] = new_block_type
+
         
         for pos_key, new_block_type in to_finalize_garbage:
             x, y, _ = pos_key

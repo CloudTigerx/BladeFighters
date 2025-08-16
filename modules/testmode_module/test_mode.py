@@ -309,6 +309,10 @@ class TestModeRefactored(TestModeInterface):
         # Initialize garbage block transformation tracking
         self.garbage_block_brightness = {}  # (x, y, player) -> {'landings': int, 'color': str, 'is_strike': bool}
         
+        # CRITICAL FIX: Set test_mode attribute on engines so attack delivery can access tracking
+        self.player_engine.test_mode = self
+        self.enemy_engine.test_mode = self
+        
     def queue_attack_spawn(self, target_player_or_payload, attack_type: str = None, count: int = None, strike_details=None):
         """Queue an attack to spawn above the target player's board.
         Backward compatible signature, also accepts a DTO-like payload:
@@ -384,10 +388,14 @@ class TestModeRefactored(TestModeInterface):
         
     def _track_garbage_landings(self, player_id: int, grid):
         """Track landings for garbage block transformation."""
+        # Simplified: increment landing count for all tracked garbage/strike blocks
+        # This is called when a piece lands, so all nearby blocks should get a landing count
+        
+        # First, ensure all garbage/strike blocks are tracked
         for y in range(len(grid)):
             for x in range(len(grid[0])):
                 cell = grid[y][x]
-                if cell and ('garbage_block' in str(cell) or '_garbage' in str(cell) or '_strike' in str(cell) or cell == 'strike_block'):
+                if cell and ('_garbage' in str(cell) or '_strike' in str(cell) or cell == 'strike_block'):
                     pos_key = (x, y, player_id)
                     if pos_key not in self.garbage_block_brightness:
                         # Initialize tracking for new garbage/strike blocks
@@ -398,9 +406,18 @@ class TestModeRefactored(TestModeInterface):
                             'color': color,
                             'is_strike': is_strike
                         }
-                    # Increment landing count
-                    self.garbage_block_brightness[pos_key]['landings'] += 1
-                    
+        
+        # Increment landing count for all tracked blocks for this player
+        for pos_key in list(self.garbage_block_brightness.keys()):
+            x, y, block_player = pos_key
+            if block_player == player_id:
+                # Check if this block still exists in the grid
+                if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                    current_cell = grid[y][x]
+                    if current_cell and ('_garbage' in str(current_cell) or '_strike' in str(current_cell) or current_cell == 'strike_block'):
+                        # Increment landing count
+                        self.garbage_block_brightness[pos_key]['landings'] += 1
+        
     def _get_block_color(self, block_type: str) -> str:
         """Extract color from block type."""
         if '_garbage' in block_type:
@@ -419,7 +436,6 @@ class TestModeRefactored(TestModeInterface):
         """Process garbage block transformations based on landing count."""
         to_demote_strikes = []  # (pos_key, new_block_type)
         to_finalize_garbage = []
-        to_colorize_garbage = []
         
         for pos_key, data in list(self.garbage_block_brightness.items()):
             x, y, block_player = pos_key
@@ -436,41 +452,28 @@ class TestModeRefactored(TestModeInterface):
                 
             # Stage 1: strike demotion after 1 landing
             if is_strike and data['landings'] >= 1:
-                to_demote_strikes.append((pos_key, 'garbage_block'))
+                to_demote_strikes.append((pos_key, f"{color}_garbage"))
                 
-            # Stage 2: neutral garbage -> colored garbage after 1 landing
+            # Stage 2: colored garbage -> normal block after 1 landing (since no neutral state)
             if (not is_strike) and data['landings'] >= 1:
-                if current_block == 'garbage_block':
-                    to_colorize_garbage.append((pos_key, f"{color}_garbage"))
-                    
-            # Stage 3: colored garbage -> normal block after 2 landings
-            if (not is_strike) and data['landings'] >= 2:
                 if isinstance(current_block, str) and current_block.startswith(f"{color}_garbage"):
                     to_finalize_garbage.append((pos_key, f"{color}_block"))
         
         # Apply transformations
         self._apply_strike_demotions(to_demote_strikes, grid)
-        self._apply_garbage_colorization(to_colorize_garbage, grid)
         self._apply_garbage_finalization(to_finalize_garbage, grid)
         
     def _apply_strike_demotions(self, to_demote_strikes, grid):
-        """Apply strike to neutral garbage transformations."""
+        """Apply strike to colored garbage transformations."""
         for pos_key, new_block_type in to_demote_strikes:
             x, y, _ = pos_key
             if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                 grid[y][x] = new_block_type
                 # Update tracking: now behaves like newly received garbage
                 self.garbage_block_brightness[pos_key]['is_strike'] = False
-                self.garbage_block_brightness[pos_key]['landings'] = 0
+                # DON'T reset landing count - keep the landing that caused this transformation
+                # self.garbage_block_brightness[pos_key]['landings'] = 0  # REMOVED
                 
-    def _apply_garbage_colorization(self, to_colorize_garbage, grid):
-        """Apply neutral garbage to colored garbage transformations."""
-        for pos_key, new_block_type in to_colorize_garbage:
-            x, y, _ = pos_key
-            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-                if grid[y][x] == 'garbage_block':
-                    grid[y][x] = new_block_type
-                    
     def _apply_garbage_finalization(self, to_finalize_garbage, grid):
         """Apply colored garbage to normal block transformations."""
         for pos_key, new_block_type in to_finalize_garbage:
@@ -546,6 +549,9 @@ class TestModeRefactored(TestModeInterface):
         
         # Reset render state
         self.render_coordinator.reset_garbage_block_state()
+        
+        # CRITICAL FIX: Reset main garbage block tracking
+        self.garbage_block_brightness = {}
         
         # Update renderers
         self.board_manager.update_renderers()
@@ -661,46 +667,88 @@ class TestModeRefactored(TestModeInterface):
         for player_key in ['player', 'enemy']:
             engine = self.player_engine if player_key == 'player' else self.enemy_engine
             pending = list(self.pending_landings.get(player_key, [])) if hasattr(self, 'pending_landings') else []
-            if pending:
-                print(f"Processing {len(pending)} pending landings for {player_key}")
             if not pending:
                 continue
 
-            # QA Monitoring: Update monitor's pending landings tracking
-            attack_delivery_monitor.update_pending_landings(player_key, pending)
-
             new_pending = []
             for (col, row, block_type, end_ms) in pending:
-                print(f"Landing check: current_time={current_time}, end_ms={end_ms}, diff={end_ms - current_time}")
-                if current_time >= end_ms:
-                    print(f"Committing landing: ({col}, {row}) = {block_type}")
-                    # Guard against writes to pending landing positions
-                    if not _guard_against_pending_landing_writes(engine.puzzle_grid, col, row, player_key, self.pending_landings):
-                        logger.warning(f"Skipping commit to protected position ({col}, {row}) for {player_key}")
-                        continue
-                    
-                    # Place only if still empty; otherwise the block is wasted
-                    if engine.puzzle_grid[row][col] in (None, 'empty'):
-                        _safe_grid_write(engine.puzzle_grid, row, col, block_type, f"attack_landing_{player_key}", board=player_key)
-                        print(f"Placed {block_type} at ({col}, {row})")
-                    else:
-                        print(f"Position ({col}, {row}) not empty, skipping")
-                else:
+                # Defer until animation end
+                if current_time < end_ms:
                     new_pending.append((col, row, block_type, end_ms))
+                    continue
+
+                # Recompute final landing row at commit time to avoid post-commit gravity fall
+                final_row = None
+                for r in range(engine.grid_height - 1, -1, -1):
+                    cell = engine.puzzle_grid[r][col]
+                    if cell in (None, 'empty'):
+                        final_row = r
+                        break
+
+                if final_row is None:
+                    # Column is full; drop this pending landing
+                    logger.debug(f"Column {col} full, dropping {block_type} landing for {player_key}")
+                    continue
+
+                # Write block at true final landing row (no on-grid-then-fall effect)
+                if engine.puzzle_grid[final_row][col] in (None, 'empty'):
+                    engine.puzzle_grid[final_row][col] = block_type
+                    logger.debug(f"Bulletproof landing: {block_type} at ({col}, {final_row}) for {player_key}")
+                else:
+                    logger.debug(f"Position ({col}, {final_row}) occupied, dropping {block_type} for {player_key}")
 
             self.pending_landings[player_key] = new_pending
 
-            # Clear spawn pause if nothing left pending
+            # Clear spawn pause if nothing left pending for this side
             if not new_pending:
                 if player_key == 'player':
                     self.player_spawn_pause_until = max(getattr(self, 'player_spawn_pause_until', 0), current_time)
                 else:
                     self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), current_time)
 
-        # After any commits, update received blocks to advance transformations
+        # DISABLED: Duplicate transformation system - using TestMode's _on_piece_landed() instead
+        # The delivery_committer.update_received_blocks() was causing race conditions
+        # with the main transformation logic in _on_piece_landed()
+        pass
+
+        # Fallback: commit from visual animations if pending entries were lost
         try:
-            self.delivery_committer.update_received_blocks(self.player_engine, 'player')
-            self.delivery_committer.update_received_blocks(self.enemy_engine, 'enemy')
+            now_ms = int(self.clock.now_ms()) if hasattr(self, 'clock') and self.clock else int(time.time() * 1000)
+            now_s = float(now_ms) / 1000.0
+            for player_key in ['player', 'enemy']:
+                engine = self.player_engine if player_key == 'player' else self.enemy_engine
+                asm = (self.player_renderer.animation_state_manager if player_key == 'player'
+                       else self.enemy_renderer.animation_state_manager)
+                to_remove = []
+                for key, data in list(asm.visual_falling_blocks.items()):
+                    if not data.get('payload'):
+                        continue
+                    start_time = float(data.get('start_time', 0.0))
+                    duration = float(data.get('duration', 0.0))
+                    if now_s - start_time < duration:
+                        continue
+                    # Determine target cell
+                    tgt = data.get('final_position')
+                    if isinstance(tgt, (tuple, list)) and len(tgt) == 2:
+                        tgt_col, tgt_row = int(tgt[0]), int(tgt[1])
+                    else:
+                        # Fallback to key if needed
+                        tgt_col, tgt_row = int(key[0]), int(key[1])
+
+                    # Recompute final landing row
+                    final_row = None
+                    for r in range(engine.grid_height - 1, -1, -1):
+                        if engine.puzzle_grid[r][tgt_col] in (None, 'empty'):
+                            final_row = r
+                            break
+                    if final_row is not None and engine.puzzle_grid[final_row][tgt_col] in (None, 'empty'):
+                        engine.puzzle_grid[final_row][tgt_col] = data.get('block_type', 'garbage_block')
+                        logger.debug(f"Fallback landing: {data.get('block_type', 'garbage_block')} at ({tgt_col}, {final_row}) for {player_key}")
+                        to_remove.append(key)
+                    else:
+                        logger.debug(f"Fallback landing failed: no space in column {tgt_col} for {player_key}")
+                for key in to_remove:
+                    asm.visual_falling_blocks.pop(key, None)
         except Exception:
             pass
                         
@@ -710,11 +758,16 @@ class TestModeRefactored(TestModeInterface):
         blocks_to_place = attack.get('blocks_remaining', 0)
         blocks_placed = 0
 
-        # Set sweep order by side
-        side = attack.get('sprinkle_side', 'R')
-        cols_order = list(range(engine.grid_width))
-        if side == 'R':
-            cols_order = list(reversed(cols_order))
+        # FIXED: Use proper column rotation pattern instead of simple sweep
+        # Column rotation sequence per spec (1-indexed): 1,6,2,5,3,4
+        # Convert to 0-based: 0,5,1,4,2,3
+        column_rotation = [0, 5, 1, 4, 2, 3]  # 0-based columns
+        
+        # FIXED: Use persistent rotation state across multiple calls
+        if not hasattr(self, '_garbage_rotation_index'):
+            self._garbage_rotation_index = 0
+        
+        current_rotation_index = self._garbage_rotation_index
 
         # Get renderer and animation state manager
         renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
@@ -735,61 +788,67 @@ class TestModeRefactored(TestModeInterface):
         spawn_height = -3  # Spawn 3 rows above the visible board
 
         max_end_ms = 0
+        reserved = set()  # prevent choosing the same (col,row) multiple times this pass
 
         while blocks_to_place > 0:
-            for column in cols_order:
-                if blocks_to_place <= 0:
+            # Use column rotation pattern for even distribution
+            column = column_rotation[current_rotation_index]
+            current_rotation_index = (current_rotation_index + 1) % len(column_rotation)
+
+            # Find next landing spot in this column
+            landing_row = None
+            for row in range(engine.grid_height - 1, -1, -1):
+                if grid[row][column] in ['empty', None] and (column, row) not in reserved:
+                    landing_row = row
                     break
 
-                # Find next landing spot in this column
-                landing_row = None
-                for row in range(engine.grid_height - 1, -1, -1):
-                    if grid[row][column] in ['empty', None]:
-                        landing_row = row
-                        break
+            if landing_row is None:
+                # Column full, try next column in rotation
+                continue
 
-                if landing_row is None:
-                    # Column full, waste this block
-                    blocks_to_place -= 1
-                    continue
+            # Calculate fall distance and duration
+            fall_distance = landing_row - spawn_height
+            fall_duration = asm.fall_animation_duration * fall_distance
+            fall_duration_ms = int(asm.fall_animation_duration * 1000 * fall_distance)
 
-                # Calculate fall distance and duration
-                fall_distance = landing_row - spawn_height
-                fall_duration = asm.fall_animation_duration * fall_distance
-                fall_duration_ms = int(asm.fall_animation_duration * 1000 * fall_distance)
+            # Visual falling
+            animation_key = (column, landing_row)
+            asm.visual_falling_blocks[animation_key] = {
+                'start_time': current_time,
+                'duration': fall_duration,
+                'start_y': spawn_height,
+                'block_type': 'garbage_block',
+                'payload': True,
+                'phase': 'spawning',
+                'final_position': (column, landing_row)
+            }
 
-                # Set up falling animation
-                animation_key = (column, landing_row)
-                asm.visual_falling_blocks[animation_key] = {
-                    'start_time': current_time,
-                    'duration': fall_duration,
-                    'start_y': spawn_height,
-                    'block_type': 'garbage_block',
-                    'payload': True,
-                    'phase': 'spawning',
-                    'final_position': (column, landing_row)  # Track final position
-                }
+            # Queue landing
+            end_ms = now_ms + fall_duration_ms
+            self.pending_landings[player_key].append((column, landing_row, 'garbage_block', end_ms))
+            logger.debug(f"Queued landing: ({column}, {landing_row}) = garbage_block, end_ms={end_ms} for {player_key}")
+            reserved.add((column, landing_row))
+            if end_ms > max_end_ms:
+                max_end_ms = end_ms
 
-                # Queue landing commit instead of mutating grid immediately
-                end_ms = now_ms + fall_duration_ms
-                self.pending_landings[player_key].append((column, landing_row, 'garbage_block', end_ms))
-                if end_ms > max_end_ms:
-                    max_end_ms = end_ms
+            # Track the garbage block for transformation
+            player_id = 1 if player_key == 'player' else 2
+            pos_key = (column, landing_row, player_id)
+            
+            # Get proper color from item system
+            try:
+                color = self.game_state_manager.get_player_items().get_garbage_color_for_column(column)
+            except Exception:
+                color = 'blue'  # Fallback color
+                
+            self.garbage_block_brightness[pos_key] = {
+                'landings': 0,
+                'color': color,
+                'is_strike': False
+            }
 
-                # REMOVE this (was causing "on-grid" spawn):
-                # grid[0][column] = 'garbage_block'
-
-                # Track the garbage block for transformation
-                player_id = 1 if player_key == 'player' else 2
-                pos_key = (column, landing_row, player_id)
-                self.garbage_block_brightness[pos_key] = {
-                    'landings': 0,
-                    'color': 'blue',  # Default color, will be determined by item system
-                    'is_strike': False
-                }
-
-                blocks_placed += 1
-                blocks_to_place -= 1
+            blocks_placed += 1
+            blocks_to_place -= 1
 
         # Freeze updates for this side until payload finishes landing
         if max_end_ms > 0:
@@ -798,6 +857,9 @@ class TestModeRefactored(TestModeInterface):
             else:
                 self.enemy_spawn_pause_until = max(getattr(self, 'enemy_spawn_pause_until', 0), max_end_ms)
 
+        # FIXED: Save the rotation state for next call
+        self._garbage_rotation_index = current_rotation_index
+        
         # Also lock player input for the duration of the animation window
         try:
             if max_end_ms > 0 and player_key == 'player' and hasattr(self, 'game_state_manager'):
@@ -815,43 +877,57 @@ class TestModeRefactored(TestModeInterface):
         blocks_to_place = attack.get('blocks_remaining', 0)
         blocks_placed = 0
         
-        # Set sweep order by side
-        side = attack.get('sprinkle_side', 'R')
-        cols_order = list(range(engine.grid_width))
-        if side == 'R':
-            cols_order = list(reversed(cols_order))
+        # FIXED: Use proper column rotation pattern instead of simple sweep
+        # Column rotation sequence per spec (1-indexed): 1,6,2,5,3,4
+        # Convert to 0-based: 0,5,1,4,2,3
+        column_rotation = [0, 5, 1, 4, 2, 3]  # 0-based columns
+        
+        # FIXED: Use persistent rotation state across multiple calls
+        if not hasattr(self, '_garbage_rotation_index'):
+            self._garbage_rotation_index = 0
+        
+        current_rotation_index = self._garbage_rotation_index
         
         while blocks_to_place > 0:
-            for column in cols_order:
-                if blocks_to_place <= 0:
+            # Use column rotation pattern for even distribution
+            column = column_rotation[current_rotation_index]
+            current_rotation_index = (current_rotation_index + 1) % len(column_rotation)
+            
+            # Find next landing spot in this column
+            landing_row = None
+            for row in range(engine.grid_height - 1, -1, -1):
+                if grid[row][column] in ['empty', None]:
+                    landing_row = row
                     break
                     
-                # Find next landing spot in this column
-                landing_row = None
-                for row in range(engine.grid_height - 1, -1, -1):
-                    if grid[row][column] in ['empty', None]:
-                        landing_row = row
-                        break
-                        
-                if landing_row is None:
-                    # Column full, waste this block
-                    blocks_to_place -= 1
-                    continue
+            if landing_row is None:
+                # Column full, try next column in rotation
+                continue
+            
+            # Place garbage block
+            grid[landing_row][column] = 'garbage_block'
+            
+            # Track the garbage block for transformation
+            player_id = 1 if player_key == 'player' else 2
+            pos_key = (column, landing_row, player_id)
+            
+            # Get proper color from item system
+            try:
+                color = self.game_state_manager.get_player_items().get_garbage_color_for_column(column)
+            except Exception:
+                color = 'blue'  # Fallback color
                 
-                # Place garbage block
-                grid[landing_row][column] = 'garbage_block'
-                
-                # Track the garbage block for transformation
-                player_id = 1 if player_key == 'player' else 2
-                pos_key = (column, landing_row, player_id)
-                self.garbage_block_brightness[pos_key] = {
-                    'landings': 0,
-                    'color': 'blue',  # Default color, will be determined by item system
-                    'is_strike': False
-                }
-                
-                blocks_placed += 1
-                blocks_to_place -= 1
+            self.garbage_block_brightness[pos_key] = {
+                'landings': 0,
+                'color': color,
+                'is_strike': False
+            }
+            
+            blocks_placed += 1
+            blocks_to_place -= 1
+        
+        # FIXED: Save the rotation state for next call
+        self._garbage_rotation_index = current_rotation_index
         
         return blocks_placed
         
@@ -880,6 +956,7 @@ class TestModeRefactored(TestModeInterface):
         spawn_height = -3  # Spawn 3 rows above the visible board
 
         max_end_ms = 0
+        reserved = set()  # prevent duplicate cells within a single strike placement pass
 
         for strike in strike_details:
             # Handle both dictionary and string formats for backward compatibility
@@ -911,7 +988,6 @@ class TestModeRefactored(TestModeInterface):
                             break
 
                     if can_place:
-                        # Calculate fall distance and duration for the strike pattern
                         fall_distance = start_row - spawn_height
                         fall_duration = asm.fall_animation_duration * fall_distance
                         fall_duration_ms = int(asm.fall_animation_duration * 1000 * fall_distance)
@@ -919,25 +995,22 @@ class TestModeRefactored(TestModeInterface):
                         if end_ms > max_end_ms:
                             max_end_ms = end_ms
 
-                        # Set up falling animations for each block in the strike pattern
                         for row in range(start_row, start_row + height):
                             for col in range(start_col, start_col + width):
+                                if (col, row) in reserved:
+                                    continue
                                 animation_key = (col, row)
                                 asm.visual_falling_blocks[animation_key] = {
                                     'start_time': current_time,
                                     'duration': fall_duration,
-                                    'start_y': spawn_height + (row - start_row),  # Stagger the spawn heights
+                                    'start_y': spawn_height + (row - start_row),
                                     'block_type': 'orange_strike',
                                     'payload': True,
                                     'phase': 'spawning',
-                                    'final_position': (col, row)  # Track final position
+                                    'final_position': (col, row)
                                 }
-
-                                # Queue landing commit instead of mutating grid immediately
                                 self.pending_landings[player_key].append((col, row, 'orange_strike', end_ms))
-
-                                # REMOVE this (was causing "on-grid" spawn):
-                                # grid[0][col] = 'strike_block'
+                                reserved.add((col, row))
 
                                 # Track the strike block for transformation
                                 player_id = 1 if player_key == 'player' else 2
@@ -1103,6 +1176,14 @@ class TestModeRefactored(TestModeInterface):
     def get_enemy_items(self):
         """Get enemy item system."""
         return self.game_state_manager.get_enemy_items() 
+        
+    def get_attack_delivery_violations_report(self):
+        """Get a summary of all attack delivery violations detected."""
+        return attack_delivery_monitor.get_violations_report()
+        
+    def clear_attack_delivery_violations(self):
+        """Clear the attack delivery violations log."""
+        attack_delivery_monitor.grid_write_log.clear()
 
 # Back-compat alias for legacy imports expecting `TestMode` in this module
 TestMode = TestModeRefactored
