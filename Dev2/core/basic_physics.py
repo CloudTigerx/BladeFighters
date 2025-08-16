@@ -113,6 +113,78 @@ class BasicPhysics:
         return (self.is_valid_position(main_x, main_y + 1) and 
                 self.is_valid_position(attached_x, attached_y + 1))
 
+    def should_pieces_separate(self, piece_position: List[int], attached_position: int) -> Tuple[bool, Optional[str]]:
+        """
+        Check if pieces should separate due to uneven column heights.
+        This prevents teleportation by allowing one piece to land while the other continues falling.
+        
+        Args:
+            piece_position: [x, y] coordinates of main piece
+            attached_position: Orientation of attached piece
+            
+        Returns:
+            Tuple[bool, Optional[str]]: (should_separate, which_piece_to_place)
+                                      which_piece_to_place can be 'main', 'attached', or None
+        """
+        # Get current positions
+        main_x, main_y = piece_position
+        attached_x, attached_y = self.get_attached_position_coords(piece_position, attached_position)
+        
+        # Check if we're at the bottom boundary
+        if main_y + 1 >= self.grid_height or attached_y + 1 >= self.grid_height:
+            return True, 'main' if main_y + 1 >= self.grid_height else 'attached'
+        
+        # Check if main piece would collide below
+        main_can_fall = (main_y + 1 >= 0 and main_x >= 0 and main_x < self.grid_width and 
+                        self.engine.puzzle_grid[main_y + 1][main_x] is None)
+        
+        # Check if attached piece would collide below
+        attached_can_fall = (attached_y + 1 >= 0 and attached_x >= 0 and attached_x < self.grid_width and 
+                           self.engine.puzzle_grid[attached_y + 1][attached_x] is None)
+        
+        # If both can fall, no separation needed
+        if main_can_fall and attached_can_fall:
+            return False, None
+        
+        # If neither can fall, both should be placed
+        if not main_can_fall and not attached_can_fall:
+            return True, 'both'
+        
+        # If only one can fall, separate them
+        if main_can_fall and not attached_can_fall:
+            return True, 'attached'  # Place attached piece, let main continue falling
+        elif not main_can_fall and attached_can_fall:
+            return True, 'main'      # Place main piece, let attached continue falling
+        
+        return False, None
+
+    def get_individual_fall_status(self, piece_position: List[int], attached_position: int) -> Tuple[bool, bool]:
+        """
+        Get the individual fall status for each piece.
+        
+        Args:
+            piece_position: [x, y] coordinates of main piece
+            attached_position: Orientation of attached piece
+            
+        Returns:
+            Tuple[bool, bool]: (main_can_fall, attached_can_fall)
+        """
+        # Get current positions
+        main_x, main_y = piece_position
+        attached_x, attached_y = self.get_attached_position_coords(piece_position, attached_position)
+        
+        # Check if main piece can fall
+        main_can_fall = (main_y + 1 < self.grid_height and 
+                        main_y + 1 >= 0 and main_x >= 0 and main_x < self.grid_width and 
+                        self.engine.puzzle_grid[main_y + 1][main_x] is None)
+        
+        # Check if attached piece can fall
+        attached_can_fall = (attached_y + 1 < self.grid_height and 
+                           attached_y + 1 >= 0 and attached_x >= 0 and attached_x < self.grid_width and 
+                           self.engine.puzzle_grid[attached_y + 1][attached_x] is None)
+        
+        return main_can_fall, attached_can_fall
+
     # Pure helper that can be used by engine logic externally without altering signatures
     @staticmethod
     def swept_drop_steps(accum_ms: int, dt_ms: int, fall_period_ms: int) -> Tuple[int, int]:

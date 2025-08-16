@@ -116,8 +116,8 @@ class BoardManager:
         grid_height = max(p_h, e_h)
         
         # Use the actual block sizes from the engines instead of hardcoded values
-        cell_width = self.player_engine.block_size
-        cell_height = self.player_engine.block_size
+        cell_width = self.player_engine.block_width
+        cell_height = self.player_engine.block_height
         border_size = 10  # Space between container edge and the actual grid
         
         # Calculate board dimensions
@@ -126,7 +126,7 @@ class BoardManager:
         
         # Calculate proper centered positions
         screen_width = self.width
-        board_spacing = 40  # Space between boards
+        board_spacing = 60  # Increased spacing between boards for better visual separation
         
         # Center calculation - include borders in the total width
         total_width_needed = (board_width * 2) + board_spacing + (border_size * 4)
@@ -134,11 +134,11 @@ class BoardManager:
         
         # Player board position (left side)
         player_x = start_x + border_size
-        player_y = 80
+        player_y = 100  # Moved down slightly for better positioning
         
         # Enemy board position (right side) 
         enemy_x = start_x + board_width + board_spacing + (border_size * 3)
-        enemy_y = 80
+        enemy_y = 100  # Moved down slightly for better positioning
         
         # Store positions
         self.player_grid_position = {"x": player_x, "y": player_y}

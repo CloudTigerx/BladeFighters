@@ -1,6 +1,7 @@
 import pygame
 import os
 from typing import Dict, Optional, Tuple
+from core.scaling import true_resolution_scaler
 
 class AssetLoader:
     """
@@ -8,16 +9,18 @@ class AssetLoader:
     This class centralizes image loading, scaling, and caching for better organization.
     """
     
-    def __init__(self, asset_path: str = "puzzleassets", block_size: int = 65):
+    def __init__(self, asset_path: str = "puzzleassets", block_width: int = 64, block_height: int = 80):
         """
         Initialize the asset loader.
         
         Args:
             asset_path: Path to the assets directory
-            block_size: Size for scaling block images
+            block_width: Width for scaling block images
+            block_height: Height for scaling block images
         """
         self.asset_path = asset_path
-        self.block_size = block_size
+        self.block_width = block_width
+        self.block_height = block_height
         
         # Color constants for fallback rendering
         self.WHITE = (255, 255, 255)
@@ -86,7 +89,7 @@ class AssetLoader:
     
     def load_block(self, filename: str, fallback_filename: Optional[str] = None, is_breaker: bool = False) -> Optional[pygame.Surface]:
         """
-        Load and scale a block image.
+        Load and scale a block image using the new resolution-aware system.
         
         Args:
             filename: Primary image filename
@@ -97,11 +100,33 @@ class AssetLoader:
             Loaded and scaled pygame Surface or None if failed
         """
         try:
-            # Try primary image
+            # Extract base name for resolution-aware loading
+            base_name = filename.replace('.png', '').replace('.jpg', '')
+            if '/' in base_name:
+                base_name = base_name.split('/')[-1]  # Get just the filename part
+            
+            # Try resolution-aware loading first
+            block = true_resolution_scaler.load_puzzle_piece(
+                base_name,
+                fallback_path=os.path.join(self.asset_path, filename)
+            )
+            
+            if block:
+                # Scale to the required rectangular block size
+                if block.get_size() != (self.block_width, self.block_height):
+                    block = pygame.transform.scale(block, (self.block_width, self.block_height))
+                
+                # Add breaker indicator if needed
+                if is_breaker:
+                    block = self._add_breaker_indicator(block)
+                
+                return block
+            
+            # Fallback to old method
             image_path = os.path.join(self.asset_path, filename)
             if os.path.exists(image_path):
                 original_img = pygame.image.load(image_path)
-                scaled_img = pygame.transform.scale(original_img, (self.block_size, self.block_size))
+                scaled_img = pygame.transform.scale(original_img, (self.block_width, self.block_height))
                 
                 # Add breaker indicator if needed
                 if is_breaker:
@@ -114,7 +139,7 @@ class AssetLoader:
                 fallback_path = os.path.join(self.asset_path, fallback_filename)
                 if os.path.exists(fallback_path):
                     original_img = pygame.image.load(fallback_path)
-                    scaled_img = pygame.transform.scale(original_img, (self.block_size, self.block_size))
+                    scaled_img = pygame.transform.scale(original_img, (self.block_width, self.block_height))
                     
                     # Add breaker indicator if needed
                     if is_breaker:
@@ -122,7 +147,7 @@ class AssetLoader:
                     
                     return scaled_img
                     
-        except pygame.error as e:
+        except Exception as e:
             print(f"Error loading block image {filename}: {e}")
         
         # If all loading attempts fail, raise an error
@@ -284,38 +309,56 @@ class AssetLoader:
         """
         return self.background_images.get(background_name)
     
-    def update_block_size(self, new_block_size: int):
+    def update_block_size(self, new_block_width: int, new_block_height: int = None):
         """
-        Update the block size and reload all block images.
+        Update the block dimensions and reload all block images.
         
         Args:
-            new_block_size: New size for blocks
+            new_block_width: New width for blocks
+            new_block_height: New height for blocks (defaults to width * 1.25 for 4:5 ratio)
         """
-        if new_block_size != self.block_size:
-            self.block_size = new_block_size
+        if new_block_height is None:
+            new_block_height = int(new_block_width * 1.25)  # 4:5 aspect ratio
+        
+        if new_block_width != self.block_width or new_block_height != self.block_height:
+            self.block_width = new_block_width
+            self.block_height = new_block_height
             # Clear existing images
             self.block_images.clear()
             self.puzzle_pieces.clear()
-            # Reload with new size
+            # Reload with new dimensions
             self._load_standard_assets()
     
-    def scale_background_for_grid(self, background_name: str, grid_width: int, grid_height: int, block_size: int) -> Optional[pygame.Surface]:
+    def scale_background_for_grid(self, background_name: str, grid_width: int, grid_height: int, block_width: int, block_height: int) -> Optional[pygame.Surface]:
         """
-        Scale a background image to fit a specific grid size.
+        Scale a background image to fit a specific grid size with rectangular blocks.
         
         Args:
             background_name: Background identifier
             grid_width: Number of blocks wide
             grid_height: Number of blocks high
-            block_size: Size of each block
+            block_width: Width of each block
+            block_height: Height of each block
             
         Returns:
             Scaled background or None if not found
         """
+        # Try resolution-aware board background loading first
+        try:
+            board_bg = true_resolution_scaler.load_board_background(
+                background_name,
+                fallback_path=os.path.join(self.asset_path, f"{background_name}.jpg")
+            )
+            if board_bg:
+                return board_bg
+        except Exception:
+            pass
+        
+        # Fallback to old method
         background = self.background_images.get(background_name)
         if background:
-            target_width = grid_width * block_size
-            target_height = grid_height * block_size
+            target_width = grid_width * block_width
+            target_height = grid_height * block_height
             return pygame.transform.scale(background, (target_width, target_height))
         return None
     

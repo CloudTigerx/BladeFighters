@@ -26,21 +26,23 @@ class UIScaler:
     def __init__(self, resolution_manager: ResolutionManager):
         self.resolution_manager = resolution_manager
         self.base_resolution = (1920, 1080)
+        
+        # Use simplified scaling system
         self.scale_factor = resolution_manager.get_ui_scale_factor()
         
-        # Base UI sizes (for 1920x1080)
+        # Base UI sizes (for 1920x1080) - Optimized for responsive scaling
         self.base_sizes = {
-            'title_font': 80,    # Increased from 64
-            'heading_font': 48,  # Increased from 40
-            'body_font': 36,     # Increased from 28
-            'small_font': 24,    # Increased from 20
-            'tiny_font': 18,     # Increased from 14
-            'button_height': 90, # Increased from 70
-            'button_padding': 30, # Increased from 24
-            'panel_padding': 45, # Increased from 36
-            'margin': 30,        # Increased from 24
-            'border_radius': 15, # Increased from 12
-            'icon_size': 50,     # Increased from 40
+            'title_font': 80,    # Reduced for better responsive scaling
+            'heading_font': 48,  # Reduced for better responsive scaling
+            'body_font': 32,     # Reduced for better responsive scaling
+            'small_font': 24,    # Reduced for better responsive scaling
+            'tiny_font': 18,     # Reduced for better responsive scaling
+            'button_height': 60, # Reduced for better responsive scaling
+            'button_padding': 20, # Reduced for better responsive scaling
+            'panel_padding': 30, # Reduced for better responsive scaling
+            'margin': 20,        # Reduced for better responsive scaling
+            'border_radius': 10, # Reduced for better responsive scaling
+            'icon_size': 40,     # Reduced for better responsive scaling
         }
         
         # Cache for scaled fonts
@@ -51,20 +53,20 @@ class UIScaler:
         return self.scale_factor
     
     def scale_value(self, base_value: Union[int, float]) -> int:
-        """Scale a base value by the current scale factor."""
+        """Scale a base value using simplified scaling."""
         return int(base_value * self.scale_factor)
     
     def scale_tuple(self, base_tuple: Tuple[int, int]) -> Tuple[int, int]:
-        """Scale a tuple of values."""
-        return (self.scale_value(base_tuple[0]), self.scale_value(base_tuple[1]))
+        """Scale a tuple using simplified scaling."""
+        return (int(base_tuple[0] * self.scale_factor), int(base_tuple[1] * self.scale_factor))
     
     def scale_rect(self, base_rect: pygame.Rect) -> pygame.Rect:
-        """Scale a pygame Rect."""
+        """Scale a pygame Rect using simplified scaling."""
         return pygame.Rect(
-            self.scale_value(base_rect.x),
-            self.scale_value(base_rect.y),
-            self.scale_value(base_rect.width),
-            self.scale_value(base_rect.height)
+            int(base_rect.x * self.scale_factor),
+            int(base_rect.y * self.scale_factor),
+            int(base_rect.width * self.scale_factor),
+            int(base_rect.height * self.scale_factor)
         )
     
     def get_font(self, font_type: str, size_override: Optional[int] = None) -> pygame.font.Font:
@@ -145,15 +147,9 @@ class UIScaler:
             self.scale_value(height)
         )
     
-    def center_element(self, element_size: Tuple[int, int], container_size: Tuple[int, int]) -> Tuple[int, int]:
-        """Center an element within a container."""
-        element_width, element_height = element_size
-        container_width, container_height = container_size
-        
-        x = (container_width - element_width) // 2
-        y = (container_height - element_height) // 2
-        
-        return (x, y)
+    def center_element(self, element_size: Tuple[int, int], container_size: Tuple[int, int] = None) -> Tuple[int, int]:
+        """Center an element within the game area or specified container."""
+        return self.responsive_system.center_element(element_size, container_size)
     
     def grid_layout(self, container_rect: pygame.Rect, element_size: Tuple[int, int], 
                    columns: int, rows: int, spacing: int = 0) -> list[pygame.Rect]:
@@ -208,6 +204,8 @@ class UIScaler:
     
     def update_scale(self) -> None:
         """Update the scale factor when resolution changes."""
-        self.scale_factor = self.resolution_manager.get_ui_scale_factor()
+        # Update the responsive system
+        self.responsive_system.update_resolution()
+        self.scale_factor = self.responsive_system.get_scale_factor()
         # Clear font cache to force regeneration with new scale
         self.font_cache.clear() 

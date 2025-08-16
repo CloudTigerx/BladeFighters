@@ -1,26 +1,18 @@
 """
-Comprehensive Scaling System for BladeFighters
-Handles resolution detection, UI scaling, asset scaling, and coordinate transformations.
+Simplified Scaling System for BladeFighters
+Handles resolution detection and asset scaling for 4 supported resolutions.
 """
 
 from .resolution_manager import ResolutionManager
-from .ui_scaler import UIScaler
-from .asset_scaler import AssetScaler
-from .coordinate_system import CoordinateSystem
+from .true_resolution_scaler import TrueResolutionScaler
 
-# Global instances
+# Global instances - only what we need
 resolution_manager = ResolutionManager()
-ui_scaler = UIScaler(resolution_manager)
-asset_scaler = AssetScaler(resolution_manager)
-coordinate_system = CoordinateSystem(resolution_manager)
+true_resolution_scaler = TrueResolutionScaler(resolution_manager)
 
 __all__ = [
     'ResolutionManager',
-    'UIScaler', 
-    'AssetScaler',
-    'CoordinateSystem',
+    'TrueResolutionScaler',
     'resolution_manager',
-    'ui_scaler',
-    'asset_scaler',
-    'coordinate_system'
+    'true_resolution_scaler'
 ] 

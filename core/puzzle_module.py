@@ -51,16 +51,20 @@ class PuzzleEngine:
         
         # Grid dimensions
         self.grid_width = 6
-        self.grid_height = 15  # Increased visible grid height
-        self.total_grid_height = 16  # Including invisible row
+        self.grid_height = 12  # Reduced from 15 to 12 for smaller boards
+        self.total_grid_height = 13  # Including invisible row
         
-        # Calculate block size based on screen dimensions to ensure grid fits
+        # Calculate rectangular block dimensions based on screen dimensions
         max_block_height = (self.height - 100) // self.grid_height  # Leave 100px margin
         max_block_width = (self.width - 200) // self.grid_width   # Leave 200px margin
-        self.block_size = min(max_block_height, max_block_width, 65)  # Cap at 65px max
         
-        # Ensure minimum block size
-        self.block_size = max(self.block_size, 30)  # Minimum 30px blocks
+        # Use the smaller dimension to maintain aspect ratio
+        base_block_size = min(max_block_height, max_block_width, 64)  # Cap at 64px base
+        base_block_size = max(base_block_size, 32)  # Minimum 32px base
+        
+        # Calculate rectangular dimensions (4:5 aspect ratio)
+        self.block_width = base_block_size
+        self.block_height = int(base_block_size * 1.25)  # 4:5 aspect ratio
         
         # Game state variables
         self.game_active = False
@@ -74,14 +78,14 @@ class PuzzleEngine:
         self.LIGHT_BLUE = (100, 150, 255)
         self.DARK_GRAY = (50, 50, 50)
         
-        # Initialize asset loader
-        self.asset_loader = AssetLoader(asset_path, self.block_size)
+        # Initialize asset loader with rectangular dimensions
+        self.asset_loader = AssetLoader(asset_path, self.block_width, self.block_height)
         
         # Load background and scale for grid
-        grid_width_pixels = self.grid_width * self.block_size
-        grid_height_pixels = self.grid_height * self.block_size
+        grid_width_pixels = self.grid_width * self.block_width
+        grid_height_pixels = self.grid_height * self.block_height
         self.puzzle_background = self.asset_loader.scale_background_for_grid(
-            'puzzle_background', self.grid_width, self.grid_height, self.block_size
+            'puzzle_background', self.grid_width, self.grid_height, self.block_width, self.block_height
         )
         
         # Get puzzle pieces dictionary for compatibility with existing code
@@ -185,8 +189,8 @@ class PuzzleEngine:
             
         # Calculate grid placement
         self.grid_offset_x = 0  # Align grid to the left edge
-        self.grid_offset_y = (self.height - (self.grid_height * self.block_size)) // 3
-        self.cell_size = self.block_size
+        self.grid_offset_y = (self.height - (self.grid_height * self.block_height)) // 3
+        self.cell_size = self.block_width  # Use block_width for cell size calculations
 
     def _combo_debug(self, message: str) -> None:
         return
@@ -319,6 +323,9 @@ class PuzzleEngine:
         main_x, main_y = self.piece_position
         attached_x, attached_y = self.get_attached_position_coords()
         
+        # Check if pieces should separate due to uneven columns
+        should_separate, separation_type = self.physics.should_pieces_separate(self.piece_position, self.attached_position)
+        
         # Check if we can move down - do this outside the loop 
         # so it's available for the check at the end of this function
         can_move_down = self.would_fit_below()
@@ -332,22 +339,27 @@ class PuzzleEngine:
         # Process movement multiple times if needed for fast fall speeds
         steps_taken = 0
         while elapsed > self.micro_fall_time and steps_taken < max_steps:
-            # We already checked if we can move down before entering the loop
+            # Check for separation at each step
+            should_separate, separation_type = self.physics.should_pieces_separate(self.piece_position, self.attached_position)
             
             # Update the micro-position
             next_sub_position = self.current_sub_position + 1
             
             # If we've reached the next grid cell
             if next_sub_position >= self.sub_grid_positions:
-                if can_move_down:
+                if can_move_down and not should_separate:
                     # Move to the next grid cell
                     self.current_sub_position = 0
                     self.piece_position[1] += 1
                     # Update can_move_down for next iteration
                     can_move_down = self.would_fit_below()
                 else:
-                    # We can't move down, place the piece
-                    self.place_piece_on_grid()
+                    # Handle piece separation or placement
+                    if should_separate:
+                        self.handle_piece_separation(separation_type)
+                    else:
+                        # We can't move down, place the piece normally
+                        self.place_piece_on_grid()
                     return  # Exit after placing piece
             else:
                 # Check for potential collisions with the buffer
@@ -368,11 +380,18 @@ class PuzzleEngine:
                                          attached_x >= 0 and attached_x < self.grid_width and
                                          self.puzzle_grid[math.ceil(next_attached_visual_y + buffer_cells)][attached_x] is not None)
                 
+                # Check for separation during sub-grid movement
+                should_separate, separation_type = self.physics.should_pieces_separate(self.piece_position, self.attached_position)
+                
                 # If either would collide OR we are at bottom row boundary, place now
                 at_bottom_boundary = (main_y >= self.grid_height - 1) or (attached_y >= self.grid_height - 1)
-                if main_would_collide or attached_would_collide or not can_move_down or at_bottom_boundary:
-                    # We're about to visually collide, place the piece now
-                    self.place_piece_on_grid()
+                if main_would_collide or attached_would_collide or not can_move_down or at_bottom_boundary or should_separate:
+                    # Handle piece separation or placement
+                    if should_separate:
+                        self.handle_piece_separation(separation_type)
+                    else:
+                        # We're about to visually collide, place the piece now
+                        self.place_piece_on_grid()
                     return  # Exit after placing piece
                 else:
                     # Safe to update the sub-position
@@ -391,7 +410,12 @@ class PuzzleEngine:
         if ((main_y <= 0 or attached_y <= 0) and 
             not can_move_down and steps_taken == 0 and 
             current_time - self.last_fall_time > 250):  # Add a small timeout to prevent immediate placement
-            self.place_piece_on_grid()
+            # Check for separation before forcing placement
+            should_separate, separation_type = self.physics.should_pieces_separate(self.piece_position, self.attached_position)
+            if should_separate:
+                self.handle_piece_separation(separation_type)
+            else:
+                self.place_piece_on_grid()
             return
     
     def get_visual_position(self):
@@ -403,6 +427,108 @@ class PuzzleEngine:
         
         return [x, smooth_y]
     
+    def handle_piece_separation(self, separation_type):
+        """
+        Handle piece separation when pieces fall on uneven columns.
+        This prevents teleportation by allowing one piece to land while the other continues falling.
+        
+        Args:
+            separation_type: 'main', 'attached', or 'both' indicating which piece(s) to place
+        """
+        # Reset sub-position when placing
+        self.current_sub_position = 0
+        
+        # Get positions
+        main_x, main_y = self.piece_position
+        attached_x, attached_y = self.get_attached_position_coords()
+        
+        # Store pieces that need to be placed
+        pieces_to_place = []
+        
+        if separation_type == 'main':
+            # Place main piece, let attached continue falling
+            if 0 <= main_y < self.grid_height and 0 <= main_x < self.grid_width:
+                pieces_to_place.append((main_x, main_y, self.main_piece))
+            elif main_y == -1 and 0 <= main_x < self.grid_width:
+                pieces_to_place.append((main_x, 0, self.main_piece))
+            
+            # Clear main piece but keep attached piece falling
+            self.main_piece = None
+            self.piece_position = [attached_x, attached_y]  # Move to attached piece position
+            self.attached_position = 0  # Reset to top orientation for single piece
+            
+        elif separation_type == 'attached':
+            # Place attached piece, let main continue falling
+            if 0 <= attached_y < self.grid_height and 0 <= attached_x < self.grid_width:
+                pieces_to_place.append((attached_x, attached_y, self.attached_piece))
+            elif attached_y == -1 and 0 <= attached_x < self.grid_width:
+                pieces_to_place.append((attached_x, 0, self.attached_piece))
+            
+            # Clear attached piece but keep main piece falling
+            self.attached_piece = None
+            self.attached_position = 0  # Reset to top orientation for single piece
+            
+        elif separation_type == 'both':
+            # Place both pieces normally
+            self.place_piece_on_grid()
+            return
+        
+        # Place the pieces that need to be placed
+        unique_positions = {}
+        
+        # Clamp to visible grid bounds to avoid writing below the floor
+        def _clamp_row(y: int) -> int:
+            if y < 0:
+                return 0
+            if y >= self.grid_height:
+                return self.grid_height - 1
+            return y
+
+        # Place pieces in order of priority
+        for x, y, piece in pieces_to_place:
+            y = _clamp_row(y)
+            # If this position is already taken, skip it
+            if (x, y) in unique_positions:
+                continue
+                
+            # Place the piece
+            self.puzzle_grid[y][x] = piece
+            unique_positions[(x, y)] = piece
+            
+            # Play the placed sound when a piece is placed
+            if self.audio:
+                self.audio.play_sound("placed")
+        
+        # Apply gravity to make pieces fall into empty spaces
+        gravity_applied = self.apply_gravity()
+        
+        # Start chain reaction process
+        self.chain_reaction_in_progress = True
+        self.chain_count = 0
+        
+        # Choose appropriate state based on gravity status
+        if gravity_applied and hasattr(self, 'renderer') and self.renderer.animations_in_progress():
+            self.chain_state = "waiting_for_gravity"
+            self.last_state_change = pygame.time.get_ticks()
+        else:
+            self.chain_state = "idle"
+            self.update_chain_reaction()
+        
+        # Reset piece movement tracking when piece is placed
+        self.piece_movement.reset_wall_kick_tracking()
+
+        # Trigger garbage block transformation based on landings
+        if hasattr(self, 'on_piece_landed'):
+            print(f"[PUZZLE DEBUG] Calling on_piece_landed callback for engine")
+            self.on_piece_landed()
+        else:
+            print(f"[PUZZLE DEBUG] No on_piece_landed callback found for engine")
+
+        # Only clear both pieces if both were placed
+        if separation_type == 'both':
+            self.main_piece = None
+            self.attached_piece = None
+
     def place_piece_on_grid(self):
         """Place the falling piece onto the grid."""
         # Reset sub-position when placing
@@ -595,11 +721,18 @@ class PuzzleEngine:
                         current_time = time.time()
                         key = (x, target_y)
                         if key not in self.renderer.animation_state_manager.visual_falling_blocks:
+                            # Check if this is an attack block that should fall from above the board
+                            start_y = 0  # Default start position
+                            if ('_garbage' in block_type) or (block_type == 'garbage_block') or ('_strike' in block_type):
+                                # For attack blocks, start from above the visible board
+                                start_y = -3  # Start 3 rows above the visible board
+                            
                             self.renderer.animation_state_manager.visual_falling_blocks[key] = {
                                 'start_time': current_time,
-                                'duration': self.renderer.animation_state_manager.fall_animation_duration * fall_distance,
-                                'start_y': 0,
-                                'block_type': block_type
+                                'duration': self.renderer.animation_state_manager.fall_animation_duration * (target_y - start_y),
+                                'start_y': start_y,
+                                'block_type': block_type,
+                                'payload': ('_garbage' in block_type) or (block_type == 'garbage_block') or ('_strike' in block_type)
                             }
                     
                     # Move the block to final position in grid (for logic)

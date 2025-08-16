@@ -4,7 +4,7 @@ Extracted from TestMode to manage rendering coordination.
 """
 
 import pygame
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 
 class RenderCoordinator:
     """
@@ -23,6 +23,43 @@ class RenderCoordinator:
         # Attack indicators
         self.pending_attacks = {'player': [], 'enemy': []}
         self.attack_spawn_delay = 3000  # 3 seconds
+        
+        # Character system
+        self.character_sprite_manager = None
+        self.character_animation_manager = None
+        self._initialize_character_system()
+        
+    def _initialize_character_system(self):
+        """Initialize the character sprite and animation systems."""
+        try:
+            from ..character_module.character_sprite_manager import CharacterSpriteManager
+            from ..character_module.character_animation_manager import CharacterAnimationManager
+            
+            # Get screen dimensions
+            screen_width = self.screen.get_width()
+            screen_height = self.screen.get_height()
+            
+            # Initialize character systems
+            self.character_sprite_manager = CharacterSpriteManager(
+                self.board_manager.asset_path, screen_width, screen_height
+            )
+            
+            self.character_animation_manager = CharacterAnimationManager(
+                self.board_manager.clock
+            )
+            
+            # Initialize animations for available characters
+            for character_name in self.character_sprite_manager.get_available_characters():
+                config = self.character_sprite_manager.get_character_config(character_name)
+                if config:
+                    self.character_animation_manager.initialize_character(character_name, config)
+            
+            print("✅ Character system initialized successfully")
+            
+        except Exception as e:
+            print(f"⚠️ Character system initialization failed: {e}")
+            self.character_sprite_manager = None
+            self.character_animation_manager = None
         
     def update_renderers(self):
         """Update both renderers."""
@@ -47,6 +84,46 @@ class RenderCoordinator:
         # Draw indicators for enemy board (player attacks)
         if self.pending_attacks['enemy']:
             self._draw_attack_indicator(enemy_pos, self.pending_attacks['enemy'], current_time, board_w)
+    
+    def draw_characters(self):
+        """Draw character sprites beneath the puzzle boards."""
+        if not self.character_sprite_manager or not self.character_animation_manager:
+            return
+        
+        # Get board positions and dimensions
+        player_pos, enemy_pos = self.board_manager.get_board_positions()
+        board_dimensions = self.board_manager.get_board_dimensions()
+        
+        # Draw player character (Yuki)
+        self._draw_character('yuki', player_pos, board_dimensions)
+        
+        # Draw enemy character (placeholder for future)
+        # self._draw_character('enemy_character', enemy_pos, board_dimensions)
+    
+    def _draw_character(self, character_name: str, board_position: Dict[str, int], 
+                       board_dimensions: Tuple[int, int, int, int]):
+        """Draw a character sprite at the calculated position."""
+        try:
+            # Update character animation and get current frame
+            current_frame = 0
+            if self.character_animation_manager:
+                current_frame = self.character_animation_manager.update_character_animation(character_name)
+            
+            # Get character sprite for current frame
+            sprite = self.character_sprite_manager.get_character_sprite(character_name, 'idle', current_frame)
+            if not sprite:
+                return
+            
+            # Calculate character position
+            char_x, char_y = self.character_sprite_manager.calculate_character_position(
+                board_position, board_dimensions, character_name
+            )
+            
+            # Draw the character sprite
+            self.screen.blit(sprite, (char_x, char_y))
+            
+        except Exception as e:
+            print(f"⚠️ Error drawing character {character_name}: {e}")
             
     def _draw_attack_indicator(self, board_position: Dict, attacks: List, current_time: int, board_width: int):
         """Draw attack indicators above a specific board."""

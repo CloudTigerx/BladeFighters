@@ -327,8 +327,17 @@ class AnimationRenderer:
             # Draw the block
             self._draw_block(screen_x, interp_y, block_width, block_height, block_data['block_type'])
 
-            # Remove completed animations
+            # Handle completed animations
             if progress >= 1.0:
+                # For attack blocks, ensure they are placed in their final position
+                if block_data.get('payload', False) and 'final_position' in block_data:
+                    final_x, final_y = block_data['final_position']
+                    # Ensure the block is in the correct final position in the grid
+                    if (0 <= final_x < self.engine.grid_width and 
+                        0 <= final_y < self.engine.grid_height):
+                        self.engine.puzzle_grid[final_y][final_x] = block_data['block_type']
+                
+                # Remove the animation
                 self.state_manager.visual_falling_blocks.pop(pos)
 
     # Lightning visual effects removed (effects disabled)

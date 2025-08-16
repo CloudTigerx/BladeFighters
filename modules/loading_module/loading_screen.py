@@ -51,13 +51,13 @@ class LoadingScreen:
     def _load_loading_image(self):
         """Load the loading background image."""
         try:
-            # Try to load banner.png as loading image
-            image_path = os.path.join(self.asset_path, "banner.png")
+            # Try to load loading.png as loading image
+            image_path = os.path.join(self.asset_path, "fonts", "loading.png")
             if os.path.exists(image_path):
                 self.loading_image = pygame.image.load(image_path).convert_alpha()
-                logger.info("✅ Loaded loading background image: banner.png")
+                logger.info("✅ Loaded loading background image: loading.png")
             else:
-                logger.warning("⚠️ Loading background image not found: banner.png")
+                logger.warning("⚠️ Loading background image not found: loading.png")
         except Exception as e:
             logger.warning(f"⚠️ Failed to load loading background image: {e}")
             self.loading_image = None

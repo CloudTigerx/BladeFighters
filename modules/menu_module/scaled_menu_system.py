@@ -45,9 +45,8 @@ class ScaledMenuSystem(MenuSystem):
         self.width = screen.get_width()
         self.height = screen.get_height()
         
-        # Initialize UI scaler
-        from core.scaling.resolution_manager import ResolutionManager
-        resolution_manager = ResolutionManager()
+        # Initialize UI scaler with simplified scaling
+        from core.scaling import resolution_manager
         self.ui_scaler = UIScaler(resolution_manager)
         
         # Colors
@@ -250,21 +249,17 @@ class ScaledMenuSystem(MenuSystem):
         return None
     
     def _get_button_size(self) -> Tuple[int, int]:
-        """Get the scaled button size."""
-        button_scale = self.ui_scaler.get_ui_scale("button")
-        # Use much larger base sizes for high-resolution displays
-        base_width = 500  # Increased from 400 for much better visibility
-        base_height = 90  # Increased from 70 for much better touch targets
-        scaled_width = self.ui_scaler.scale_value(base_width)
-        scaled_height = self.ui_scaler.scale_value(base_height)
+        """Get the scaled button size using responsive scaling."""
+        # Use responsive base sizes (much smaller for better scaling)
+        base_width = 300  # Reduced from 500 for responsive scaling
+        base_height = 50  # Reduced from 90 for responsive scaling
+        scaled_width = int(base_width * self.ui_scaler.get_scale_factor())
+        scaled_height = int(base_height * self.ui_scaler.get_scale_factor())
         return (scaled_width, scaled_height)
     
     def _create_main_menu(self):
-        """Create the main menu with precise positioning."""
-        # Get UI scale configuration
-        button_scale = self.ui_scaler.get_ui_scale("button")
-        
-        # Calculate button size
+        """Create the main menu with responsive positioning."""
+        # Calculate button size using responsive scaling
         button_width, button_height = self._get_button_size()
         
         # Create button layout
@@ -278,12 +273,14 @@ class ScaledMenuSystem(MenuSystem):
             ("Quit", "quit")
         ]
         
-        # Calculate total height needed
-        spacing = button_scale.margin
+        # Calculate total height needed using simplified spacing
+        base_spacing = 20  # Base spacing for 1920x1080
+        spacing = int(base_spacing * self.ui_scaler.get_scale_factor())
         total_height = len(buttons_data) * button_height + (len(buttons_data) - 1) * spacing
         
-        # Center the button stack
-        start_y = (self.height - total_height) // 2
+        # Center the button stack using simplified positioning
+        base_start_y = 360  # Base start Y for 1920x1080 (1080 // 3)
+        start_y = int(base_start_y * self.ui_scaler.get_scale_factor())
         center_x = self.width // 2
         
         self.buttons["main"] = []
@@ -293,8 +290,8 @@ class ScaledMenuSystem(MenuSystem):
             button_x = center_x - button_width // 2
             button_y = start_y + i * (button_height + spacing)
             
-            # Create button rect using UI scaler
-            button_rect = self.ui_scaler.create_button_rect(button_x, button_y, button_width, button_height)
+            # Create button rect using responsive scaling
+            button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
             
             # Create button object
             button = MenuButton(
@@ -306,11 +303,8 @@ class ScaledMenuSystem(MenuSystem):
             self.buttons["main"].append(button)
     
     def _create_story_menu(self):
-        """Create the story menu with precise positioning."""
-        # Get UI scale configuration
-        button_scale = self.ui_scaler.get_ui_scale("button")
-        
-        # Calculate button size
+        """Create the story menu with responsive positioning."""
+        # Calculate button size using responsive scaling
         button_width, button_height = self._get_button_size()
         
         # Create button layout
@@ -319,12 +313,14 @@ class ScaledMenuSystem(MenuSystem):
             ("Back to Main Menu", "back_to_main")
         ]
         
-        # Calculate total height needed
-        spacing = button_scale.margin
+        # Calculate total height needed using simplified spacing
+        base_spacing = 20  # Base spacing for 1920x1080
+        spacing = int(base_spacing * self.ui_scaler.get_scale_factor())
         total_height = len(buttons_data) * button_height + (len(buttons_data) - 1) * spacing
         
-        # Center the button stack
-        start_y = (self.height - total_height) // 2
+        # Center the button stack using simplified positioning
+        base_start_y = 360  # Base start Y for 1920x1080 (1080 // 3)
+        start_y = int(base_start_y * self.ui_scaler.get_scale_factor())
         center_x = self.width // 2
         
         self.buttons["story"] = []
@@ -334,8 +330,8 @@ class ScaledMenuSystem(MenuSystem):
             button_x = center_x - button_width // 2
             button_y = start_y + i * (button_height + spacing)
             
-            # Create button rect using UI scaler
-            button_rect = self.ui_scaler.create_button_rect(button_x, button_y, button_width, button_height)
+            # Create button rect using responsive scaling
+            button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
             
             # Create button object
             button = MenuButton(
@@ -481,9 +477,9 @@ class ScaledMenuSystem(MenuSystem):
                 th = max(1, int(tw * ratio))
                 scaled = pygame.transform.smoothscale(self.title_wordmark, (tw, th))
                 
-                # Center horizontally and position above button stack
+                # Center horizontally and position above button stack with more spacing
                 tx = (self.width - tw) // 2
-                ty = button_stack_start_y - th - self.ui_scaler.scale_value(5)  # Very close to button stack
+                ty = button_stack_start_y - th - self.ui_scaler.scale_value(30)  # More spacing from button stack
                 self.screen.blit(scaled, (tx, ty))
                 return
             except Exception as e:
@@ -497,9 +493,9 @@ class ScaledMenuSystem(MenuSystem):
         title_surface = title_font.render(title_text, True, self.WHITE)
         title_rect = title_surface.get_rect()
         
-        # Center horizontally and position above button stack
+        # Center horizontally and position above button stack with more spacing
         title_rect.centerx = self.width // 2
-        title_rect.bottom = button_stack_start_y - self.ui_scaler.scale_value(2)  # Almost touching button stack
+        title_rect.bottom = button_stack_start_y - self.ui_scaler.scale_value(20)  # More spacing from button stack
         
         # Draw title
         self.screen.blit(title_surface, title_rect)

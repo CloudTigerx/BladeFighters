@@ -65,6 +65,10 @@ except ImportError:
         def draw(self, screen, width, height):
             return {}
         
+        def handle_events(self, event):
+            """Mock handle_events method for fallback MP3Player."""
+            return False
+        
         def pause_song(self):
             pass
         

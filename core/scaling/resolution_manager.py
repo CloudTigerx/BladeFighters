@@ -43,20 +43,12 @@ class ResolutionManager:
         self.scale_factor = 1.0
         self.ui_scale_factor = 1.0
         
-        # Standard resolutions (16:9, 16:10, 4:3)
-        self.standard_resolutions = [
-            (800, 600),    # 4:3
-            (1024, 768),   # 4:3
-            (1280, 720),   # 16:9
-            (1366, 768),   # 16:9
-            (1440, 900),   # 16:10
-            (1600, 900),   # 16:9
-            (1680, 1050),  # 16:10
-            (1920, 1080),  # 16:9
-            (1920, 1200),  # 16:10
-            (2560, 1440),  # 16:9
-            (2560, 1600),  # 16:10
-            (3840, 2160),  # 16:9
+        # Supported resolutions (only the 4 we have assets for)
+        self.supported_resolutions = [
+            (800, 600),     # Low resolution assets
+            (1536, 1024),   # Medium resolution assets  
+            (1920, 1080),   # High resolution assets
+            (3840, 2160),   # Ultra resolution assets
         ]
         
         self.detect_display()
@@ -157,24 +149,20 @@ class ResolutionManager:
         """Generate list of available resolutions for this display."""
         self.available_resolutions = []
         
-        # Add standard resolutions that fit the display
+        # Only use our 4 supported resolutions
         max_width = self.display_info['current_w']
         max_height = self.display_info['current_h']
         
-        for width, height in self.standard_resolutions:
+        for width, height in self.supported_resolutions:
             if width <= max_width and height <= max_height:
                 res = Resolution(width, height, width/height, (width*height)/(1920*1080))
                 self.available_resolutions.append(res)
-        
-        # Add native resolution if not already included
-        if self.native_resolution not in self.available_resolutions:
-            self.available_resolutions.append(self.native_resolution)
         
         # Sort by pixel density (highest first)
         self.available_resolutions.sort(key=lambda r: r.pixel_density, reverse=True)
         
         print(f"📐 Available resolutions: {len(self.available_resolutions)} options")
-        for i, res in enumerate(self.available_resolutions[:5]):
+        for i, res in enumerate(self.available_resolutions):
             print(f"   {i+1}. {res.width} x {res.height} ({res.aspect_ratio:.2f})")
     
     def _set_optimal_resolution(self) -> None:
@@ -183,22 +171,13 @@ class ResolutionManager:
             self._fallback_setup()
             return
         
-        # Find a reasonable resolution that's not too large
-        max_reasonable_width = 1920
-        max_reasonable_height = 1080
-        
-        # Look for a resolution that's not too large
-        reasonable_resolution = None
-        for res in self.available_resolutions:
-            if res.width <= max_reasonable_width and res.height <= max_reasonable_height:
-                reasonable_resolution = res
-                break
-        
-        # If no reasonable resolution found, use the smallest available
-        if reasonable_resolution is None:
-            reasonable_resolution = self.available_resolutions[-1]  # Smallest (last in sorted list)
-        
-        self.current_resolution = reasonable_resolution
+        # Use the native resolution for better UI scaling on large monitors
+        # This ensures the UI elements are properly sized for the actual display
+        if self.native_resolution:
+            self.current_resolution = self.native_resolution
+        else:
+            # Fallback to the highest resolution available
+            self.current_resolution = self.available_resolutions[0]  # Highest (first in sorted list)
         
         # Calculate UI scale factor
         self._calculate_ui_scale()
@@ -217,15 +196,16 @@ class ResolutionManager:
         scale_x = self.current_resolution.width / base_width
         scale_y = self.current_resolution.height / base_height
         
-        # Use the smaller scale to maintain proportions
-        self.ui_scale_factor = min(scale_x, scale_y)
+        # Use the average scale for better visibility on large monitors
+        # This prevents UI elements from being too small on wide screens
+        self.ui_scale_factor = (scale_x + scale_y) / 2
         
         # Apply display-specific adjustments
         if self.display_type == DisplayType.RETINA:
-            self.ui_scale_factor *= 0.6  # Retina displays need smaller UI elements
+            self.ui_scale_factor *= 0.7  # Slightly less aggressive for Retina
         
-        # Clamp to reasonable range - more conservative for better visibility
-        self.ui_scale_factor = max(0.6, min(1.2, self.ui_scale_factor))
+        # Clamp to reasonable range - more generous for better visibility
+        self.ui_scale_factor = max(0.8, min(1.5, self.ui_scale_factor))
     
     def _fallback_setup(self) -> None:
         """Fallback setup when display detection fails."""

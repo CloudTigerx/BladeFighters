@@ -461,7 +461,82 @@ class TestModeRefactored(TestModeInterface):
                         pass
                         
     def _place_garbage_attack(self, engine, attack, player_key):
-        """Place garbage blocks on the board."""
+        """Place garbage blocks on the board by spawning them high above and letting them fall."""
+        grid = engine.puzzle_grid
+        blocks_to_place = attack.get('blocks_remaining', 0)
+        blocks_placed = 0
+        
+        # Set sweep order by side
+        side = attack.get('sprinkle_side', 'R')
+        cols_order = list(range(engine.grid_width))
+        if side == 'R':
+            cols_order = list(reversed(cols_order))
+        
+        # Get renderer and animation state manager
+        renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
+        if not hasattr(renderer, 'animation_state_manager'):
+            # Fallback to direct placement if no animation system available
+            return self._place_garbage_attack_direct(engine, attack, player_key)
+        
+        asm = renderer.animation_state_manager
+        current_time = time.time()
+        
+        # Calculate spawn height above the board (negative row positions)
+        spawn_height = -3  # Spawn 3 rows above the visible board
+        
+        while blocks_to_place > 0:
+            for column in cols_order:
+                if blocks_to_place <= 0:
+                    break
+                    
+                # Find next landing spot in this column
+                landing_row = None
+                for row in range(engine.grid_height - 1, -1, -1):
+                    if grid[row][column] in ['empty', None]:
+                        landing_row = row
+                        break
+                        
+                if landing_row is None:
+                    # Column full, waste this block
+                    blocks_to_place -= 1
+                    continue
+                
+                # Calculate fall distance and duration
+                fall_distance = landing_row - spawn_height
+                fall_duration = asm.fall_animation_duration * fall_distance
+                
+                # Set up falling animation
+                animation_key = (column, landing_row)
+                asm.visual_falling_blocks[animation_key] = {
+                    'start_time': current_time,
+                    'duration': fall_duration,
+                    'start_y': spawn_height,
+                    'block_type': 'garbage_block',
+                    'payload': True,
+                    'phase': 'spawning',
+                    'final_position': (column, landing_row)  # Track final position
+                }
+                
+                # Place the block in the top row temporarily for gravity to handle
+                # The animation system will handle the visual falling from above
+                grid[0][column] = 'garbage_block'
+                
+                # Track the garbage block for transformation
+                player_id = 1 if player_key == 'player' else 2
+                pos_key = (column, landing_row, player_id)
+                self.garbage_block_brightness[pos_key] = {
+                    'landings': 0,
+                    'color': 'blue',  # Default color, will be determined by item system
+                    'is_strike': False
+                }
+                
+                blocks_placed += 1
+                blocks_to_place -= 1
+        
+        return blocks_placed
+    
+    def _place_garbage_attack_direct(self, engine, attack, player_key):
+        """Fallback method for direct garbage block placement (original behavior)."""
         grid = engine.puzzle_grid
         blocks_to_place = attack.get('blocks_remaining', 0)
         blocks_placed = 0
@@ -507,7 +582,95 @@ class TestModeRefactored(TestModeInterface):
         return blocks_placed
         
     def _place_strike_attack(self, engine, attack, player_key):
-        """Place strike attacks on the board."""
+        """Place strike attacks on the board by spawning them high above and letting them fall."""
+        grid = engine.puzzle_grid
+        strike_details = attack.get('strike_details', [])
+        blocks_placed = 0
+        
+        # Get renderer and animation state manager
+        renderer = self.player_renderer if player_key == 'player' else self.enemy_renderer
+        if not hasattr(renderer, 'animation_state_manager'):
+            # Fallback to direct placement if no animation system available
+            return self._place_strike_attack_direct(engine, attack, player_key)
+        
+        asm = renderer.animation_state_manager
+        current_time = time.time()
+        
+        # Calculate spawn height above the board (negative row positions)
+        spawn_height = -3  # Spawn 3 rows above the visible board
+        
+        for strike in strike_details:
+            # Handle both dictionary and string formats for backward compatibility
+            if isinstance(strike, dict):
+                width = strike.get('width', 2)
+                height = strike.get('height', 4)
+            elif isinstance(strike, str) and 'x' in strike:
+                # Handle old string format like "2x4"
+                try:
+                    width, height = map(int, strike.split('x'))
+                except (ValueError, AttributeError):
+                    width, height = 2, 4
+            else:
+                # Fallback to default values
+                width, height = 2, 4
+            
+            # Find placement position (start from top)
+            placed = False
+            for start_row in range(engine.grid_height - height + 1):
+                for start_col in range(engine.grid_width - width + 1):
+                    # Check if area is clear
+                    can_place = True
+                    for row in range(start_row, start_row + height):
+                        for col in range(start_col, start_col + width):
+                            if grid[row][col] not in ['empty', None]:
+                                can_place = False
+                                break
+                        if not can_place:
+                            break
+                    
+                    if can_place:
+                        # Calculate fall distance and duration for the strike pattern
+                        fall_distance = start_row - spawn_height
+                        fall_duration = asm.fall_animation_duration * fall_distance
+                        
+                        # Set up falling animations for each block in the strike pattern
+                        for row in range(start_row, start_row + height):
+                            for col in range(start_col, start_col + width):
+                                # Set up falling animation
+                                animation_key = (col, row)
+                                asm.visual_falling_blocks[animation_key] = {
+                                    'start_time': current_time,
+                                    'duration': fall_duration,
+                                    'start_y': spawn_height + (row - start_row),  # Stagger the spawn heights
+                                    'block_type': 'strike_block',
+                                    'payload': True,
+                                    'phase': 'spawning',
+                                    'final_position': (col, row)  # Track final position
+                                }
+                                
+                                # Place the block in the top row temporarily for gravity to handle
+                                # The animation system will handle the visual falling from above
+                                grid[0][col] = 'strike_block'
+                                
+                                # Track the strike block for transformation
+                                player_id = 1 if player_key == 'player' else 2
+                                pos_key = (col, row, player_id)
+                                self.garbage_block_brightness[pos_key] = {
+                                    'landings': 0,
+                                    'color': 'blue',  # Default color, will be determined by item system
+                                    'is_strike': True
+                                }
+                                
+                                blocks_placed += 1
+                        placed = True
+                        break
+                if placed:
+                    break
+        
+        return blocks_placed
+    
+    def _place_strike_attack_direct(self, engine, attack, player_key):
+        """Fallback method for direct strike block placement (original behavior)."""
         grid = engine.puzzle_grid
         strike_details = attack.get('strike_details', [])
         blocks_placed = 0
@@ -564,6 +727,12 @@ class TestModeRefactored(TestModeInterface):
         
         return blocks_placed
         
+    def _finalize_attack_block_placement(self, engine, player_key):
+        """Finalize the placement of attack blocks after their animations complete."""
+        # This method will be called after animations complete to ensure blocks are in their final positions
+        # For now, gravity will handle moving blocks from the top row to their final positions
+        pass
+        
     def process_events(self, events: List) -> Optional[str]:
         """Process input events for the test mode."""
         current_time = self.clock.now_ms()
@@ -576,6 +745,9 @@ class TestModeRefactored(TestModeInterface):
         
         # Draw attack indicators
         self.render_coordinator.draw_attack_indicators()
+        
+        # Draw characters
+        self.render_coordinator.draw_characters()
         
     def get_ai_difficulty(self) -> int:
         """Get the current AI difficulty."""

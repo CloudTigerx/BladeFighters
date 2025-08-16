@@ -70,8 +70,8 @@ class PuzzleRenderer:
         self.animation_renderer = AnimationRenderer(self.screen, engine, self.animation_state_manager)
         
         # Get dimensions from engine
-        self.block_width = self.engine.block_size
-        self.block_height = self.engine.block_size
+        self.block_width = self.engine.block_width
+        self.block_height = self.engine.block_height
         
         # Initialize coordinate offsets
         self.current_x_offset = 0
@@ -93,8 +93,8 @@ class PuzzleRenderer:
         self.height = self.screen.get_height()
         
         # Initialize block dimensions
-        self.block_width = self.engine.block_size
-        self.block_height = self.engine.block_size
+        self.block_width = self.engine.block_width
+        self.block_height = self.engine.block_height
         
         # Load explosion sprites using the engine's asset loader
         explosion_sprites = self.engine.asset_loader.preload_explosion_sprites()

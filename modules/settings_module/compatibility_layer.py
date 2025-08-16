@@ -81,6 +81,10 @@ class ConfigServiceCompat:
         except Exception as e:
             logger.error(f"Failed to set configuration {key}: {str(e)}")
             return False
+    
+    def get_all(self) -> Dict[str, Any]:
+        """Get all configuration values."""
+        return self.settings.copy()
 
 
 class ControlsServiceCompat:

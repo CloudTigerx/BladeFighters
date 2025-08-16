@@ -37,6 +37,9 @@ class Colors:
     ACCENT_1 = (26, 188, 156)     # Turquoise
     ACCENT_2 = (230, 126, 34)     # Orange
     ACCENT_3 = (142, 68, 173)     # Purple
+    ACCENT = (52, 152, 219)       # Blue accent
+    SUCCESS = (46, 204, 113)      # Green success
+    TEXT_DARK = (127, 140, 141)   # Dark text
 
 class AnimationState(Enum):
     """Animation states for UI elements."""
@@ -263,6 +266,87 @@ class ModernDropdown:
                 option_text_rect = option_text.get_rect(midleft=(self.x + 10, dropdown_y + i * 30 + 15))
                 surface.blit(option_text, option_text_rect)
 
+
+class ModernToggle:
+    """Modern toggle switch component."""
+    
+    def __init__(self, x: int, y: int, width: int, height: int, label: str, value: bool = False):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.label = label
+        self.value = value
+        
+        # Animation
+        self.animation_time = 0
+        self.target_scale = 1.0
+        self.current_scale = 1.0
+        self.knob_offset = 0 if not value else width - height
+        
+        # Colors
+        self.bg_color = Colors.BG_DARK
+        self.border_color = Colors.PRIMARY
+        self.text_color = Colors.TEXT_PRIMARY
+        self.knob_color = Colors.ACCENT if value else Colors.TEXT_DARK
+        self.active_color = Colors.SUCCESS
+        
+        # Font
+        self.font = pygame.font.SysFont('Arial', 16)
+    
+    def handle_event(self, event) -> bool:
+        """Handle pygame events. Returns True if event was handled."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.get_rect().collidepoint(event.pos):
+                self.value = not self.value
+                self.knob_offset = 0 if not self.value else self.width - self.height
+                self.knob_color = Colors.ACCENT if self.value else Colors.TEXT_DARK
+                return True
+        return False
+    
+    def update(self, dt: float):
+        """Update animations."""
+        # Smooth scale animation
+        self.current_scale += (self.target_scale - self.current_scale) * dt * 10
+        self.animation_time += dt
+        
+        # Smooth knob animation
+        target_offset = 0 if not self.value else self.width - self.height
+        self.knob_offset += (target_offset - self.knob_offset) * dt * 15
+    
+    def get_rect(self) -> pygame.Rect:
+        """Get the toggle's bounding rectangle."""
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+    
+    def draw(self, surface: pygame.Surface):
+        """Draw the toggle switch."""
+        # Draw toggle background
+        toggle_rect = self.get_rect()
+        toggle_rect.width = int(toggle_rect.width * self.current_scale)
+        toggle_rect.height = int(toggle_rect.height * self.current_scale)
+        toggle_rect.center = self.get_rect().center
+        
+        # Background
+        bg_color = self.active_color if self.value else self.bg_color
+        pygame.draw.rect(surface, bg_color, toggle_rect, border_radius=toggle_rect.height // 2)
+        pygame.draw.rect(surface, self.border_color, toggle_rect, 2, border_radius=toggle_rect.height // 2)
+        
+        # Knob
+        knob_size = toggle_rect.height - 4
+        knob_rect = pygame.Rect(
+            toggle_rect.x + 2 + self.knob_offset * (toggle_rect.width / self.width),
+            toggle_rect.y + 2,
+            knob_size,
+            knob_size
+        )
+        pygame.draw.rect(surface, self.knob_color, knob_rect, border_radius=knob_size // 2)
+        
+        # Label
+        label_surface = self.font.render(self.label, True, self.text_color)
+        label_rect = label_surface.get_rect(midleft=(toggle_rect.right + 15, toggle_rect.centery))
+        surface.blit(label_surface, label_rect)
+
+
 class ModernButton:
     """Modern animated button component."""
     
@@ -412,36 +496,32 @@ class ModernSettingsUI:
             'Graphics': {
                 'brightness': {'min': 0.3, 'max': 1.0, 'default': 1.0},
                 'resolution': {'options': [
-                    '1728x1117',  # MacBook Pro 16" Retina (scaled - recommended)
-                    '1536x960',   # MacBook Pro 16" Retina (alternative scaled)
-                    '3456x2234',  # MacBook Pro 16" Retina (native - may appear zoomed)
-                    '1440x900',   # MacBook Pro 15" Retina (scaled)
-                    '1280x800',   # MacBook Pro 13" Retina (scaled)
-                    '1920x1080',  # Full HD
-                    '1680x1050',  # MacBook Pro 15"
-                    '1600x900',   # HD+
-                    '1366x768',   # HD
-                    '1280x720',   # HD
-                    '1024x768',   # XGA
-                    '800x600'     # SVGA
-                ], 'default': '1728x1117'},
-                'fullscreen': {'default': False},
-                'vsync': {'default': True}
+                    '3840x2160',  # Ultra (4K) - Ultra resolution assets
+                    '1920x1080',  # High (Full HD) - High resolution assets
+                    '1536x1024',  # Medium - Medium resolution assets
+                    '800x600'     # Low - Low resolution assets
+                ], 'default': '1920x1080'},
+                'fullscreen': {'type': 'toggle', 'default': False},
+                'native_fullscreen': {'type': 'toggle', 'default': False},
+                'borderless': {'type': 'toggle', 'default': False},
+                'vsync': {'type': 'toggle', 'default': True},
+                'particle_effects': {'type': 'toggle', 'default': True},
+                'show_fps': {'type': 'toggle', 'default': False}
             },
             'Audio': {
                 'master_volume': {'min': 0.0, 'max': 1.0, 'default': 0.8},
                 'music_volume': {'min': 0.0, 'max': 1.0, 'default': 0.7},
                 'sfx_volume': {'min': 0.0, 'max': 1.0, 'default': 0.9},
-                'music_enabled': {'default': True},
-                'sfx_enabled': {'default': True}
+                'music_enabled': {'type': 'toggle', 'default': True},
+                'sfx_enabled': {'type': 'toggle', 'default': True}
             },
             'Controls': {
                 'mouse_sensitivity': {'min': 0.5, 'max': 2.0, 'default': 1.0}
             },
             'Gameplay': {
                 'difficulty': {'min': 1, 'max': 10, 'default': 5},
-                'auto_save': {'default': True},
-                'tutorial_enabled': {'default': True}
+                'auto_save': {'type': 'toggle', 'default': True},
+                'tutorial_enabled': {'type': 'toggle', 'default': True}
             }
         }
     
@@ -474,9 +554,9 @@ class ModernSettingsUI:
     
     def _create_ui_components(self):
         """Create all UI components."""
-        # Calculate panel dimensions
-        panel_width = min(700, self.width - 100)
-        panel_height = min(550, self.height - 100)
+        # Calculate panel dimensions - use 70% of screen width
+        panel_width = int(self.width * 0.7)
+        panel_height = min(600, self.height - 120)  # Increased height for better spacing
         panel_x = (self.width - panel_width) // 2
         panel_y = (self.height - panel_height) // 2
         
@@ -508,26 +588,27 @@ class ModernSettingsUI:
         self.buttons['reset'] = ModernButton(reset_x, reset_y, button_width, button_height, "Reset", "reset")
     
     def _create_sliders_for_tab(self, tab: str):
-        """Create sliders for the current tab."""
+        """Create sliders, dropdowns, and toggles for the current tab."""
         self.sliders.clear()
         self.dropdowns.clear()
+        self.toggles.clear()
         
         if tab not in self.settings:
             return
         
-        # Calculate positions
-        panel_width = min(700, self.width - 100)
-        panel_height = min(550, self.height - 100)
+        # Calculate positions - use 70% of screen width
+        panel_width = int(self.width * 0.7)
+        panel_height = min(600, self.height - 120)
         panel_x = (self.width - panel_width) // 2
         panel_y = (self.height - panel_height) // 2
         
-        content_x = panel_x + 40
-        content_y = panel_y + 80
-        slider_width = panel_width - 80
+        content_x = panel_x + 50  # Increased margin for better spacing
+        content_y = panel_y + 100  # Increased top margin
+        slider_width = panel_width - 100  # Increased margin
         slider_height = 20
-        spacing = 60
+        spacing = 70  # Increased spacing between elements
         
-        # Create sliders and dropdowns for current tab
+        # Create sliders, dropdowns, and toggles for current tab
         for i, (setting_name, setting_data) in enumerate(self.settings[tab].items()):
             y = content_y + i * spacing
             
@@ -547,6 +628,28 @@ class ModernSettingsUI:
                     setting_data['options'], current_value
                 )
                 self.dropdowns[setting_name] = dropdown
+            elif setting_data.get('type') == 'toggle':  # Toggle switch
+                current_value = self.config.get(setting_name, setting_data['default'])
+                
+                # Create a friendly label for the toggle
+                label_map = {
+                    'fullscreen': 'Fullscreen',
+                    'native_fullscreen': 'Native Fullscreen',
+                    'borderless': 'Borderless Windowed',
+                    'vsync': 'V-Sync',
+                    'particle_effects': 'Particle Effects',
+                    'show_fps': 'Show FPS',
+                    'music_enabled': 'Music Enabled',
+                    'sfx_enabled': 'Sound Effects Enabled',
+                    'auto_save': 'Auto Save',
+                    'tutorial_enabled': 'Tutorial Enabled'
+                }
+                label = label_map.get(setting_name, setting_name.replace('_', ' ').title())
+                
+                toggle = ModernToggle(
+                    content_x + 200, y, 60, 30, label, current_value  # Position toggle to the right
+                )
+                self.toggles[setting_name] = toggle
     
     def open(self):
         """Open the settings UI with animation."""
@@ -592,6 +695,9 @@ class ModernSettingsUI:
         
         for dropdown in self.dropdowns.values():
             dropdown.update(dt)
+        
+        for toggle in self.toggles.values():
+            toggle.update(dt)
     
     def handle_events(self, events) -> Optional[str]:
         """Handle pygame events."""
@@ -608,6 +714,19 @@ class ModernSettingsUI:
                     if setting_name in self.on_apply:
                         try:
                             self.on_apply[setting_name](dropdown.selected_value)
+                        except Exception as e:
+                            print(f"Error applying setting {setting_name}: {e}")
+                    return None
+            
+            # Handle toggles
+            for setting_name, toggle in self.toggles.items():
+                if toggle.handle_event(event):
+                    # Update config immediately for live preview
+                    self.config.set(setting_name, toggle.value)
+                    # Call apply callback if available
+                    if setting_name in self.on_apply:
+                        try:
+                            self.on_apply[setting_name](toggle.value)
                         except Exception as e:
                             print(f"Error applying setting {setting_name}: {e}")
                     return None
@@ -671,6 +790,16 @@ class ModernSettingsUI:
                 except Exception as e:
                     print(f"Error applying setting {setting_name}: {e}")
         
+        for setting_name, toggle in self.toggles.items():
+            self.config.set(setting_name, toggle.value)
+            
+            # Call apply callback if available
+            if setting_name in self.on_apply:
+                try:
+                    self.on_apply[setting_name](toggle.value)
+                except Exception as e:
+                    print(f"Error applying setting {setting_name}: {e}")
+        
         self.close()
     
     def _reset_settings(self):
@@ -684,6 +813,10 @@ class ModernSettingsUI:
                 elif setting_name in self.dropdowns:
                     default_value = setting_data['default']
                     self.dropdowns[setting_name].selected_value = default_value
+                    self.config.set(setting_name, default_value)
+                elif setting_name in self.toggles:
+                    default_value = setting_data['default']
+                    self.toggles[setting_name].value = default_value
                     self.config.set(setting_name, default_value)
     
     def _draw_9slice_panel(self, surface: pygame.Surface, rect: pygame.Rect):
@@ -762,9 +895,9 @@ class ModernSettingsUI:
         overlay.fill((0, 0, 0, self.background_alpha))
         surface.blit(overlay, (0, 0))
         
-        # Calculate panel dimensions
-        panel_width = min(700, self.width - 100)
-        panel_height = min(550, self.height - 100)
+        # Calculate panel dimensions - use 70% of screen width
+        panel_width = int(self.width * 0.7)
+        panel_height = min(600, self.height - 120)
         panel_x = (self.width - panel_width) // 2
         panel_y = (self.height - panel_height) // 2
         
@@ -790,8 +923,8 @@ class ModernSettingsUI:
                 button.draw(surface, self.font_body)
         
         # Draw sliders, dropdowns and labels
-        content_x = panel_x + 40
-        content_y = panel_y + 100  # Increased spacing from title
+        content_x = panel_x + 50  # Increased margin for better spacing
+        content_y = panel_y + 120  # Increased spacing from title
         spacing = 70  # Increased spacing between items
         
         for i, (setting_name, slider) in enumerate(self.sliders.items()):
@@ -822,13 +955,28 @@ class ModernSettingsUI:
             # Draw dropdown
             dropdown.draw(surface, self.font_body)
         
+        for i, (setting_name, toggle) in enumerate(self.toggles.items()):
+            y = content_y + (len(self.sliders) + len(self.dropdowns) + i) * spacing
+            
+            # Update toggle position
+            toggle.y = y
+            toggle.x = content_x + 200  # Position toggle to the right of label
+            
+            # Draw toggle label
+            label_text = toggle.label
+            label_surface = self.font_body.render(label_text, True, Colors.TEXT_PRIMARY)
+            surface.blit(label_surface, (content_x, y - 30))
+            
+            # Draw toggle
+            toggle.draw(surface)
+        
         # Draw action buttons
         for button in self.buttons.values():
             if button.text not in self.tabs:
                 button.draw(surface, self.font_body)
         
-        # Draw help text
-        help_text = "Use sliders and dropdowns to adjust settings. Changes are applied immediately."
+        # Draw help text - moved to bottom of panel
+        help_text = "Use sliders, dropdowns, and toggles to adjust settings. Changes are applied immediately."
         help_surface = self.font_small.render(help_text, True, Colors.TEXT_SECONDARY)
-        help_rect = help_surface.get_rect(midbottom=(panel_x + panel_width // 2, scaled_y + scaled_height - 15))
+        help_rect = help_surface.get_rect(midbottom=(panel_x + panel_width // 2, panel_y + panel_height - 25))
         surface.blit(help_surface, help_rect)

@@ -15,6 +15,7 @@ from ..logging_module.error_handler import (
     safe_file_operation
 )
 from ..logging_module.logger import get_logger
+from core.scaling import true_resolution_scaler, resolution_manager
 
 logger = get_logger(__name__)
 
@@ -84,8 +85,8 @@ class MenuSystem(MenuSystemInterface):
             # Settings removed
             "Quit": self.load_image("banner.png")
         }
-        # Scale
-        self.ui_scale = 1.0
+        # Use simplified scaling system
+        self.ui_scale = resolution_manager.get_ui_scale_factor()
         
         # Fallback to banner.png if any button image is missing
         self.button_normal = self.load_image("banner.png")
@@ -128,10 +129,21 @@ class MenuSystem(MenuSystemInterface):
     
     @safe_file_operation("load background", None, "WARNING")
     def load_background(self, filename: str) -> Optional[pygame.Surface]:
-        """Load a background image from the asset path."""
+        """Load a background image using the new resolution-aware system."""
         try:
-            return pygame.image.load(os.path.join(self.asset_path, filename))
-        except pygame.error as e:
+            # Use the new true resolution scaler
+            base_name = filename.replace('.png', '')  # Remove extension
+            background = true_resolution_scaler.load_background(
+                base_name,
+                fallback_path=os.path.join(self.asset_path, filename)
+            )
+            if background:
+                logger.info(f"✅ Loaded resolution-appropriate background: {base_name}")
+                return background
+            else:
+                # Fallback to old method
+                return pygame.image.load(os.path.join(self.asset_path, filename))
+        except Exception as e:
             logger.warning(f"Error loading background {filename}: {str(e)}")
             return None
             
@@ -192,17 +204,6 @@ class MenuSystem(MenuSystemInterface):
             button_surface.blit(scaled_image, (0, 0))
         else:
             button_image = self.button_images.get(text, self.button_normal)
-
-    @safe_operation("try load custom button", None, "WARNING")
-    def _try_load_custom_button(self, text: str) -> None:
-        """Try to load a custom button image for the given text."""
-        try:
-            button_image_path = os.path.join(self.asset_path, f"button_{text.lower().replace(' ', '_')}.png")
-            if os.path.exists(button_image_path):
-                # Only log once per button text
-                self._logged_buttons.add(text)
-        except Exception as e:
-            logger.warning(f"Failed to load custom button for {text}: {str(e)}")
             if button_image:
                 scaled_image = pygame.transform.scale(button_image, (width, height))
                 button_surface.blit(scaled_image, (0, 0))
@@ -232,6 +233,7 @@ class MenuSystem(MenuSystemInterface):
             glow_color_with_alpha = (*glow_color[:3], glow_alpha)
             pygame.draw.rect(glow_surface, glow_color_with_alpha, (10, 10, width, height), border_radius=10)
             self.screen.blit(glow_surface, (x-10, y-10))
+        
         # Draw button surface
         self.screen.blit(button_surface, (x, y))
         
@@ -285,6 +287,17 @@ class MenuSystem(MenuSystemInterface):
         button["clicked"] = clicked
         
         return button
+
+    @safe_operation("try load custom button", None, "WARNING")
+    def _try_load_custom_button(self, text: str) -> None:
+        """Try to load a custom button image for the given text."""
+        try:
+            button_image_path = os.path.join(self.asset_path, f"button_{text.lower().replace(' ', '_')}.png")
+            if os.path.exists(button_image_path):
+                # Only log once per button text
+                self._logged_buttons.add(text)
+        except Exception as e:
+            logger.warning(f"Failed to load custom button for {text}: {str(e)}")
     
     def draw_main_menu(self, on_start_action=None, on_story_action=None, on_test_action=None, on_test_lab_action=None, version=None) -> List:
         """Draw the main menu screen."""
@@ -330,25 +343,38 @@ class MenuSystem(MenuSystemInterface):
         title_bottom = 0
         if getattr(self, 'title_wordmark', None):
             try:
-                max_w = int(self.width * 0.6)
+                # Use responsive scaling for title
+                base_max_w = 1152  # 1920 * 0.6
+                base_tw = 480
+                base_ty = 40
+                
                 ratio = self.title_wordmark.get_height() / max(1, self.title_wordmark.get_width())
-                tw = min(max_w, int(480 * self.ui_scale))
+                tw = int(base_tw * self.ui_scale)
                 th = max(1, int(tw * ratio))
                 scaled = pygame.transform.smoothscale(self.title_wordmark, (tw, th))
+                
+                # Center the title
                 tx = (self.width - tw) // 2
-                ty = int(40 * self.ui_scale)
+                ty = int(base_ty * self.ui_scale)
                 self.screen.blit(scaled, (tx, ty))
                 title_bottom = ty + th
             except Exception:
                 title_bottom = 0
 
-        # Calculate button positions based on screen size (start under title if present)
-        button_width = int(300 * self.ui_scale)
-        button_height = int(50 * self.ui_scale)
-        button_margin = int(20 * self.ui_scale)
-        default_top = self.height // 3
-        start_y = max(default_top, title_bottom + int(40 * self.ui_scale))
-        button_x = (self.width - button_width) // 2
+        # Calculate button positions using responsive coordinate system
+        base_button_width = 300
+        base_button_height = 50
+        base_button_margin = 20
+        base_default_top = 360  # 1080 // 3
+        base_start_y = max(base_default_top, title_bottom + 40)
+        base_button_x = 810  # (1920 - 300) // 2
+        
+        # Scale using responsive system
+        button_width = int(base_button_width * self.ui_scale)
+        button_height = int(base_button_height * self.ui_scale)
+        button_margin = int(base_button_margin * self.ui_scale)
+        start_y = int(base_start_y * self.ui_scale)
+        button_x = int(base_button_x * self.ui_scale)
         
         # Initialize menu buttons list if it doesn't exist
         if not hasattr(self, 'main_menu_buttons'):
@@ -371,7 +397,8 @@ class MenuSystem(MenuSystemInterface):
         count = len(button_configs)
         stack_h = count * button_height + (count - 1) * button_margin
         top_pad = start_y - title_bottom
-        bottom_pad = int(20 * self.ui_scale)
+        base_bottom_pad = 20
+        bottom_pad = int(base_bottom_pad * self.ui_scale)
         available = max(0, self.height - (title_bottom + top_pad) - bottom_pad)
         if stack_h > available and available > 0:
             scale = available / stack_h
@@ -393,7 +420,9 @@ class MenuSystem(MenuSystemInterface):
             self.main_menu_buttons.append(button)
         # Draw version number
         if version:
-            version_font = pygame.font.SysFont(None, max(16, int(20 * self.ui_scale)))
+            base_font_size = 20
+            font_size = int(base_font_size * self.ui_scale)
+            version_font = pygame.font.SysFont(None, max(16, font_size))
             version_surf = version_font.render(f"v{version}", True, self.LIGHT_GRAY)
             version_rect = version_surf.get_rect(bottomright=(self.width - 10, self.height - 10))
             self.screen.blit(version_surf, version_rect)

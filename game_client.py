@@ -60,8 +60,21 @@ class GameClient:
         desktop_info = pygame.display.Info()
         desktop_width, desktop_height = desktop_info.current_w, desktop_info.current_h
         
-        # Get optimal resolution for this display
-        self.width, self.height = resolution_enhancer.get_optimal_resolution(desktop_width, desktop_height)
+        # Load config first to get user's preferred resolution
+        self.config = ConfigService(os.path.join(ROOT_PATH, "game_settings.json"))
+        self.config.load()
+        
+        # Get resolution from settings, fallback to optimal resolution
+        resolution_setting = self.config.get("resolution", "2560x1440")
+        try:
+            # Parse resolution string (e.g., "2560x1440")
+            width_str, height_str = resolution_setting.split("x")
+            self.width, self.height = int(width_str), int(height_str)
+            print(f"🎮 Using resolution from settings: {self.width} x {self.height}")
+        except (ValueError, AttributeError):
+            # Fallback to optimal resolution if settings parsing fails
+            self.width, self.height = resolution_enhancer.get_optimal_resolution(desktop_width, desktop_height)
+            print(f"🎮 Using fallback resolution: {self.width} x {self.height}")
         
         print(f"🎮 Selected resolution: {self.width} x {self.height}")
         print(f"🖥️ Display capabilities: {'High-resolution' if resolution_enhancer.is_high_resolution_display() else 'Standard'}")
@@ -98,9 +111,7 @@ class GameClient:
             pass
         self.logger = get_logger("GameClient")
 
-        # Config service
-        self.config = ConfigService(os.path.join(ROOT_PATH, "game_settings.json"))
-        self.config.load()
+        # Config service (already loaded above)
         # Controls
         self.controls = ControlsService(os.path.join(ROOT_PATH, "game_controls.json"))
         self.controls.load()
@@ -194,11 +205,7 @@ class GameClient:
                 except Exception:
                     pass
 
-        # Safety: ensure the window is immediately usable on small starts by going borderless
-        try:
-            self.set_borderless(True)
-        except Exception:
-            pass
+        # Window mode will be set based on user preferences in the settings application
 
         # Record/Replay CLI wiring
         try:
@@ -351,13 +358,21 @@ class GameClient:
         print("✅ Puzzle renderer initialized")
     
     def _load_background_images(self):
-        """Load background images."""
+        """Load background images using the new resolution-aware system."""
         try:
-            self.main_background = pygame.image.load(os.path.join(ASSET_PATH, "menus", "Official_mainmenu_background.png"))
-            print("✅ Loaded official main menu background")
-        except pygame.error:
+            # Use the new true resolution scaler for main menu background
+            from core.scaling import true_resolution_scaler
+            self.main_background = true_resolution_scaler.load_background(
+                'Official_mainmenu_background',
+                fallback_path=os.path.join(ASSET_PATH, "menus", "Official_mainmenu_background.png")
+            )
+            if self.main_background:
+                print("✅ Loaded resolution-appropriate main menu background")
+            else:
+                print("⚠️ Failed to load main menu background")
+        except Exception as e:
             self.main_background = None
-            print("⚠️ Failed to load official main menu background")
+            print(f"⚠️ Failed to load main menu background: {e}")
         
         try:
             self.puzzle_background = pygame.image.load(os.path.join(ASSET_PATH, "bkg.png"))
@@ -891,15 +906,17 @@ class GameClient:
             # Optionally adjust puzzle block size to match visual scale
             if hasattr(self, 'puzzle_engine') and self.puzzle_engine and hasattr(self.puzzle_engine, 'asset_loader'):
                 try:
-                    base_size = self.puzzle_engine.block_size
-                    new_size = int(round(base_size * scale))
-                    new_size = max(28, min(90, new_size))
-                    self.puzzle_engine.asset_loader.update_block_size(new_size)
+                    base_width = self.puzzle_engine.block_width
+                    new_width = int(round(base_width * scale))
+                    new_width = max(32, min(96, new_width))
+                    new_height = int(new_width * 1.25)  # Maintain 4:5 aspect ratio
+                    self.puzzle_engine.asset_loader.update_block_size(new_width, new_height)
                     # Recompute backgrounds and offsets
-                    self.puzzle_engine.block_size = new_size
+                    self.puzzle_engine.block_width = new_width
+                    self.puzzle_engine.block_height = new_height
                     if hasattr(self, 'puzzle_renderer') and self.puzzle_renderer:
-                        self.puzzle_renderer.block_width = new_size
-                        self.puzzle_renderer.block_height = new_size
+                        self.puzzle_renderer.block_width = new_width
+                        self.puzzle_renderer.block_height = new_height
                         self.puzzle_renderer.update_coordinate_offsets()
                 except Exception:
                     pass
@@ -1069,6 +1086,9 @@ class GameClient:
         try:
             # Main game loop
             while self.game_running:
+                # Calculate delta time
+                dt = frame_clock.tick(60) / 1000.0  # Convert to seconds
+                
                 # Get all events
                 events = pygame.event.get()
                 
@@ -1128,7 +1148,11 @@ class GameClient:
                     
                     # Let the audio system handle any audio-related events
                     if hasattr(self, 'audio') and self.audio:
-                        self.audio.handle_audio_events(event)
+                        try:
+                            self.audio.handle_audio_events(event)
+                        except Exception as e:
+                            # Silently ignore audio event handling errors
+                            pass
                 
                 # Process events and update/draw the current screen
                 if self.current_screen == "main_menu":
@@ -1201,6 +1225,16 @@ class GameClient:
 
                 
                 elif self.current_screen == "test":
+                    # Handle settings UI events first if open
+                    if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                        settings_result = self.settings_ui.handle_events(events)
+                        if settings_result in ['apply', 'cancel', 'close']:
+                            # Settings closed, continue with normal event processing
+                            pass
+                        else:
+                            # Settings consumed the events, skip further processing
+                            continue
+                    
                     if hasattr(self, 'test_mode') and self.test_mode:
                         # Process test mode events
                         test_action = self.test_mode.process_events(events)
@@ -1220,6 +1254,9 @@ class GameClient:
                         # Draw the test mode screen
                         self.test_mode.draw()
                         
+                        # Draw settings overlay if open
+                        if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                            self.settings_ui.draw(self.screen)
 
                     else:
                         # Fallback if test mode is not available
@@ -1234,6 +1271,16 @@ class GameClient:
                                 self.set_screen("main_menu")
                 
                 elif self.current_screen == "story":
+                    # Handle settings UI events first if open
+                    if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                        settings_result = self.settings_ui.handle_events(events)
+                        if settings_result in ['apply', 'cancel', 'close']:
+                            # Settings closed, continue with normal event processing
+                            pass
+                        else:
+                            # Settings consumed the events, skip further processing
+                            continue
+                    
                     # Process story menu events
                     if hasattr(self, 'menu_system') and self.menu_system:
                         story_action = self.menu_system.process_story_menu_events(events)
@@ -1260,6 +1307,10 @@ class GameClient:
                         self.menu_system.draw_story_menu(
                             on_back_action=lambda: self.set_screen("main_menu")
                         )
+                        
+                        # Draw settings overlay if open
+                        if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                            self.settings_ui.draw(self.screen)
                     else:
                         # Fallback if menu system is not available
                         self.screen.fill(self.BLACK)
@@ -1626,6 +1677,16 @@ class GameClient:
                             pass
 
                 elif self.current_screen == "game":
+                    # Handle settings UI events first if open
+                    if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                        settings_result = self.settings_ui.handle_events(events)
+                        if settings_result in ['apply', 'cancel', 'close']:
+                            # Settings closed, continue with normal event processing
+                            pass
+                        else:
+                            # Settings consumed the events, skip further processing
+                            continue
+                    
                     # Start replay session by switching to game once
                     if self._replay_active and not self._replay_started:
                         self._replay_started = True
@@ -1673,6 +1734,11 @@ class GameClient:
                     
                     # Draw the game content (avoid extra flip/tick inside renderer)
                     self.puzzle_renderer.draw_game_content()
+                    
+                    # Draw settings overlay if open
+                    if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                        self.settings_ui.draw(self.screen)
+                    
                     # Draw tuner overlay on top of game
                     # DISABLED: Input tuner completely disabled
                     pass
@@ -1701,6 +1767,10 @@ class GameClient:
                             self.audio.mp3_player.volume_down()
                     except Exception:
                         pass
+                
+                # Update settings UI if open
+                if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
+                    self.settings_ui.update(dt)
                 
                 # Update notifications
                 self.update_notifications()
@@ -1764,9 +1834,6 @@ class GameClient:
                 
                 # Update the display
                 pygame.display.flip()
-                
-                # Cap the frame rate
-                frame_clock.tick(60)
         except KeyboardInterrupt:
             print("Game interrupted by user")
         except Exception as e:
