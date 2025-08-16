@@ -25,7 +25,6 @@ class AnimationStateManager:
         self.width = self.screen.get_width()
         self.height = self.screen.get_height()
         
-        # Initialize all animation state variables
         self._initialize_animation_settings()
         self._initialize_combo_text_state()
         self._initialize_visual_piece_state()
@@ -90,6 +89,8 @@ class AnimationStateManager:
         """Initialize visual piece position tracking."""
         self.visual_piece_position = [0, 0]
         self.visual_attached_position = 0
+        # CRITICAL FIX: Initialize attached piece position properly
+        self.visual_attached_piece_position = [0, 0]
         self.is_animating = False
         self.target_position = [0, 0]
         self.anim_start_time = 0
@@ -115,6 +116,10 @@ class AnimationStateManager:
         
         # Track garbage block animations
         self.animated_garbage_blocks = set()
+
+        # Horizontal sliding animations (paced to breaking animation)
+        # Format: {(x, y): {start_x, start_time, duration, block_type}}
+        self.visual_sliding_blocks = {}
         
     def _initialize_particle_state(self):
         """Initialize particle system state."""
@@ -213,6 +218,8 @@ class AnimationStateManager:
         self.animation_update_counter = 0
         self.visual_piece_position = [0, 0]
         self.visual_attached_position = 0
+        # CRITICAL FIX: Reset attached piece position properly
+        self.visual_attached_piece_position = [0, 0]
         self.is_animating = False
         self.target_position = [0, 0]
         self.anim_start_time = 0
@@ -229,6 +236,8 @@ class AnimationStateManager:
         # Initialize collections if they don't exist
         if not hasattr(self, 'visual_falling_blocks'):
             self.visual_falling_blocks = {}
+        if not hasattr(self, 'visual_sliding_blocks'):
+            self.visual_sliding_blocks = {}
         if not hasattr(self, 'breaking_blocks_animations'):
             self.breaking_blocks_animations = {}
         if not hasattr(self, 'cluster_animations'):
@@ -357,6 +366,7 @@ class AnimationStateManager:
         """Check if any animations are currently active."""
         return (
             bool(self.visual_falling_blocks) or 
+            bool(getattr(self, 'visual_sliding_blocks', {})) or
             bool(self.breaking_blocks_animations) or
             bool(self.cluster_animations) or
             bool(self.combo_texts) or
@@ -441,6 +451,17 @@ class AnimationStateManager:
                     self.visual_falling_blocks.pop(pos, None)
         except Exception:
             pass
+
+        # Clean up expired visual sliding blocks (seconds-based fields)
+        try:
+            now_s = float(current_ms) / 1000.0
+            for pos, data in list(getattr(self, 'visual_sliding_blocks', {}).items()):
+                start_time = data.get('start_time', 0)
+                duration = data.get('duration', 0.1)
+                if now_s - start_time > duration:
+                    self.visual_sliding_blocks.pop(pos, None)
+        except Exception:
+            pass
                 
     def update_visual_piece_state(self):
         """Update visual piece position state."""
@@ -452,8 +473,9 @@ class AnimationStateManager:
             
             # Clear all animations in columns where the active piece is
             if hasattr(self, 'visual_falling_blocks'):
-                main_x = int(self.visual_piece_position[0])
-                attached_x = int(self.visual_attached_piece_position[0])
+                main_x = int(self.visual_piece_position[0]) if self.visual_piece_position else 0
+                # CRITICAL FIX: Safely handle attached piece position
+                attached_x = int(self.visual_attached_piece_position[0]) if self.visual_attached_piece_position and len(self.visual_attached_piece_position) > 0 else main_x
                 
                 # Remove any animations in the same columns as active piece
                 to_remove = []
@@ -463,6 +485,15 @@ class AnimationStateManager:
                         
                 for pos in to_remove:
                     self.visual_falling_blocks.pop(pos, None)
+
+                # Also clear sliding animations in the same columns
+                if hasattr(self, 'visual_sliding_blocks'):
+                    to_remove_slide = []
+                    for pos in self.visual_sliding_blocks:
+                        if pos[0] == main_x or pos[0] == attached_x:
+                            to_remove_slide.append(pos)
+                    for pos in to_remove_slide:
+                        self.visual_sliding_blocks.pop(pos, None)
                     
     def update_player_piece_state(self):
         """
@@ -508,13 +539,20 @@ class AnimationStateManager:
 
             # Clear any gravity-fall animations in the columns where the active piece is
             # This prevents visual overlap and ensures the player's piece is unobstructed
-            main_x = int(self.visual_piece_position[0])
-            attached_x = int(self.visual_attached_piece_position[0])
+            main_x = int(self.visual_piece_position[0]) if self.visual_piece_position else 0
+            # CRITICAL FIX: Safely handle attached piece position
+            attached_x = int(self.visual_attached_piece_position[0]) if self.visual_attached_piece_position and len(self.visual_attached_piece_position) > 0 else main_x
             
             # Remove any animations in the same columns as the active piece
             to_remove = [pos for pos in self.visual_falling_blocks if pos[0] in (main_x, attached_x)]
             for pos in to_remove:
                 self.visual_falling_blocks.pop(pos, None)
+
+            # Remove any sliding animations in the same columns as the active piece
+            if hasattr(self, 'visual_sliding_blocks'):
+                to_remove_slide = [pos for pos in self.visual_sliding_blocks if pos[0] in (main_x, attached_x)]
+                for pos in to_remove_slide:
+                    self.visual_sliding_blocks.pop(pos, None)
                 
     def animations_in_progress(self):
         """Check if any core visual animations are currently active."""
@@ -522,7 +560,7 @@ class AnimationStateManager:
         self.ensure_state_initialized()
         
         # Return true if any animation collections are not empty
-        return bool(self.breaking_blocks_animations or self.visual_falling_blocks)
+        return bool(self.breaking_blocks_animations or self.visual_falling_blocks or getattr(self, 'visual_sliding_blocks', {}))
                 
     def clear_animations_if_no_piece(self):
         """Clear animations if there's no active piece (for debugging)."""

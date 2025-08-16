@@ -79,13 +79,13 @@ class PuzzleEngine:
         self.DARK_GRAY = (50, 50, 50)
         
         # Initialize asset loader with rectangular dimensions
-        self.asset_loader = AssetLoader(asset_path, self.block_width, self.block_height)
+        self.asset_loader = AssetLoader(asset_path, self.block_width)
         
         # Load background and scale for grid
         grid_width_pixels = self.grid_width * self.block_width
         grid_height_pixels = self.grid_height * self.block_height
         self.puzzle_background = self.asset_loader.scale_background_for_grid(
-            'puzzle_background', self.grid_width, self.grid_height, self.block_width, self.block_height
+            'puzzle_background', self.grid_width, self.grid_height, self.block_width
         )
         
         # Get puzzle pieces dictionary for compatibility with existing code
@@ -449,11 +449,12 @@ class PuzzleEngine:
             # Place main piece, let attached continue falling
             if 0 <= main_y < self.grid_height and 0 <= main_x < self.grid_width:
                 pieces_to_place.append((main_x, main_y, self.main_piece))
-            elif main_y == -1 and 0 <= main_x < self.grid_width:
+            elif main_y < 0 and 0 <= main_x < self.grid_width:
                 pieces_to_place.append((main_x, 0, self.main_piece))
             
-            # Clear main piece but keep attached piece falling
-            self.main_piece = None
+            # The attached piece becomes the new main piece
+            self.main_piece = self.attached_piece
+            self.attached_piece = None
             self.piece_position = [attached_x, attached_y]  # Move to attached piece position
             self.attached_position = 0  # Reset to top orientation for single piece
             
@@ -461,10 +462,10 @@ class PuzzleEngine:
             # Place attached piece, let main continue falling
             if 0 <= attached_y < self.grid_height and 0 <= attached_x < self.grid_width:
                 pieces_to_place.append((attached_x, attached_y, self.attached_piece))
-            elif attached_y == -1 and 0 <= attached_x < self.grid_width:
+            elif attached_y < 0 and 0 <= attached_x < self.grid_width:
                 pieces_to_place.append((attached_x, 0, self.attached_piece))
             
-            # Clear attached piece but keep main piece falling
+            # Main piece stays as main piece, just clear attached
             self.attached_piece = None
             self.attached_position = 0  # Reset to top orientation for single piece
             
@@ -545,7 +546,7 @@ class PuzzleEngine:
         if 0 <= main_y < self.grid_height and 0 <= main_x < self.grid_width:
             pieces_to_place.append((main_x, main_y, self.main_piece))
         # Handle pieces at the top edge that are partially visible
-        elif main_y == -1 and 0 <= main_x < self.grid_width:
+        elif main_y < 0 and 0 <= main_x < self.grid_width:
             # If we're at the top edge, force the piece to be placed in row 0
             pieces_to_place.append((main_x, 0, self.main_piece))
         
@@ -553,7 +554,7 @@ class PuzzleEngine:
         if 0 <= attached_y < self.grid_height and 0 <= attached_x < self.grid_width:
             pieces_to_place.append((attached_x, attached_y, self.attached_piece))
         # Handle attached piece at top edge
-        elif attached_y == -1 and 0 <= attached_x < self.grid_width:
+        elif attached_y < 0 and 0 <= attached_x < self.grid_width:
             # Force attached piece to be placed in row 0
             pieces_to_place.append((attached_x, 0, self.attached_piece))
         
@@ -802,6 +803,80 @@ class PuzzleEngine:
         # This method ensures pieces slide smoothly when breaking apart
         # rather than falling instantly
         
+        # Defensive: ensure renderer/state exist
+        if not hasattr(self, 'renderer') or not hasattr(self.renderer, 'animation_state_manager'):
+            return
+        asm = self.renderer.animation_state_manager
+        asm.ensure_state_initialized()
+
+        # Only slide when there is an active breaking window (prevents stray slides)
+        try:
+            if not getattr(asm, 'breaking_blocks_animations', {}):
+                return
+        except Exception:
+            pass
+
+        # Determine pacing from breaking animation duration
+        # Engine stores milliseconds, ASM stores seconds; use ASM seconds for visuals
+        try:
+            break_seconds = float(getattr(asm, 'breaking_animation_duration', 0.5))
+        except Exception:
+            break_seconds = 0.5
+
+        # Identify side-adjacent blocks that should slide horizontally into gaps on supported surfaces
+        # Heuristic: if a block is supported from below, and an immediate lateral neighbor cell is empty,
+        # schedule a paced horizontal slide into that neighbor during the breaking window.
+        candidates = []
+        for y in range(self.grid_height - 1):
+            for x in range(self.grid_width):
+                block = self.puzzle_grid[y][x]
+                if not block:
+                    continue
+                # Skip active breaking/animated blocks
+                if (x, y) in getattr(asm, 'breaking_blocks_animations', {}):
+                    continue
+                # Must be supported below (horizontal slide across a surface)
+                below_supported = (self.puzzle_grid[y + 1][x] is not None)
+                if not below_supported:
+                    continue
+                # Prefer sliding into nearest lateral gap
+                for dx in (-1, 1):
+                    nx = x + dx
+                    if nx < 0 or nx >= self.grid_width:
+                        continue
+                    if self.puzzle_grid[y][nx] is None:
+                        candidates.append((x, y, nx))
+                        break
+
+        # Schedule sliding animations without mutating grid (logic already moved by gravity)
+        now_s = time.time()
+        for x, y, nx in candidates:
+            pos_key = (nx, y)
+            # Avoid duplicating slide if already sliding to this cell
+            slide_map = getattr(asm, 'visual_sliding_blocks', {})
+            if pos_key in slide_map:
+                continue
+            block_type = self.puzzle_grid[y][nx] if self.puzzle_grid[y][nx] else self.puzzle_grid[y][x]
+            # Use start_x as original column to interpolate from
+            start_x = x
+            try:
+                asm.visual_sliding_blocks[pos_key] = {
+                    'start_time': now_s,
+                    'duration': break_seconds,
+                    'start_x': start_x,
+                    'block_type': block_type,
+                }
+                # Also add a masking entry for the source position to avoid double-draw during slide
+                asm.visual_sliding_blocks[(x, y)] = {
+                    'start_time': now_s,
+                    'duration': break_seconds,
+                    'start_x': x,
+                    'block_type': block_type,
+                    'mask_only': True,
+                }
+            except Exception:
+                pass
+
         # Update attack block tracking for external systems (TestMode)
         if hasattr(self, 'test_mode') and self.test_mode:
             # Notify test mode of attack block movements

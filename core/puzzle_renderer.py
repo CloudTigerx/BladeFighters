@@ -20,8 +20,6 @@ def safe_pygame_draw(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
     except Exception as e:
-        print(f"[DEBUG] Pygame draw error in {func.__name__}: args={args}, kwargs={kwargs}, error={e}")
-        traceback.print_exc()
         return None
 
 # Global exception handler for any pygame-related errors
@@ -31,9 +29,8 @@ original_excepthook = sys.excepthook
 def custom_excepthook(exc_type, exc_value, exc_traceback):
     """Custom exception handler to catch pygame-related errors."""
     if "pygame" in str(exc_value).lower() or "color" in str(exc_value).lower():
-        print(f"[DEBUG] Pygame-related error caught: {exc_type.__name__}: {exc_value}")
-        print("[DEBUG] Full traceback:")
-        traceback.print_exception(exc_type, exc_value, exc_traceback)
+        # Silently handle pygame errors
+        pass
     else:
         # Call the original exception handler for non-pygame errors
         original_excepthook(exc_type, exc_value, exc_traceback)
@@ -52,7 +49,6 @@ class PuzzleRenderer:
         """Initialize the puzzle renderer with an engine."""
         self.engine = engine
         self.screen = engine.screen
-        print(f"[DEBUG] Renderer screen size: {self.screen.get_width()}x{self.screen.get_height()}")
 
         # Unified time source
         self.clock: Clock = clock or getattr(engine, 'clock', None) or PygameClock()
@@ -79,9 +75,6 @@ class PuzzleRenderer:
         
         # Update coordinate offsets based on engine settings
         self.update_coordinate_offsets()
-        
-        print(f"[DEBUG] PuzzleRenderer initialized with block size: {self.block_width}x{self.block_height}")
-        print(f"[DEBUG] PuzzleRenderer offset: ({self.current_x_offset}, {self.current_y_offset})")
         
         # Set a reference to this renderer in the engine
         self.engine.renderer = self
@@ -120,8 +113,27 @@ class PuzzleRenderer:
             self.current_x_offset = self.engine.grid_x_offset
             self.current_y_offset = self.engine.grid_y_offset
         else:
+            # Center horizontally
             self.current_x_offset = (self.screen.get_width() - grid_width_pixels) // 2
-            self.current_y_offset = (self.screen.get_height() - grid_height_pixels) // 2
+            
+            # Position vertically to ensure attached pieces are visible
+            # Account for attached piece that can be up to 2.5 blocks above the grid
+            extra_height_for_attached = int(self.block_height * 2.5)
+            total_height_needed = grid_height_pixels + extra_height_for_attached
+            
+            # Ensure the grid fits on screen with space for attached pieces
+            if total_height_needed <= self.screen.get_height():
+                # Center the grid with space for attached pieces
+                self.current_y_offset = (self.screen.get_height() - total_height_needed) // 2
+            else:
+                # Grid is too tall, position it at the top with minimal margin
+                self.current_y_offset = 20  # Small margin from top
+            
+            # Ensure minimum Y offset so attached pieces are always visible
+            # Attached piece can be at Y = -1.7, so we need offset >= 136 for 80px blocks
+            min_y_offset = int(self.block_height * 1.7)  # 1.7 blocks above grid
+            if self.current_y_offset < min_y_offset:
+                self.current_y_offset = min_y_offset
         
         # Ensure we can access the attack system through the engine
         # Attack system reference removed - no longer needed
@@ -198,8 +210,27 @@ class PuzzleRenderer:
             self.current_x_offset = self.engine.grid_x_offset
             self.current_y_offset = self.engine.grid_y_offset
         else:
+            # Center horizontally
             self.current_x_offset = (self.screen.get_width() - grid_width_pixels) // 2
-            self.current_y_offset = (self.screen.get_height() - grid_height_pixels) // 2
+            
+            # Position vertically to ensure attached pieces are visible
+            # Account for attached piece that can be up to 2.5 blocks above the grid
+            extra_height_for_attached = int(self.block_height * 2.5)
+            total_height_needed = grid_height_pixels + extra_height_for_attached
+            
+            # Ensure the grid fits on screen with space for attached pieces
+            if total_height_needed <= self.screen.get_height():
+                # Center the grid with space for attached pieces
+                self.current_y_offset = (self.screen.get_height() - total_height_needed) // 2
+            else:
+                # Grid is too tall, position it at the top with minimal margin
+                self.current_y_offset = 20  # Small margin from top
+            
+            # Ensure minimum Y offset so attached pieces are always visible
+            # Attached piece can be at Y = -1.7, so we need offset >= 136 for 80px blocks
+            min_y_offset = int(self.block_height * 1.7)  # 1.7 blocks above grid
+            if self.current_y_offset < min_y_offset:
+                self.current_y_offset = min_y_offset
     
     def _now_ms(self) -> int:
         return int(self.clock.now_ms())
@@ -612,7 +643,6 @@ class PuzzleRenderer:
     
     def draw_game_screen(self):
         """Draw the complete game screen with display management (for standalone use)."""
-        print(f"[DEBUG] draw_game_screen called for engine: {self.engine}")
         try:
             # Clear the screen
             self.screen.fill((0, 0, 0))
@@ -626,7 +656,6 @@ class PuzzleRenderer:
             # Limit frame rate
             self.clock_fps.tick(self.animation_frame_rate)
         except Exception as e:
-            print(f"[DEBUG] Error in draw_game_screen: {e}")
             traceback.print_exc()
     
     def draw_game_content(self):
@@ -636,9 +665,18 @@ class PuzzleRenderer:
             self.update_coordinate_offsets()
             
             # Compute clipping rect to constrain drawing to this board only
+            # Expand clipping area to allow for falling pieces and preview pieces
             grid_width_px = self.engine.grid_width * self.block_width
             grid_height_px = self.engine.grid_height * self.block_height
-            clip_rect = pygame.Rect(self.current_x_offset, self.current_y_offset, grid_width_px, grid_height_px)
+            # Add extra space for falling pieces and preview pieces
+            extra_width = self.block_width * 2  # Space for preview pieces
+            extra_height = self.block_height * 4  # Space for falling pieces above grid
+            clip_rect = pygame.Rect(
+                self.current_x_offset - extra_width, 
+                self.current_y_offset - extra_height, 
+                grid_width_px + extra_width * 2, 
+                grid_height_px + extra_height * 2
+            )
             # Save previous clip to restore later
             prev_clip = self.screen.get_clip()
             try:
@@ -673,7 +711,6 @@ class PuzzleRenderer:
             self.draw_game_over_screen()
             
         except Exception as e:
-            print(f"[DEBUG] Error in draw_game_content: {e}")
             traceback.print_exc()
     
     def draw_grid_background(self):
@@ -718,7 +755,11 @@ class PuzzleRenderer:
                 if block_type:
                     # Do not draw blocks that are currently part of an animation
                     pos = (x, y)
-                    if pos in self.animation_state_manager.breaking_blocks_animations or pos in self.animation_state_manager.visual_falling_blocks:
+                    if (
+                        pos in self.animation_state_manager.breaking_blocks_animations or
+                        pos in self.animation_state_manager.visual_falling_blocks or
+                        pos in getattr(self.animation_state_manager, 'visual_sliding_blocks', {})
+                    ):
                         continue
                     
                     # Draw the static block
@@ -728,6 +769,10 @@ class PuzzleRenderer:
         
         # Draw blocks that are visually falling with pixel-perfect animation
         self.animation_renderer.render_falling_blocks(start_x, start_y, self.block_width, self.block_height)
+
+        # Draw blocks that are visually sliding horizontally
+        if hasattr(self.animation_renderer, 'render_sliding_blocks'):
+            self.animation_renderer.render_sliding_blocks(start_x, start_y, self.block_width, self.block_height)
         
         # Use new animation renderer for breaking blocks
         for pos, block_data in self.animation_state_manager.breaking_blocks_animations.items():

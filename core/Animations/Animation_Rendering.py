@@ -51,7 +51,7 @@ class AnimationRenderer:
                 self.red_explosion_frames = explosion_sprites.get('yellow_explode', [])
                 self.yellow_explosion_frames = explosion_sprites.get('orange_explode', [])
                 
-                print(f"DEBUG: Loaded explosion sprites - Blue: {len(self.explosion_frames)}, Green: {len(self.green_explosion_frames)}, Red: {len(self.red_explosion_frames)}, Yellow: {len(self.yellow_explosion_frames)}")
+
             else:
                 self.explosion_frames = []
                 self.green_explosion_frames = []
@@ -267,7 +267,6 @@ class AnimationRenderer:
             explosion_frames = self.yellow_explosion_frames
         
         if not explosion_frames or len(explosion_frames) == 0:
-            print(f"DEBUG: No explosion frames found for block type: {block_type}")
             return
         
         # Calculate frame to display
@@ -339,6 +338,35 @@ class AnimationRenderer:
                 
                 # Remove the animation
                 self.state_manager.visual_falling_blocks.pop(pos)
+
+    def render_sliding_blocks(self, x_offset: int, y_offset: int, block_width: int, block_height: int):
+        """Render all horizontal sliding block animations (paced to breaking)."""
+        current_time = time.time()
+
+        for pos, block_data in list(getattr(self.state_manager, 'visual_sliding_blocks', {}).items()):
+            x, y = pos
+            # If entry is a mask for source, skip drawing but let expiration clean it up
+            if block_data.get('mask_only'):
+                if (current_time - float(block_data.get('start_time', current_time))) >= float(block_data.get('duration', 0.1)):
+                    self.state_manager.visual_sliding_blocks.pop(pos, None)
+                continue
+            start_x = block_data.get('start_x', x)
+            duration = max(0.001, float(block_data.get('duration', 0.1)))
+            elapsed = current_time - float(block_data.get('start_time', current_time))
+            progress = min(1.0, max(0.0, elapsed / duration))
+            eased = 1 - (1 - progress) ** 3
+
+            # Interpolate X in grid coordinates then convert to pixels
+            interp_grid_x = float(start_x) + (float(x) - float(start_x)) * eased
+            screen_x = x_offset + interp_grid_x * block_width
+            screen_y = y_offset + y * block_height
+
+            # Draw the block at interpolated x
+            self._draw_block(screen_x, screen_y, block_width, block_height, block_data.get('block_type', 'red_block'))
+
+            if progress >= 1.0:
+                # Sliding completed, remove animation
+                self.state_manager.visual_sliding_blocks.pop(pos, None)
 
     # Lightning visual effects removed (effects disabled)
     
