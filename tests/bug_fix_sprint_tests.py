@@ -44,15 +44,18 @@ class BugFixSprintTests(BladeFightersTestSuite):
             import time
             self.assertIsNotNone(time, "Time module should be available")
             
+            # Import ScreenType enum
+            from modules.game_state_module.state_schema import ScreenType
+            
             # Test quickplay state transitions
-            self.state_manager.set("screen.current_screen", "QUICKPLAY", source="test")
+            self.state_manager.set("screen.current_screen", ScreenType.GAME, source="test")
             self.state_manager.set("puzzle.game_active", True, source="test")
             
             # Verify quickplay state is valid
             current_screen = self.state_manager.get("screen.current_screen")
             game_active = self.state_manager.get("puzzle.game_active")
             
-            self.assertEqual(current_screen, "QUICKPLAY")
+            self.assertEqual(current_screen, ScreenType.GAME)
             self.assertTrue(game_active)
             
             self.bug_fixes['quickplay_time_error'] = True
@@ -106,7 +109,7 @@ class BugFixSprintTests(BladeFightersTestSuite):
         """Test fix for 'Test mode unavailable' error."""
         try:
             # Test test mode state
-            self.state_manager.set("screen.current_screen", "TEST_MODE", source="test")
+            self.state_manager.set("screen.current_screen", ScreenType.TEST, source="test")
             self.state_manager.set("test_mode.enabled", True, source="test")
             self.state_manager.set("test_mode.available", True, source="test")
             
@@ -115,7 +118,7 @@ class BugFixSprintTests(BladeFightersTestSuite):
             test_enabled = self.state_manager.get("test_mode.enabled")
             test_available = self.state_manager.get("test_mode.available")
             
-            self.assertEqual(current_screen, "TEST_MODE")
+            self.assertEqual(current_screen, ScreenType.TEST)
             self.assertTrue(test_enabled)
             self.assertTrue(test_available)
             

@@ -25,18 +25,32 @@ class WeaponPattern:
 
     def color_for_column(self, column_index: int) -> str:
         """Get the base color for a column."""
-        return self.column_to_color.get(column_index % 6, VALID_COLORS[column_index % len(VALID_COLORS)])
+        try:
+            color = self.column_to_color.get(column_index % 6, VALID_COLORS[column_index % len(VALID_COLORS)])
+            # Safety check: ensure color is valid
+            if not color or not isinstance(color, str) or color not in VALID_COLORS:
+                return VALID_COLORS[0]  # Default to red
+            return color
+        except Exception:
+            return VALID_COLORS[0]  # Default to red
 
     def color_for_cell(self, column_index: int, grid_row_index: int, grid_height: int) -> str:
         """Get the color for a specific cell in the grid."""
-        col = column_index % 6
-        if self.rows_per_column and col in self.rows_per_column:
-            # Use row-specific pattern if available
-            relative_from_bottom = (grid_height - 1 - grid_row_index) % 12
-            return self.rows_per_column[col][relative_from_bottom]
-        else:
-            # Fall back to column color
-            return self.color_for_column(column_index)
+        try:
+            col = column_index % 6
+            if self.rows_per_column and col in self.rows_per_column:
+                # Use row-specific pattern if available
+                relative_from_bottom = (grid_height - 1 - grid_row_index) % 12
+                color = self.rows_per_column[col][relative_from_bottom]
+                # Safety check: ensure color is valid
+                if not color or not isinstance(color, str) or color not in VALID_COLORS:
+                    return VALID_COLORS[0]  # Default to red
+                return color
+            else:
+                # Fall back to column color
+                return self.color_for_column(column_index)
+        except Exception:
+            return VALID_COLORS[0]  # Default to red
 
 
 @dataclass
@@ -159,16 +173,34 @@ def create_weapon_by_name(name: str) -> Optional[Weapon]:
     """Create a Weapon by display name.
     Falls back to curated catalog if not in hardcoded factories.
     """
+    # Safety check: ensure name is valid
+    if not name or not isinstance(name, str):
+        logger.warning(f"Invalid weapon name: {name}")
+        return None
+    
     factory = WEAPON_FACTORIES.get(name)
     if factory:
-        return factory()
+        try:
+            weapon = factory()
+            # Validate the created weapon
+            if weapon and hasattr(weapon, 'name') and hasattr(weapon, 'pattern'):
+                return weapon
+            else:
+                logger.warning(f"Factory created invalid weapon for {name}")
+                return None
+        except Exception as e:
+            logger.warning(f"Factory failed to create weapon {name}: {str(e)}")
+            return None
     
     # Fallback: use catalog's create_weapon_by_name function
     try:
         from .catalog import create_weapon_by_name as catalog_create_weapon
         weapon = catalog_create_weapon(name)
-        if weapon:
+        if weapon and hasattr(weapon, 'name') and hasattr(weapon, 'pattern'):
             return weapon
+        else:
+            logger.warning(f"Catalog created invalid weapon for {name}")
+            return None
     except Exception as e:
         logger.warning(f"Failed to create weapon from catalog for {name}: {str(e)}")
     

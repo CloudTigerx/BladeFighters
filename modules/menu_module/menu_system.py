@@ -226,8 +226,8 @@ class MenuSystem(MenuSystemInterface):
             glow_surface = pygame.Surface((width + 20, height + 20), pygame.SRCALPHA)
             glow_color = self.HOVER_BORDER_COLOR if button["hover"] else self.BORDER_COLOR
             glow_alpha = int(80)
-            glow_color_with_alpha = (*glow_color[:3], glow_alpha)
-            pygame.draw.rect(glow_surface, glow_color_with_alpha, (10, 10, width, height), border_radius=10)
+            # Note: pygame.draw.rect doesn't support alpha, so we use the base color
+            pygame.draw.rect(glow_surface, glow_color[:3], (10, 10, width, height), border_radius=10)
             self.screen.blit(glow_surface, (x-10, y-10))
         
         # Draw button surface

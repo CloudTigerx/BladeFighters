@@ -301,9 +301,10 @@ class MP3Player:
                 ])
             elif btn_type == 'play':
                 if self.is_playing:
-                    pygame.draw.rect(btn_surface, (0, 0, 0, 0), 
+                    # Note: pygame.draw.rect doesn't support alpha, so we use transparent color
+                    pygame.draw.rect(btn_surface, (0, 0, 0), 
                                   (9, 8, 4, button_size - 16))
-                    pygame.draw.rect(btn_surface, (0, 0, 0, 0), 
+                    pygame.draw.rect(btn_surface, (0, 0, 0), 
                                   (16, 8, 4, button_size - 16))
                 else:
                     pygame.draw.polygon(btn_surface, (0, 0, 0, 0), [

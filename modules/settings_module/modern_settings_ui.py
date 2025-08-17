@@ -824,8 +824,9 @@ class ModernSettingsUI:
         if not self.panel_9slice:
             # Fallback to simple rectangle with better transparency
             panel_surface = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-            pygame.draw.rect(panel_surface, (*Colors.BG_DARK, 230), panel_surface.get_rect(), border_radius=12)
-            pygame.draw.rect(panel_surface, (*Colors.PRIMARY, 255), panel_surface.get_rect(), 3, border_radius=12)
+            # Note: pygame.draw.rect doesn't support alpha, so we use base colors
+            pygame.draw.rect(panel_surface, Colors.BG_DARK, panel_surface.get_rect(), border_radius=12)
+            pygame.draw.rect(panel_surface, Colors.PRIMARY, panel_surface.get_rect(), 3, border_radius=12)
             surface.blit(panel_surface, rect)
             return
         
@@ -842,8 +843,8 @@ class ModernSettingsUI:
         # Create a surface for the panel with transparency
         panel_surface = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
         
-        # Fill with semi-transparent background first
-        pygame.draw.rect(panel_surface, (*Colors.BG_DARK, 200), panel_surface.get_rect(), border_radius=12)
+        # Fill with background first (pygame.draw.rect doesn't support alpha)
+        pygame.draw.rect(panel_surface, Colors.BG_DARK, panel_surface.get_rect(), border_radius=12)
         
         # Draw 9 slices
         # Top-left corner

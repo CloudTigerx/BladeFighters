@@ -700,8 +700,8 @@ class GameClient:
             bg_surface.fill((0, 0, 0, min(180, alpha)))
             self.screen.blit(bg_surface, bg_rect)
             
-            # Draw border
-            pygame.draw.rect(self.screen, (100, 100, 100, alpha), bg_rect, 2, border_radius=8)
+            # Draw border (without alpha - pygame.draw.rect doesn't support alpha)
+            pygame.draw.rect(self.screen, (100, 100, 100), bg_rect, 2, border_radius=8)
             
             # Draw text
             text_rect.center = bg_rect.center
@@ -1449,6 +1449,12 @@ class GameClient:
                                         pass
                                 for rect, item_name in self.inventory_card_entries:
                                     if rect.collidepoint(mx, my):
+                                        # Rate limiting: prevent rapid clicking
+                                        current_time = self.clock.now_ms()
+                                        if hasattr(self, '_last_equip_time') and current_time - self._last_equip_time < 200:  # 200ms cooldown
+                                            continue
+                                        self._last_equip_time = current_time
+                                        
                                         try:
                                             from modules.items_module.item_system import create_weapon_by_name
                                             if hasattr(self, 'test_mode') and self.test_mode and hasattr(self.test_mode, 'player_items'):
@@ -1460,7 +1466,9 @@ class GameClient:
                                                         self.test_mode.save_equipment()
                                                     if hasattr(self, 'audio') and self.audio:
                                                         self.audio.play_sound('click')
-                                        except Exception:
+                                        except Exception as e:
+                                            # Log the error but don't crash
+                                            print(f"Error equipping weapon {item_name}: {e}")
                                             pass
 
                     self.screen.fill((30, 20, 20))
@@ -1643,9 +1651,26 @@ class GameClient:
                                         for r in range(grid_h):
                                             # Convert preview row (top=0) to engine row index assumption
                                             engine_row_idx = (grid_h - 1 - r)
-                                            color = w.pattern.color_for_cell(c, engine_row_idx, grid_h)
-                                            pattern_grid[c][r] = color
-                                    pattern_colors = [w.pattern.color_for_column(c) for c in range(6)]
+                                            try:
+                                                color = w.pattern.color_for_cell(c, engine_row_idx, grid_h)
+                                                # Safety check: ensure color is valid
+                                                if not color or not isinstance(color, str) or color not in ['red', 'blue', 'green', 'yellow']:
+                                                    color = 'blue'
+                                                pattern_grid[c][r] = color
+                                            except Exception:
+                                                pattern_grid[c][r] = 'blue'
+                                    
+                                    # Generate pattern colors with safety checks
+                                    pattern_colors = []
+                                    for c in range(6):
+                                        try:
+                                            color = w.pattern.color_for_column(c)
+                                            # Safety check: ensure color is valid
+                                            if not color or not isinstance(color, str) or color not in ['red', 'blue', 'green', 'yellow']:
+                                                color = 'blue'
+                                            pattern_colors.append(color)
+                                        except Exception:
+                                            pattern_colors.append('blue')
                             except Exception:
                                 pattern_colors = None
                         
@@ -1663,11 +1688,29 @@ class GameClient:
                             }
                             # Draw mini pattern preview
                             for c in range(6):
-                                color_name = pattern_colors[c]
+                                color_name = pattern_colors[c] if c < len(pattern_colors) else 'blue'
+                                # Safety check: ensure color_name is valid
+                                if not color_name or not isinstance(color_name, str):
+                                    color_name = 'blue'
                                 px = img_rect.right + 12 + c * (mini_block_w + mini_spacing)
                                 py = mini_preview_y
-                                pygame.draw.rect(self.screen, color_map.get(color_name, (150, 150, 150)), pygame.Rect(px, py, mini_block_w, mini_block_h), border_radius=1)
-                                pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, mini_block_w, mini_block_h), 1, border_radius=1)
+                                
+                                # Enhanced safety check for color
+                                try:
+                                    color = color_map.get(color_name, (150, 150, 150))
+                                    # Ensure color is a valid RGB tuple
+                                    if not isinstance(color, tuple) or len(color) != 3:
+                                        color = (150, 150, 150)
+                                    elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+                                        color = (150, 150, 150)
+                                    
+                                    pygame.draw.rect(self.screen, color, pygame.Rect(px, py, mini_block_w, mini_block_h), border_radius=1)
+                                    pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, mini_block_w, mini_block_h), 1, border_radius=1)
+                                except Exception as e:
+                                    # Fallback to safe color if any error occurs
+                                    print(f"Color error in mini preview: {e}, using fallback color")
+                                    pygame.draw.rect(self.screen, (150, 150, 150), pygame.Rect(px, py, mini_block_w, mini_block_h), border_radius=1)
+                                    pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, mini_block_w, mini_block_h), 1, border_radius=1)
                         # Only show pattern preview on hover
                         if hovered and pattern_grid:
                             color_map = {
@@ -1682,11 +1725,29 @@ class GameClient:
                             # Draw from top to bottom
                             for r in range(12):
                                 for c in range(6):
-                                    color_name = pattern_grid[c][r]
+                                    color_name = pattern_grid[c][r] if c < len(pattern_grid) and r < len(pattern_grid[c]) else 'blue'
+                                    # Safety check: ensure color_name is valid
+                                    if not color_name or not isinstance(color_name, str):
+                                        color_name = 'blue'
                                     px = img_rect.right + 12 + c * (block_w + spacing_x)
                                     py = preview_y + r * (block_h + spacing_y)
-                                    pygame.draw.rect(self.screen, color_map.get(color_name, (150, 150, 150)), pygame.Rect(px, py, block_w, block_h), border_radius=2)
-                                    pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, block_w, block_h), 1, border_radius=2)
+                                    
+                                    # Enhanced safety check for color
+                                    try:
+                                        color = color_map.get(color_name, (150, 150, 150))
+                                        # Ensure color is a valid RGB tuple
+                                        if not isinstance(color, tuple) or len(color) != 3:
+                                            color = (150, 150, 150)
+                                        elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+                                            color = (150, 150, 150)
+                                        
+                                        pygame.draw.rect(self.screen, color, pygame.Rect(px, py, block_w, block_h), border_radius=2)
+                                        pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, block_w, block_h), 1, border_radius=2)
+                                    except Exception as e:
+                                        # Fallback to safe color if any error occurs
+                                        print(f"Color error in pattern grid: {e}, using fallback color")
+                                        pygame.draw.rect(self.screen, (150, 150, 150), pygame.Rect(px, py, block_w, block_h), border_radius=2)
+                                        pygame.draw.rect(self.screen, (40, 40, 40), pygame.Rect(px, py, block_w, block_h), 1, border_radius=2)
 
                         # Hover effect border
                         if hovered:

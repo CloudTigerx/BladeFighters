@@ -148,71 +148,14 @@ class AttackDeliveryCommitter:
         return cluster_cells
     
     def update_received_blocks(self, engine, player_key: str):
-        """Update received blocks (strikes -> garbage -> normal) based on landings."""
-        if not hasattr(engine, 'test_mode') or not hasattr(engine.test_mode, 'garbage_block_brightness'):
-            return
+        """
+        DEPRECATED: This method contains duplicate transformation logic.
         
-        grid = engine.puzzle_grid
-        player = 1 if player_key == 'player' else 2
-        brightness_data = engine.test_mode.garbage_block_brightness
+        The transformation logic has been moved to TestModeRefactored._on_piece_landed()
+        to avoid race conditions and ensure single source of truth.
         
-        # Find all strike/garbage blocks for this player and increment landing counters
-        blocks_to_increment = []
-        for pos_key, data in brightness_data.items():
-            x, y, block_player = pos_key
-            if block_player == player:
-                # Check if this tracked block is still in the grid
-                if (0 <= y < len(grid) and 0 <= x < len(grid[0]) and 
-                    grid[y][x] and (('_garbage' in grid[y][x]) or 
-                                   ('_strike' in grid[y][x]))):
-                    blocks_to_increment.append(pos_key)
-        
-        # Increment landing counters
-        for pos_key in blocks_to_increment:
-            brightness_data[pos_key]['landings'] += 1
-        
-        # Apply transformation rules
-        to_demote_strikes = []  # (pos_key, new_block_type)
-        to_finalize_garbage = []
-        
-        for pos_key, data in list(brightness_data.items()):
-            x, y, block_player = pos_key
-            if block_player != player:
-                continue
-                
-            is_strike = data.get('is_strike', False)
-            color = data['color']
-            current_block = None
-            
-            # Guard against out-of-bounds or grid changes
-            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-                current_block = grid[y][x]
-            
-            # Stage 1: strike demotion after 1 landing
-            if is_strike and data['landings'] >= 1:
-                to_demote_strikes.append((pos_key, f"{color}_garbage"))
-            
-            # Stage 2: colored garbage -> normal block after 1 landing (since no neutral state)
-            if (not is_strike) and data['landings'] >= 1:
-                if isinstance(current_block, str) and current_block.startswith(f"{color}_garbage"):
-                    to_finalize_garbage.append((pos_key, f"{color}_block"))
-            
-
-        
-        # Apply transformations
-        for pos_key, new_block_type in to_demote_strikes:
-            x, y, _ = pos_key
-            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-                grid[y][x] = new_block_type
-                # Update tracking: now behaves like newly received garbage
-                brightness_data[pos_key]['is_strike'] = False
-                brightness_data[pos_key]['landings'] = 0
-        
-
-        
-        for pos_key, new_block_type in to_finalize_garbage:
-            x, y, _ = pos_key
-            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-                grid[y][x] = new_block_type
-                # Remove from tracking once fully transformed
-                brightness_data.pop(pos_key, None) 
+        This method is kept for backward compatibility but should not be used.
+        """
+        # DEPRECATED: Transformation logic moved to TestModeRefactored
+        # This method is kept for backward compatibility but does nothing
+        pass 

@@ -999,16 +999,15 @@ class PuzzleRenderer:
                     # Calculate glow alpha based on intensity
                     current_alpha = int(alpha * current_intensity)
                     
-                    # Draw glow rectangle
+                    # Draw glow rectangle (without alpha - pygame.draw.rect doesn't support alpha)
                     glow_rect = pygame.Rect(glow_size, glow_size, self.block_width, self.block_height)
-                    pygame.draw.rect(glow_surface, (*glow_color, current_alpha), glow_rect)
+                    pygame.draw.rect(glow_surface, glow_color, glow_rect)
                     
-                    # Draw glow border
+                    # Draw glow border (without alpha - pygame.draw.rect doesn't support alpha)
                     for i in range(glow_size):
-                        border_alpha = max(0, current_alpha - i * 10)
                         border_rect = pygame.Rect(glow_size - i, glow_size - i, 
                                                 self.block_width + i * 2, self.block_height + i * 2)
-                        pygame.draw.rect(glow_surface, (*glow_color, border_alpha), border_rect, 1)
+                        pygame.draw.rect(glow_surface, glow_color, border_rect, 1)
                     
                     # Blit glow surface to screen
                     self.screen.blit(glow_surface, (screen_x - glow_size, screen_y - glow_size))

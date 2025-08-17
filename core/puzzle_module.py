@@ -571,6 +571,9 @@ class PuzzleEngine:
                 return self.grid_height - 1
             return y
 
+        # Store landing positions for garbage block tracking
+        landing_positions = []
+        
         # Place pieces in order of priority
         for x, y, piece in pieces_to_place:
             y = _clamp_row(y)
@@ -581,10 +584,14 @@ class PuzzleEngine:
             # Place the piece
             self.puzzle_grid[y][x] = piece
             unique_positions[(x, y)] = piece
+            landing_positions.append((x, y))
             
             # Play the placed sound when a piece is placed
             if self.audio:
                 self.audio.play_sound("placed")
+        
+        # Store landing positions for the callback to use
+        self.last_landing_positions = landing_positions
         
         # Apply gravity to make pieces fall into empty spaces
         gravity_applied = self.apply_gravity()

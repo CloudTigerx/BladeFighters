@@ -165,6 +165,26 @@ class UIState:
 
 
 @dataclass
+class TestModeState:
+    """Test mode state."""
+    enabled: bool = False
+    available: bool = True
+    board_state: str = "inactive"
+    player_items: Optional[Any] = None
+    enemy_items: Optional[Any] = None
+
+
+@dataclass
+class InventoryState:
+    """Inventory system state."""
+    equipped_weapon: Optional[str] = None
+    equipped_items: List[str] = field(default_factory=list)
+    notifications: List[str] = field(default_factory=list)
+    available_weapons: List[str] = field(default_factory=list)
+    weapon_equip_callbacks: List[Any] = field(default_factory=list)
+
+
+@dataclass
 class GameState:
     """Complete game state container."""
     # Core state
@@ -178,6 +198,8 @@ class GameState:
     audio: AudioState = field(default_factory=AudioState)
     input: InputState = field(default_factory=InputState)
     ui: UIState = field(default_factory=UIState)
+    test_mode: TestModeState = field(default_factory=TestModeState)
+    inventory: InventoryState = field(default_factory=InventoryState)
     
     # System state
     initialized: bool = False

@@ -8,6 +8,8 @@ import pygame
 import sys
 import logging
 import traceback
+import json
+import os
 from typing import List, Optional
 
 # Try to import the interface contract
@@ -273,6 +275,11 @@ class TestModeRefactored(TestModeInterface):
         except Exception:
             pass
         
+        # CRITICAL FIX: Expose player_items and enemy_items for backward compatibility
+        # This allows the inventory interface to access them directly
+        self.player_items = self.game_state_manager.player_items
+        self.enemy_items = self.game_state_manager.enemy_items
+        
     def _connect_components(self):
         """Connect all components together."""
         player_engine, enemy_engine = self.board_manager.get_engines()
@@ -388,76 +395,204 @@ class TestModeRefactored(TestModeInterface):
         
     def _track_garbage_landings(self, player_id: int, grid):
         """Track landings for garbage block transformation."""
-        # Simplified: increment landing count for all tracked garbage/strike blocks
-        # This is called when a piece lands, so all nearby blocks should get a landing count
+        print(f"🔍 DEBUG: _track_garbage_landings called for player {player_id}")
+        
+        # Get the engine to access piece position information
+        engine = self.player_engine if player_id == 1 else self.enemy_engine
+        
+        # Get the landing piece positions (where pieces were just placed)
+        landing_positions = self._get_landing_piece_positions(engine)
+        print(f"🔍 DEBUG: Landing positions: {landing_positions}")
         
         # First, ensure all garbage/strike blocks are tracked
+        blocks_found = 0
+        new_blocks_tracked = 0
         for y in range(len(grid)):
             for x in range(len(grid[0])):
                 cell = grid[y][x]
-                if cell and ('_garbage' in str(cell) or '_strike' in str(cell) or cell == 'strike_block'):
+                if self._is_garbage_block(cell):
+                    blocks_found += 1
                     pos_key = (x, y, player_id)
                     if pos_key not in self.garbage_block_brightness:
                         # Initialize tracking for new garbage/strike blocks
-                        is_strike = '_strike' in cell
+                        is_strike = self._is_strike_block(cell)
                         color = self._get_block_color(cell)
                         self.garbage_block_brightness[pos_key] = {
                             'landings': 0,
                             'color': color,
                             'is_strike': is_strike
                         }
+                        new_blocks_tracked += 1
+                        print(f"🔍 DEBUG: New block tracked at ({x},{y}): {cell} -> {color} {'strike' if is_strike else 'garbage'}")
         
-        # Increment landing count for all tracked blocks for this player
+        print(f"🔍 DEBUG: Found {blocks_found} garbage/strike blocks, {new_blocks_tracked} newly tracked")
+        
+        # Only increment landing count for blocks affected by the landing piece
+        landings_incremented = 0
         for pos_key in list(self.garbage_block_brightness.keys()):
             x, y, block_player = pos_key
             if block_player == player_id:
                 # Check if this block still exists in the grid
                 if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                     current_cell = grid[y][x]
-                    if current_cell and ('_garbage' in str(current_cell) or '_strike' in str(current_cell) or current_cell == 'strike_block'):
-                        # Increment landing count
-                        self.garbage_block_brightness[pos_key]['landings'] += 1
+                    if self._is_garbage_block(current_cell):
+                        print(f"🔍 DEBUG: Found garbage block at ({x},{y}): {current_cell}")
+                        # Only increment if this block is affected by the landing piece
+                        if self._is_block_affected_by_landing(x, y, landing_positions):
+                            old_landings = self.garbage_block_brightness[pos_key]['landings']
+                            self.garbage_block_brightness[pos_key]['landings'] += 1
+                            new_landings = self.garbage_block_brightness[pos_key]['landings']
+                            landings_incremented += 1
+                            print(f"🔍 DEBUG: Incremented landings at ({x},{y}): {old_landings} -> {new_landings}")
+                        else:
+                            print(f"🔍 DEBUG: Block at ({x},{y}) not affected by landing")
+                    else:
+                        print(f"🔍 DEBUG: Not a garbage block at ({x},{y}): {current_cell}")
+        
+        print(f"🔍 DEBUG: Incremented landings for {landings_incremented} blocks")
+    
+    def _get_landing_piece_positions(self, engine):
+        """Get the positions where pieces were just placed."""
+        # Use the stored landing positions from the engine
+        if hasattr(engine, 'last_landing_positions'):
+            return engine.last_landing_positions
+        
+        # Fallback: if no stored positions, return empty list
+        # This means no blocks will be affected (conservative approach)
+        return []
+    
+    def _is_block_affected_by_landing(self, block_x: int, block_y: int, landing_positions):
+        """Check if a garbage/strike block is affected by the landing piece."""
+        if not landing_positions:
+            return False
+        
+        # Define the "affected area" - blocks within 5 cells of landing pieces
+        # Increased from 3 to 5 to reduce "dead zones" where blocks never transform
+        affected_radius = 5
+        
+        for landing_x, landing_y in landing_positions:
+            # Calculate Manhattan distance
+            distance = abs(block_x - landing_x) + abs(block_y - landing_y)
+            print(f"🔍 DEBUG: Block at ({block_x},{block_y}) to landing at ({landing_x},{landing_y}): distance={distance}, affected={distance <= affected_radius}")
+            if distance <= affected_radius:
+                return True
+        
+        return False
         
     def _get_block_color(self, block_type: str) -> str:
-        """Extract color from block type."""
+        """Extract color from block type with robust edge case handling."""
+        if not block_type:
+            return 'blue'  # Default for empty/None
+            
+        block_type = str(block_type)
+        
+        # Handle legacy neutral garbage block
+        if block_type == 'garbage_block':
+            return 'blue'  # Default color for neutral garbage
+            
+        # Handle legacy strike block
+        if block_type == 'strike_block':
+            return 'blue'  # Default color for legacy strike
+            
+        # Handle colored garbage blocks (e.g., "blue_garbage" -> "blue")
         if '_garbage' in block_type:
-            # Extract color from colored garbage (e.g., "blue_garbage" -> "blue")
             parts = block_type.split('_garbage')
-            return parts[0] if parts[0] else 'blue'
-        elif '_strike' in block_type:
-            # Extract color from strike blocks (e.g., "blue_strike" -> "blue")
+            color = parts[0] if parts[0] else 'blue'
+            # Validate color is not empty or invalid
+            if color and color in ['red', 'blue', 'green', 'yellow']:
+                return color
+            return 'blue'  # Fallback for invalid colors
+            
+        # Handle colored strike blocks (e.g., "blue_strike" -> "blue")
+        if '_strike' in block_type:
             parts = block_type.split('_strike')
-            return parts[0] if parts[0] else 'blue'
-        else:
-            # Default color for neutral garbage
-            return 'blue'
+            color = parts[0] if parts[0] else 'blue'
+            # Validate color is not empty or invalid
+            if color and color in ['red', 'blue', 'green', 'yellow']:
+                return color
+            return 'blue'  # Fallback for invalid colors
+            
+        # Default color for any other block type
+        return 'blue'
+    
+    def _is_garbage_block(self, cell) -> bool:
+        """Robust garbage block detection including legacy types."""
+        if not cell:
+            return False
+            
+        cell_str = str(cell)
+        
+        # Check for colored garbage blocks
+        if '_garbage' in cell_str:
+            return True
+            
+        # Check for legacy neutral garbage
+        if cell_str == 'garbage_block':
+            return True
+            
+        # Check for strike blocks (both legacy and colored)
+        if '_strike' in cell_str or cell_str == 'strike_block':
+            return True
+            
+        return False
+    
+    def _is_strike_block(self, cell) -> bool:
+        """Robust strike block detection including legacy types."""
+        if not cell:
+            return False
+            
+        cell_str = str(cell)
+        
+        # Check for colored strike blocks
+        if '_strike' in cell_str:
+            return True
+            
+        # Check for legacy strike block
+        if cell_str == 'strike_block':
+            return True
+            
+        return False
             
     def _process_garbage_transformations(self, player_id: int, grid):
         """Process garbage block transformations based on landing count."""
+        print(f"🔍 DEBUG: _process_garbage_transformations called for player {player_id}")
+        
         to_demote_strikes = []  # (pos_key, new_block_type)
         to_finalize_garbage = []
         
+        total_blocks_checked = 0
         for pos_key, data in list(self.garbage_block_brightness.items()):
             x, y, block_player = pos_key
             if block_player != player_id:
                 continue
                 
+            total_blocks_checked += 1
             is_strike = data.get('is_strike', False)
             color = data['color']
+            landings = data['landings']
             current_block = None
             
             # Guard against out-of-bounds or grid changes
             if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                 current_block = grid[y][x]
                 
+            print(f"🔍 DEBUG: Checking block at ({x},{y}): {current_block}, landings={landings}, is_strike={is_strike}, color={color}")
+                
             # Stage 1: strike demotion after 1 landing
             if is_strike and data['landings'] >= 1:
                 to_demote_strikes.append((pos_key, f"{color}_garbage"))
+                print(f"🔍 DEBUG: Strike to demote at ({x},{y}): {current_block} -> {color}_garbage")
                 
             # Stage 2: colored garbage -> normal block after 1 landing (since no neutral state)
             if (not is_strike) and data['landings'] >= 1:
                 if isinstance(current_block, str) and current_block.startswith(f"{color}_garbage"):
                     to_finalize_garbage.append((pos_key, f"{color}_block"))
+                    print(f"🔍 DEBUG: Garbage to finalize at ({x},{y}): {current_block} -> {color}_block")
+        
+        print(f"🔍 DEBUG: Processing transformations for player {player_id}")
+        print(f"🔍 DEBUG: Found {len(to_demote_strikes)} strikes to demote")
+        print(f"🔍 DEBUG: Found {len(to_finalize_garbage)} garbage to finalize")
+        print(f"🔍 DEBUG: Checked {total_blocks_checked} blocks for player {player_id}")
         
         # Apply transformations
         self._apply_strike_demotions(to_demote_strikes, grid)
@@ -465,10 +600,15 @@ class TestModeRefactored(TestModeInterface):
         
     def _apply_strike_demotions(self, to_demote_strikes, grid):
         """Apply strike to colored garbage transformations."""
+        print(f"🔍 DEBUG: _apply_strike_demotions called with {len(to_demote_strikes)} strikes to demote")
+        
         for pos_key, new_block_type in to_demote_strikes:
             x, y, _ = pos_key
             if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                old_block = grid[y][x]
                 grid[y][x] = new_block_type
+                print(f"🔍 DEBUG: Applied strike demotion at ({x},{y}): {old_block} -> {new_block_type}")
+                
                 # Update tracking: now behaves like newly received garbage
                 self.garbage_block_brightness[pos_key]['is_strike'] = False
                 # DON'T reset landing count - keep the landing that caused this transformation
@@ -514,7 +654,7 @@ class TestModeRefactored(TestModeInterface):
         for y in range(len(grid)):
             for x in range(len(grid[0])):
                 cell = grid[y][x]
-                if cell == 'strike_block':
+                if self._is_strike_block(cell):
                     pos_key = (x, y, player_id)
                     if pos_key not in self.garbage_block_brightness:
                         # Initialize tracking for strike block
@@ -1176,6 +1316,26 @@ class TestModeRefactored(TestModeInterface):
     def get_enemy_items(self):
         """Get enemy item system."""
         return self.game_state_manager.get_enemy_items() 
+        
+    def save_equipment(self):
+        """Save equipment configuration for backward compatibility."""
+        try:
+            # Save to items_config.json
+            config = {
+                'player_weapon': self.player_items.get_equipped_weapon().name if self.player_items.get_equipped_weapon() else 'Rusted Sword',
+                'enemy_weapon': self.enemy_items.get_equipped_weapon().name if self.enemy_items.get_equipped_weapon() else 'Rusted Sword',
+                'player_weapons': self.player_items.get_owned_weapons(),
+                'enemy_weapons': self.enemy_items.get_owned_weapons()
+            }
+            
+            config_path = "puzzleassets/items_config.json"
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+                
+            logger.info("Equipment configuration saved successfully")
+        except Exception as e:
+            logger.warning(f"Failed to save equipment configuration: {str(e)}")
         
     def get_attack_delivery_violations_report(self):
         """Get a summary of all attack delivery violations detected."""

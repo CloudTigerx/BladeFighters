@@ -18,6 +18,11 @@ Welcome to the BladeFighters documentation hub! This index provides organized ac
 - **[Integration Patterns](INTEGRATION_PATTERNS.md)** - How modules interact
 - **[State Management](STATE_MANAGEMENT.md)** - Unified state system design
 
+### Documentation Organization
+- **[Documentation Organization](DOCUMENTATION_ORGANIZATION.md)** - Documentation structure and standards
+- **[Technical Notes](technical_notes/README.md)** - Technical implementation details
+- **[Developer Logs](developer_logs/README.md)** - Development progress tracking
+
 ### Design Principles
 - **[Code Style Guide](CODE_STYLE.md)** - Coding standards and conventions
 - **[Testing Strategy](TESTING_STRATEGY.md)** - Testing approach and patterns
@@ -25,7 +30,9 @@ Welcome to the BladeFighters documentation hub! This index provides organized ac
 
 ## 📚 Module Documentation
 
-### Core Modules
+### Core Game Systems
+- **[Puzzle Engine](PUZZLE_ENGINE_DOCUMENTATION.md)** - Core puzzle game mechanics and rendering
+- **[Puzzle Engine API](PUZZLE_ENGINE_API.md)** - Complete API reference for puzzle engine
 - **[Attack Module](../modules/attack_module/README.md)** - Combat system and attack mechanics
 - **[Audio Module](../modules/audio_module/README.md)** - Audio management and state integration
 - **[Game State Module](../modules/game_state_module/README.md)** - Central state management
