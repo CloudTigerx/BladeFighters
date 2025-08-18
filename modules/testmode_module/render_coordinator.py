@@ -13,6 +13,29 @@ logger = logging.getLogger(__name__)
 # Import transformation system
 from core.transformation_events import transformation_manager, EventType
 
+def safe_draw_rect(surface, color, rect, **kwargs):
+    """Safely draw a rectangle with comprehensive color validation to prevent invalid color argument errors."""
+    try:
+        # Comprehensive color validation
+        if color is None:
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif not isinstance(color, tuple):
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif len(color) != 3:
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+            color = (150, 150, 150)  # Fallback to safe gray
+        
+        pygame.draw.rect(surface, color, rect, **kwargs)
+    except Exception as e:
+        # Log error and use ultimate fallback
+        logger.warning(f"Color error in pygame.draw.rect(): {e}, using fallback color")
+        try:
+            pygame.draw.rect(surface, (150, 150, 150), rect, **kwargs)
+        except Exception:
+            # Ultimate fallback - just skip drawing if even the fallback fails
+            pass
+
 class RenderCoordinator:
     """
     Manages visual state coordination and attack indicators.

@@ -26,6 +26,16 @@ if ! python3 -c "import pygame" 2>/dev/null; then
     exit 1
 fi
 
+# Check if user wants to configure display settings
+if [ "$1" = "--configure-display" ]; then
+    echo "🔧 Running display configuration helper..."
+    python3 mac_display_helper.py
+    exit 0
+fi
+
+# Show quick help
+echo "💡 Tip: Run './run_mac.sh --configure-display' to optimize for your display"
+
 # Run the game
 echo "🚀 Starting BladeFighters..."
 python3 main.py 

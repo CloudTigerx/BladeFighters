@@ -62,7 +62,7 @@ def test_sliding_paced_to_breaking_animation_duration():
 
         slide = asm.visual_sliding_blocks[(4, 10)]
         # Duration should match breaking animation duration (seconds)
-        assert abs(float(slide['duration']) - float(asm.breaking_animation_duration)) < 1e-6
+        assert abs(float(slide['duration']) - float(asm.fall_animation_duration)) < 1e-6
 
     finally:
         try:

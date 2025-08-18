@@ -7,7 +7,7 @@ Implements paced horizontal sliding animations in `PuzzleEngine._handle_piece_sl
 When pieces break apart from clusters, blocks can appear to "teleport" diagonally when they slide horizontally into gaps. This creates jarring visual transitions that break immersion.
 
 ## Solution
-- **Paced Animation**: Horizontal slides are paced to match the breaking animation duration (0.5s)
+- **Paced Animation**: Horizontal slides are paced to match the falling animation duration (0.17s)
 - **No Teleportation**: Blocks slide smoothly across supported surfaces rather than jumping
 - **Visual-Only**: Sliding is purely visual; gravity still controls vertical movement
 - **Breaking Window**: Slides only trigger during active breaking animations
@@ -78,13 +78,13 @@ Both tests pass, validating:
 
 ### Slide Heuristic
 - **Trigger**: Block supported from below with empty lateral neighbor
-- **Pacing**: Matches `breaking_animation_duration` (0.5s)
+- **Pacing**: Matches `fall_animation_duration` (0.17s)
 - **Direction**: Prefers nearest empty neighbor (left or right)
 - **Window**: Only during active breaking animations
 
 ### Animation Properties
 - **Interpolation**: Ease-out cubic for natural feel
-- **Duration**: 0.5s (breaking animation duration)
+- **Duration**: 0.17s (falling animation duration)
 - **Masking**: Source position masked to prevent double-draw
 - **Cleanup**: Automatic removal on completion
 

@@ -99,7 +99,8 @@ class InputHandler:
         # Chain lock if player's chain is active (best-effort hook)
         if getattr(player_engine, 'chain_reaction_in_progress', False):
             freeze_ms = self._get_attack_freeze_ms()
-            self.game_state_manager.lock_player_chain(freeze_ms, current_time)
+            # Use lock_player_input instead of lock_player_chain (which doesn't exist)
+            self.game_state_manager.lock_player_input(freeze_ms, current_time)
             
     @safe_operation("handle attack lock", None, "WARNING")
     def handle_attack_lock(self, attack_result, current_time: int):

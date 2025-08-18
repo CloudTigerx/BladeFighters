@@ -48,6 +48,11 @@ class GameStateManager:
         self._change_callbacks: List[StateChangeCallback] = []
         self._global_callbacks: List[Callable[[GameState, GameState], None]] = []
         
+        # CRITICAL FIX: Initialize persistent item systems
+        from modules.items_module.item_system import ItemSystem
+        self._player_items = ItemSystem()
+        self._enemy_items = ItemSystem()
+        
         # Performance optimization systems
         self.performance_optimization_enabled = enable_performance_optimization
         if enable_performance_optimization:
@@ -509,17 +514,13 @@ class GameStateManager:
         
     def get_player_items(self):
         """Get the player item system."""
-        # This method is for backward compatibility with the old GameStateManager
-        # The new system handles items differently through the state schema
-        from modules.items_module.item_system import ItemSystem
-        return ItemSystem()
+        # CRITICAL FIX: Return persistent item system instance
+        return self._player_items
         
     def get_enemy_items(self):
         """Get the enemy item system."""
-        # This method is for backward compatibility with the old GameStateManager
-        # The new system handles items differently through the state schema
-        from modules.items_module.item_system import ItemSystem
-        return ItemSystem()
+        # CRITICAL FIX: Return persistent item system instance
+        return self._enemy_items
 
 
 # Convenience functions for common state operations

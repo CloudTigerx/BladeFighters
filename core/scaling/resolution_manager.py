@@ -132,13 +132,22 @@ class ResolutionManager:
             try:
                 result = subprocess.run(['system_profiler', 'SPDisplaysDataType'], 
                                       capture_output=True, text=True, timeout=5)
-                # Parse for actual resolution (this is simplified)
-                if '3456 x 2234' in result.stdout:
-                    width, height = 3456, 2234
-                elif '3072 x 1920' in result.stdout:
-                    width, height = 3072, 1920
-                elif '2560 x 1600' in result.stdout:
-                    width, height = 2560, 1600
+                # Parse the output to find the actual resolution
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'Resolution:' in line:
+                        # Extract resolution from line like "Resolution: 3456 x 2234 Retina"
+                        parts = line.split(':')[1].strip().split('x')
+                        if len(parts) == 2:
+                            try:
+                                width = int(parts[0].strip())
+                                height_part = parts[1].strip()
+                                # Remove any text after the height (like "Retina")
+                                height = int(height_part.split()[0])
+                                print(f"📐 Native resolution: {width} x {height}")
+                                break
+                            except ValueError:
+                                continue
             except:
                 pass
         

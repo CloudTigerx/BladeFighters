@@ -18,5 +18,6 @@
   "attack_freeze_ms_on_receive": 150,
   "renderer.snap_on_land": true,
   "renderer.landing_epsilon_px": 0,
-  "attacks.spawn_mode": "animated"
+  "attacks.spawn_mode": "animated",
+  "force_native_resolution": true
 }

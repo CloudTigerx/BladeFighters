@@ -13,7 +13,7 @@ from modules.loading_module.loading_screen import LoadingScreen
 
 # Import all extracted modules - all are working properly
 from modules.audio_module import AudioSystem
-from modules.menu_module.draggable_menu_system import DraggableMenuSystem  # Use draggable menu system
+from modules.menu_module.custom_katana_system import CustomKatanaSystem  # Use custom katana system
 
 from modules.testmode_module import TestMode
 from modules.screen_module import ScreenManager
@@ -53,24 +53,86 @@ class GameClient:
         
         # Get desktop info for default resolution
         desktop_info = pygame.display.Info()
+        # Use the actual display size, not the scaled size
         desktop_width, desktop_height = desktop_info.current_w, desktop_info.current_h
+        
+        # For macOS, we want to detect the native resolution regardless of scaling
+        # pygame.display.Info() returns the scaled resolution, so we need to work around this
+        if sys.platform == "darwin":  # macOS
+            try:
+                # Method 1: Try to get the actual display size from system_profiler
+                import subprocess
+                result = subprocess.run(['system_profiler', 'SPDisplaysDataType'], 
+                                      capture_output=True, text=True)
+                if result.returncode == 0:
+                    # Parse the output to find the actual resolution
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if 'Resolution:' in line:
+                            # Extract resolution from line like "Resolution: 3456 x 2234 Retina"
+                            parts = line.split(':')[1].strip().split('x')
+                            if len(parts) == 2:
+                                try:
+                                    native_width = int(parts[0].strip())
+                                    height_part = parts[1].strip()
+                                    # Remove any text after the height (like "Retina")
+                                    native_height = int(height_part.split()[0])
+                                    desktop_width, desktop_height = native_width, native_height
+                                    print(f"🎮 Detected native resolution: {native_width}x{native_height}")
+                                    break
+                                except ValueError:
+                                    continue
+                
+                # Method 2: If that fails, try using the maximum available resolution
+                if desktop_width < 3000:  # If we didn't get a high-res display
+                    # Get all available display modes
+                    display_modes = pygame.display.list_modes()
+                    if display_modes and display_modes[0] != -1:  # -1 means unlimited
+                        # Get the highest resolution available
+                        max_mode = max(display_modes, key=lambda x: x[0] * x[1])
+                        desktop_width, desktop_height = max_mode
+                        print(f"🎮 Using maximum available resolution: {desktop_width}x{desktop_height}")
+                        
+            except Exception as e:
+                print(f"⚠️ Could not detect native resolution: {e}")
+                # Fallback to pygame's reported resolution
+                pass
         
         # Load config first to get user's preferred resolution
         self.config = ConfigService(os.path.join(ROOT_PATH, "game_settings.json"))
         self.config.load()
         
-        # Get resolution from settings, fallback to optimal resolution
-        resolution_setting = self.config.get("resolution", "2560x1440")
-        try:
-            # Parse resolution string (e.g., "2560x1440")
-            width_str, height_str = resolution_setting.split("x")
-            self.width, self.height = int(width_str), int(height_str)
-        except (ValueError, AttributeError):
-            # Fallback to optimal resolution if settings parsing fails
-            self.width, self.height = resolution_enhancer.get_optimal_resolution(desktop_width, desktop_height)
+        # Check if user wants to force native resolution
+        force_native = self.config.get("force_native_resolution", False)
+        
+        if force_native and sys.platform == "darwin":
+            # Use the detected native resolution
+            self.width, self.height = desktop_width, desktop_height
+            print(f"🎮 Forcing native resolution: {self.width}x{self.height}")
+        else:
+            # Get resolution from settings, fallback to optimal resolution
+            resolution_setting = self.config.get("resolution", "2560x1440")
+            try:
+                # Parse resolution string (e.g., "2560x1440")
+                width_str, height_str = resolution_setting.split("x")
+                self.width, self.height = int(width_str), int(height_str)
+            except (ValueError, AttributeError):
+                # Fallback to optimal resolution if settings parsing fails
+                if force_native and sys.platform == "darwin":
+                    # Use native resolution directly, bypass enhancer
+                    self.width, self.height = desktop_width, desktop_height
+                else:
+                    self.width, self.height = resolution_enhancer.get_optimal_resolution(desktop_width, desktop_height)
         
         # Create window with default resolution
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+        # For native resolution mode, use FULLSCREEN to ensure exact resolution
+        if force_native and sys.platform == "darwin":
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+            print(f"🎮 Created fullscreen window at native resolution: {self.width}x{self.height}")
+        else:
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+            print(f"🎮 Created resizable window at resolution: {self.width}x{self.height}")
+        
         pygame.display.set_caption("Blade Fighters")
         
         self.font = None
@@ -245,13 +307,9 @@ class GameClient:
     
     def _initialize_menu_system(self):
         """Initialize the menu system."""
-        # Use quickplay mode for the menu system to get the correct background
-        self.menu_system = DraggableMenuSystem(self.screen, self.font, self.audio, self.asset_path, game_mode="quickplay")
-        # Apply initial UI scale
-        try:
-            self.menu_system.ui_scale = float(self.config.get('ui_scale', 1.0))
-        except Exception:
-            pass
+        # Use custom katana system with perfect math and custom assets
+        self.menu_system = CustomKatanaSystem(self.width, self.height)
+        print("🗡️ Custom Katana System initialized!")
     
     def _initialize_settings_ui(self):
         """Initialize the modern settings UI overlay."""
@@ -768,10 +826,10 @@ class GameClient:
                 self.settings_ui.update_screen(self.screen)
             if hasattr(self, 'menu_system') and self.menu_system:
                 self.menu_system.screen = self.screen
-                # Refresh menu system dimensions
+                # Refresh menu system dimensions with intended resolution
                 try:
-                    self.menu_system.width = self.screen.get_width()
-                    self.menu_system.height = self.screen.get_height()
+                    self.menu_system.width = self.width
+                    self.menu_system.height = self.height
                 except Exception:
                     pass
             if hasattr(self, 'puzzle_engine') and self.puzzle_engine:
@@ -820,8 +878,7 @@ class GameClient:
                     self.config.update({'native_fullscreen': False, 'fullscreen': False})
                 self.screen = pygame.display.set_mode((self.width, self.height))
             # Update internals and references
-            self.width = self.screen.get_width()
-            self.height = self.screen.get_height()
+            # Keep the intended resolution, don't override with actual screen size
             if hasattr(self, 'settings_ui') and self.settings_ui:
                 self.settings_ui.update_screen(self.screen)
             if hasattr(self, 'menu_system') and self.menu_system:
@@ -852,8 +909,7 @@ class GameClient:
                 target_w, target_h = info.current_w, info.current_h
             self.screen = pygame.display.set_mode((int(target_w), int(target_h)), flags)
             # Update internals
-            self.width = self.screen.get_width()
-            self.height = self.screen.get_height()
+            # Keep the intended resolution, don't override with actual screen size
             if hasattr(self, 'menu_system') and self.menu_system:
                 self.menu_system.screen = self.screen
                 self.menu_system.width = self.width
@@ -1200,41 +1256,47 @@ class GameClient:
                     
                     # Process menu events with filtered event list
                     if hasattr(self, 'menu_system') and self.menu_system:
+                        menu_action = None
+                        
                         # If settings overlay is open, let it consume inputs first and block menu
                         if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
                             result = self.settings_ui.handle_events(events)
                             # While open, do not process underlying menu clicks
-                            menu_action = None
                         else:
-                            menu_action = self.menu_system.process_main_menu_events(events)
-                        # Let tuner overlay consume events when visible
-                        # DISABLED: Input tuner completely disabled
-                        pass
+                            # Process events with custom katana system
+                            for event in events:
+                                action = self.menu_system.handle_event(event)
+                                if action:
+                                    menu_action = action
+                                    break
                         
                         # Handle menu actions
                         if menu_action == "quickplay":
                             self.start_quickplay()
                         elif menu_action == "story":
                             self.set_screen("story")
-                        elif menu_action == "test":
+                        elif menu_action == "testmode":
                             self.set_screen("test")
-                        elif menu_action == "smithing":
-                            self.set_screen("smithing")
-                        elif menu_action == "inventory":
-                            self.set_screen("inventory")
-                        elif menu_action == "quit":
-                            self.game_running = False
                         elif menu_action == "settings":
                             if hasattr(self, 'settings_ui') and self.settings_ui:
                                 self.settings_ui.open()
+                        elif menu_action == "inventory":
+                            # Connect to existing inventory screen
+                            self.set_screen("inventory")
+                        elif menu_action == "exit":
+                            self.game_running = False
                         
-                        # Draw the main menu
-                        self.main_menu_buttons = self.menu_system.draw_main_menu(
-                            on_start_action=self.start_quickplay,
-                            on_story_action=lambda: self.set_screen("story"),
-                            on_test_action=lambda: self.set_screen("test"),
-                            version=self.version
-                        )
+                        # Update the custom katana system
+                        # Calculate delta time manually
+                        current_time = self.clock.now_ms() / 1000.0
+                        if not hasattr(self, '_last_update_time'):
+                            self._last_update_time = current_time
+                        delta_time = current_time - self._last_update_time
+                        self._last_update_time = current_time
+                        self.menu_system.update(delta_time)
+                        
+                        # Draw the custom katana menu
+                        self.menu_system.draw(self.screen)
                         # Draw settings overlay (on top of menu) AFTER MP3 so it isn't obscured
                         if hasattr(self, 'settings_ui') and self.settings_ui and self.settings_ui.is_open():
                             # Temporarily skip drawing MP3 while settings are open to avoid overlap

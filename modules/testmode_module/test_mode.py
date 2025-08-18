@@ -232,58 +232,75 @@ class TestModeRefactored(TestModeInterface):
         
     def _initialize_components(self):
         """Initialize all refactored components."""
-        self.board_manager = BoardManager(
-            self.screen, self.font, self.audio, self.asset_path, 
-            self.settings_system, self.clock
-        )
-        
-        # Easy enemy bot for testing - difficulty 1: slow actions (220ms), high mistake rate (50%), no heuristics
-        self.ai_manager = AIManager(initial_difficulty=1)
-        
-        self.game_state_manager = GameStateManager()
-        
-        # CRITICAL: Set as global instance for transformation system
-        from modules.game_state_module.game_state_manager import set_global_game_state_manager
-        set_global_game_state_manager(self.game_state_manager)
-        
-        # Initialize per-board runtime locks for input/chain locking
         try:
-            from .board_runtime import BoardRuntime
-            self.game_state_manager.player_runtime = BoardRuntime(board_id=1)
-            self.game_state_manager.enemy_runtime = BoardRuntime(board_id=2)
-        except Exception:
-            pass
-        
-        self.input_handler = InputHandler(self.ai_manager, self.game_state_manager)
-        
-        self.attack_coordinator = AttackCoordinator(
-            clock=self.clock,
-            settings_system=self.settings_system,
-            item_system=self.game_state_manager.get_player_items()
-        )
-        
-        self.render_coordinator = RenderCoordinator(self.screen, self.board_manager)
-        
-        # Delivery committer for post-landing transformations (strike→garbage→colored→normal)
-        self.delivery_committer = AttackDeliveryCommitter(config=None)
-        
-        # Back-compat: expose commonly used attributes for tests/legacy
-        try:
-            from .board_runtime import BoardRuntime
-            # Use the same runtime objects as game_state_manager
-            self.player_runtime = self.game_state_manager.player_runtime
-            self.enemy_runtime = self.game_state_manager.enemy_runtime
-            if hasattr(self.attack_coordinator, 'get_attacks_service'):
-                self.attacks_service = self.attack_coordinator.get_attacks_service()
-            elif hasattr(self.attack_coordinator, 'attacks_service'):
-                self.attacks_service = self.attack_coordinator.attacks_service
-        except Exception:
-            pass
-        
-        # CRITICAL FIX: Expose player_items and enemy_items for backward compatibility
-        # This allows the inventory interface to access them directly
-        self.player_items = self.game_state_manager.get_player_items()
-        self.enemy_items = self.game_state_manager.get_enemy_items()
+            self.board_manager = BoardManager(
+                self.screen, self.font, self.audio, self.asset_path, 
+                self.settings_system, self.clock
+            )
+            
+            # Easy enemy bot for testing - difficulty 1: slow actions (220ms), high mistake rate (50%), no heuristics
+            self.ai_manager = AIManager(initial_difficulty=1)
+            
+            self.game_state_manager = GameStateManager()
+            
+            # CRITICAL: Set as global instance for transformation system
+            from modules.game_state_module.game_state_manager import set_global_game_state_manager
+            set_global_game_state_manager(self.game_state_manager)
+            
+            # Initialize per-board runtime locks for input/chain locking
+            try:
+                from .board_runtime import BoardRuntime
+                self.game_state_manager.player_runtime = BoardRuntime(board_id=1)
+                self.game_state_manager.enemy_runtime = BoardRuntime(board_id=2)
+            except Exception:
+                pass
+            
+            self.input_handler = InputHandler(self.ai_manager, self.game_state_manager)
+            
+            self.attack_coordinator = AttackCoordinator(
+                clock=self.clock,
+                settings_system=self.settings_system,
+                item_system=self.game_state_manager.get_player_items()
+            )
+            
+            self.render_coordinator = RenderCoordinator(self.screen, self.board_manager)
+            
+            # Delivery committer for post-landing transformations (strike→garbage→colored→normal)
+            self.delivery_committer = AttackDeliveryCommitter(config=None)
+            
+            # Back-compat: expose commonly used attributes for tests/legacy
+            try:
+                from .board_runtime import BoardRuntime
+                # Use the same runtime objects as game_state_manager
+                self.player_runtime = self.game_state_manager.player_runtime
+                self.enemy_runtime = self.game_state_manager.enemy_runtime
+                if hasattr(self.attack_coordinator, 'get_attacks_service'):
+                    self.attacks_service = self.attack_coordinator.get_attacks_service()
+                elif hasattr(self.attack_coordinator, 'attacks_service'):
+                    self.attacks_service = self.attack_coordinator.attacks_service
+            except Exception:
+                pass
+            
+            # CRITICAL FIX: Expose player_items and enemy_items for backward compatibility
+            # This allows the inventory interface to access them directly
+            self.player_items = self.game_state_manager.get_player_items()
+            self.enemy_items = self.game_state_manager.get_enemy_items()
+            
+        except Exception as e:
+            # CRITICAL FIX: Catch any initialization errors, especially color-related ones
+            logger.error(f"Error during TestMode component initialization: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Try to provide a minimal working state
+            if hasattr(self, 'game_state_manager'):
+                self.player_items = self.game_state_manager.get_player_items()
+                self.enemy_items = self.game_state_manager.get_enemy_items()
+            else:
+                # Create minimal fallback
+                from modules.items_module.item_system import ItemSystem
+                self.player_items = ItemSystem()
+                self.enemy_items = ItemSystem()
         
     def _connect_components(self):
         """Connect all components together."""
@@ -1029,6 +1046,184 @@ class TestModeRefactored(TestModeInterface):
     def clear_attack_delivery_violations(self):
         """Clear the attack delivery violations log."""
         attack_delivery_monitor.grid_write_log.clear()
+    
+    # TRANSFORMATION SYSTEM METHODS
+    def _process_garbage_transformations(self, player_id: int, grid):
+        """Process garbage block transformations for the specified player."""
+        # Get the engine for this player
+        engine = self.player_engine if player_id == 1 else self.enemy_engine
+        
+        # Initialize tracking if not present
+        if not hasattr(self, 'garbage_block_brightness'):
+            self.garbage_block_brightness = {}
+        
+        # Reconcile any attack block movements under gravity to keep tracking keys in sync
+        moved = getattr(engine, 'attack_block_movements', None)
+        if moved:
+            updated_brightness = {}
+            for pos_key, data in list(self.garbage_block_brightness.items()):
+                x, y, block_player = pos_key
+                if block_player != player_id:
+                    # Not this player's block; keep as-is
+                    updated_brightness[pos_key] = data
+                    continue
+                # If this tracked block moved, update its key to the new position
+                new_pos = moved.get((x, y))
+                if new_pos is not None:
+                    nx, ny = new_pos
+                    new_key = (nx, ny, block_player)
+                    updated_brightness[new_key] = data
+                else:
+                    updated_brightness[pos_key] = data
+            self.garbage_block_brightness = updated_brightness
+        
+        # Find all strike/garbage blocks for this player and increment their landing counters
+        blocks_to_increment = []
+        for pos_key, data in self.garbage_block_brightness.items():
+            x, y, block_player = pos_key
+            if block_player == player_id:
+                # Check if this tracked block is still in the grid
+                if (0 <= y < len(grid) and 0 <= x < len(grid[0]) and 
+                    grid[y][x] and (('_garbage' in grid[y][x]) or 
+                                   (grid[y][x] == 'garbage_block') or 
+                                   ('_strike' in grid[y][x]))):
+                    blocks_to_increment.append(pos_key)
+        
+        # Increment landing counters (only when actual piece landed, not mid-animation)
+        for pos_key in blocks_to_increment:
+            self.garbage_block_brightness[pos_key]['landings'] += 1
+        
+        # Apply transformations
+        self._apply_garbage_finalization(player_id, grid)
+    
+    def _apply_garbage_finalization(self, player_id: int, grid):
+        """Apply garbage block transformations."""
+        # Transformation rules:
+        # For received garbage (not strike):
+        # 1) Neutral Garbage → Colored Garbage after 1 landing
+        # 2) Colored Garbage → Normal after 2 landings
+        # For strikes: one extra step at the start → becomes Neutral first, then follow the above
+        
+        to_demote_strikes = []  # (pos_key, new_block_type)
+        to_finalize_garbage = []
+        to_colorize_garbage = []
+        
+        for pos_key, data in list(self.garbage_block_brightness.items()):
+            x, y, block_player = pos_key
+            if block_player != player_id:
+                continue
+                
+            is_strike = data.get('is_strike', False)
+            color = data['color']
+            current_block = None
+            
+            # Guard against out-of-bounds or grid changes
+            if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                current_block = grid[y][x]
+            
+            # Stage 1: strike demotion after 1 landing
+            if is_strike and data['landings'] >= 1:
+                to_demote_strikes.append((pos_key, 'garbage_block'))
+            
+            # Stage 2: neutral garbage -> colored garbage after 1 landing
+            if (not is_strike) and data['landings'] >= 1:
+                if current_block == 'garbage_block':
+                    to_colorize_garbage.append((pos_key, f"{color}_garbage"))
+            
+            # Stage 3: colored garbage -> normal block after 2 landings
+            if (not is_strike) and data['landings'] >= 2:
+                if isinstance(current_block, str) and current_block.startswith(f"{color}_garbage"):
+                    to_finalize_garbage.append((pos_key, f"{color}_block"))
+
+        # Apply strike → neutral garbage
+        if to_demote_strikes:
+            for pos_key, new_block_type in to_demote_strikes:
+                x, y, _ = pos_key
+                if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                    grid[y][x] = new_block_type
+                    # Update tracking: now behaves like newly received garbage
+                    self.garbage_block_brightness[pos_key]['is_strike'] = False
+                    self.garbage_block_brightness[pos_key]['landings'] = 0
+
+        # Apply neutral garbage → colored garbage
+        if to_colorize_garbage:
+            for pos_key, new_block_type in to_colorize_garbage:
+                x, y, _ = pos_key
+                if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                    if grid[y][x] == 'garbage_block':
+                        grid[y][x] = new_block_type
+                        # Clear any lingering falling overlay
+                        try:
+                            if hasattr(self.player_renderer, 'animation_state_manager'):
+                                self.player_renderer.animation_state_manager.visual_falling_blocks.pop((x, y), None)
+                            if hasattr(self.enemy_renderer, 'animation_state_manager'):
+                                self.enemy_renderer.animation_state_manager.visual_falling_blocks.pop((x, y), None)
+                        except Exception:
+                            pass
+
+        # Apply colored garbage → normal block
+        if to_finalize_garbage:
+            for pos_key, new_block_type in to_finalize_garbage:
+                x, y, _ = pos_key
+                if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+                    if isinstance(grid[y][x], str) and grid[y][x].startswith(f"{data['color']}_garbage"):
+                        grid[y][x] = new_block_type
+                        # Remove from tracking since it's now a normal block
+                        self.garbage_block_brightness.pop(pos_key, None)
+    
+    def _track_garbage_landings(self, player_id: int, grid):
+        """Track landings for garbage block transformation."""
+        # Initialize tracking if not present
+        if not hasattr(self, 'garbage_block_brightness'):
+            self.garbage_block_brightness = {}
+        
+        # First, ensure all garbage/strike blocks are tracked
+        for y in range(len(grid)):
+            for x in range(len(grid[0])):
+                cell = grid[y][x]
+                if cell and ('_garbage' in str(cell) or '_strike' in str(cell) or cell == 'strike_block'):
+                    pos_key = (x, y, player_id)
+                    if pos_key not in self.garbage_block_brightness:
+                        # Initialize tracking for new garbage/strike blocks
+                        is_strike = '_strike' in cell or cell == 'strike_block'
+                        color = self._get_block_color(cell)
+                        self.garbage_block_brightness[pos_key] = {
+                            'landings': 0,
+                            'color': color,
+                            'is_strike': is_strike
+                        }
+        
+        # Apply affect radius logic (Manhattan distance of 3)
+        affect_radius = 3
+        for pos_key, data in list(self.garbage_block_brightness.items()):
+            x, y, block_player = pos_key
+            if block_player != player_id:
+                continue
+            
+            # Calculate Manhattan distance to landing position
+            # For now, assume landing at current piece position
+            landing_x, landing_y = 0, 0  # Default landing position
+            if hasattr(self, 'player_engine') and hasattr(self.player_engine, 'piece_position'):
+                landing_x, landing_y = self.player_engine.piece_position
+            
+            distance = abs(x - landing_x) + abs(y - landing_y)
+            
+            # Only increment if within affect radius
+            if distance <= affect_radius:
+                data['landings'] += 1
+    
+    def _get_block_color(self, block_type: str) -> str:
+        """Get the color for a block type."""
+        if 'red' in block_type:
+            return 'red'
+        elif 'blue' in block_type:
+            return 'blue'
+        elif 'green' in block_type:
+            return 'green'
+        elif 'yellow' in block_type:
+            return 'yellow'
+        else:
+            return 'blue'  # Default color
 
 # Back-compat alias for legacy imports expecting `TestMode` in this module
 TestMode = TestModeRefactored

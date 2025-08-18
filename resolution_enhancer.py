@@ -44,33 +44,28 @@ class ResolutionEnhancer:
                     result = subprocess.run(['system_profiler', 'SPDisplaysDataType'], 
                                           capture_output=True, text=True)
                     
-                    # Check for specific MacBook Pro 16" Retina display
-                    if '3456 x 2234' in result.stdout:
-                        print("🍎 MacBook Pro 16\" Retina display detected: 3456 x 2234")
-                        self.is_retina = True
-                        self.scale_factor = 2.0
-                        # Use native resolution for high-quality rendering
-                        screen_width = 3456
-                        screen_height = 2234
-                    elif '3072 x 1920' in result.stdout:
-                        print("🍎 MacBook Pro 16\" Retina display detected: 3072 x 1920")
-                        self.is_retina = True
-                        self.scale_factor = 2.0
-                        # Use native resolution for high-quality rendering
-                        screen_width = 3072
-                        screen_height = 1920
-                    elif '2880 x 1800' in result.stdout:
-                        print("🍎 MacBook Pro 15\" Retina display detected: 2880 x 1800")
-                        self.is_retina = True
-                        self.scale_factor = 2.0
-                        screen_width = 2880
-                        screen_height = 1800
-                    elif '2560 x 1600' in result.stdout:
-                        print("🍎 MacBook Pro 13\" Retina display detected: 2560 x 1600")
-                        self.is_retina = True
-                        self.scale_factor = 2.0
-                        screen_width = 2560
-                        screen_height = 1600
+                    # Parse the output to find the actual resolution
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if 'Resolution:' in line:
+                            # Extract resolution from line like "Resolution: 3456 x 2234 Retina"
+                            parts = line.split(':')[1].strip().split('x')
+                            if len(parts) == 2:
+                                try:
+                                    width = int(parts[0].strip())
+                                    height_part = parts[1].strip()
+                                    # Remove any text after the height (like "Retina")
+                                    height = int(height_part.split()[0])
+                                    
+                                    print(f"🍎 Native resolution detected: {width} x {height}")
+                                    self.is_retina = True
+                                    self.scale_factor = 2.0
+                                    # Use native resolution for high-quality rendering
+                                    screen_width = width
+                                    screen_height = height
+                                    break
+                                except ValueError:
+                                    continue
                 except:
                     pass
                 

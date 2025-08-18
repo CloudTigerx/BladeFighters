@@ -46,7 +46,7 @@ def test_paced_slide_respects_breaking_duration_and_no_teleport():
         slides = getattr(asm, 'visual_sliding_blocks', {})
         assert (4, 8) in slides or (2, 8) in slides, "Expected horizontal slide animation queued"
         slide = slides.get((4, 8)) or slides.get((2, 8))
-        assert abs(float(slide['duration']) - float(asm.breaking_animation_duration)) < 1e-6
+        assert abs(float(slide['duration']) - float(asm.fall_animation_duration)) < 1e-6
 
     finally:
         try:
