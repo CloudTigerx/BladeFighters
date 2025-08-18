@@ -23,6 +23,10 @@ class AttackCalculator:
         Returns:
             Number of garbage blocks to send
         """
+        # Handle negative inputs gracefully
+        broken_blocks = max(0, int(broken_blocks))
+        chain_multiplier = max(0, int(chain_multiplier))
+        
         # Justin's formula: (blocks × combo) ÷ 2
         return (broken_blocks * chain_multiplier) // 2
     
@@ -39,6 +43,10 @@ class AttackCalculator:
         Returns:
             Number of strikes to send
         """
+        # Handle negative inputs gracefully
+        cluster_size = max(0, int(cluster_size))
+        chain_multiplier = max(0, int(chain_multiplier))
+        
         if cluster_size < self.min_strike_size:
             return 0
         
@@ -113,8 +121,13 @@ class AttackCalculator:
                         length = min(12, 2 * combo)
                 # 3x3 → 2x4 (then multiply sword length by combo)
                 elif n == 3:
-                    width = 2
-                    length = max(1, 4 * combo)
+                    # FIXED: 3x3 should produce 2x4, 3x6, 3x9, 3x12 per documentation
+                    if combo == 1:
+                        width = 2
+                        length = 4
+                    else:
+                        width = 3
+                        length = 3 * combo
                 else:
                     # General square mapping: (min(N-1,3))×4, fold excess width into length, then multiply by combo
                     width = max(2, min(n - 1, 3))
@@ -135,16 +148,16 @@ class AttackCalculator:
             pattern = f"{width}x{length}_vertical"
             return pattern, width, length
 
-        # Horizontal gem (wider than tall): retain as horizontal for downstream handling
-        # Key rule: do NOT fold 4x2 into two 2x2s. Keep 4x2 horizontal (rows_tall=2, length=4).
-        horiz_width_rows = max(2, min(base_height, 3))
-        # Folding rule applies only when rows_tall would exceed 3. For base_height<=3 keep length as base_width.
-        horizontal_length = base_width if base_height <= 3 else base_width + (base_height - 3)
-        horizontal_length = max(1, horizontal_length * combo)
+        # FIXED: Convert horizontal clusters to vertical for consistency
+        # Horizontal gem (wider than tall): convert to vertical for consistency
+        # Key rule: Convert horizontal clusters to vertical swords
+        width = max(2, min(base_height, 3))  # Use height as width for vertical sword
+        # Calculate length based on original width, then multiply by combo
+        length = max(1, base_width * combo)
 
-        pattern = f"{horiz_width_rows}x{horizontal_length}_horizontal"
-        # Return width as rows (vertical thickness) and height as horizontal length for consistency
-        return pattern, horiz_width_rows, horizontal_length
+        pattern = f"{width}x{length}_vertical"
+        # Return width and height for vertical sword
+        return pattern, width, length
     
     def get_attack_description(self, broken_blocks, clusters, chain_multiplier):
         """

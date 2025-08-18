@@ -499,9 +499,9 @@ class AnimationRenderer:
         asset_key = ''
         block_image = None
         
-        if '_garbage' in block_type or block_type == 'garbage_block':
-            # Use the colored garbage block images if specified; otherwise neutral garbage
-            asset_key = block_type if '_garbage' in block_type else 'garbage_block'
+        if '_garbage' in block_type:
+            # Use the colored garbage block images
+            asset_key = block_type
             block_image = self.engine.puzzle_pieces.get(asset_key)
         elif '_strike' in block_type:
             # Use the strike block image for all strike types
@@ -543,7 +543,68 @@ class AnimationRenderer:
                 'green_breaker': (150, 255, 150), # Light green for breakers
                 'yellow_breaker': (255, 255, 150) # Light yellow for breakers
             }
-            color = color_map.get(block_type, (128, 128, 128))
+            
+            # Determine color based on block type - NO GREY FALLBACK
+            color = None
+            if block_type in color_map:
+                color = color_map[block_type]
+            elif '_garbage' in block_type:
+                # Extract color from garbage block type
+                color_name = block_type.split('_garbage')[0]
+                if color_name == 'red':
+                    color = (255, 100, 100)
+                elif color_name == 'blue':
+                    color = (100, 100, 255)
+                elif color_name == 'green':
+                    color = (100, 255, 100)
+                elif color_name == 'yellow':
+                    color = (255, 255, 100)
+                else:
+                    color = (100, 100, 255)  # Default to blue
+            elif '_strike' in block_type:
+                # Extract color from strike block type
+                color_name = block_type.split('_strike')[0]
+                if color_name == 'red':
+                    color = (255, 200, 0)
+                elif color_name == 'blue':
+                    color = (0, 200, 255)
+                elif color_name == 'green':
+                    color = (0, 255, 200)
+                elif color_name == 'yellow':
+                    color = (255, 255, 0)
+                else:
+                    color = (255, 255, 0)  # Default to yellow
+            elif '_block' in block_type:
+                # Extract color from normal block type
+                color_name = block_type.split('_block')[0]
+                if color_name == 'red':
+                    color = (255, 0, 0)
+                elif color_name == 'blue':
+                    color = (0, 0, 255)
+                elif color_name == 'green':
+                    color = (0, 255, 0)
+                elif color_name == 'yellow':
+                    color = (255, 255, 0)
+                else:
+                    color = (0, 0, 255)  # Default to blue
+            else:
+                # Last resort - try to extract color from block type
+                color_name = block_type.split('_')[0] if '_' in block_type else block_type
+                if color_name == 'red':
+                    color = (255, 0, 0)
+                elif color_name == 'blue':
+                    color = (0, 0, 255)
+                elif color_name == 'green':
+                    color = (0, 255, 0)
+                elif color_name == 'yellow':
+                    color = (255, 255, 0)
+                elif color_name == 'garbage':
+                    color = (128, 128, 128)  # Grey for garbage
+                elif color_name == 'strike':
+                    color = (128, 128, 128)  # Grey for strike
+                else:
+                    color = (128, 128, 128)  # Grey for truly unknown types
+            
             xi = int(x)
             yi = int(y)
             rect = pygame.Rect(xi, yi, width, height)

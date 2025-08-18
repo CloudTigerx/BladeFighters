@@ -93,10 +93,6 @@ class BoardManager:
             self.screen, self.font, None, self.asset_path, self.settings_system, game_mode="test"
         )
         
-        # Set test_mode attribute so puzzle module knows to use landing-based transformation
-        self.player_engine.test_mode = self
-        self.enemy_engine.test_mode = self
-        
         # Create renderers for both engines
         self.player_renderer = PuzzleRenderer(self.player_engine, clock=self.clock)
         self.enemy_renderer = PuzzleRenderer(self.enemy_engine, clock=self.clock)

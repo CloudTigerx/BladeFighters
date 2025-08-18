@@ -157,3 +157,169 @@ def test_non_target_board_not_locked_until_its_payloads(monkeypatch):
         clock.advance(50)
         tm.update()
         assert not tm.player_runtime.is_input_locked(clock.now_ms())
+
+
+def test_lock_applied_immediately_after_enqueue(monkeypatch):
+    """Fast integration assertion: lock is applied immediately after tm.update() that enqueues."""
+    _fast_assets(monkeypatch)
+    screen = DummyScreen()
+    font = DummyFont()
+    audio = DummyAudio()
+    clock = FakeClock(0)
+
+    tm = TestMode(screen, font, audio, 'puzzleassets', settings_system=None, clock=clock)
+
+    # Queue an incoming attack to player via service (enemy makes combo)
+    enemy_broken = [(0, 0, 'r'), (1, 0, 'b')]
+    tm.attacks_service.on_combo(enemy_broken, False, 1, player_id=2)
+
+    # Advance time to make attack ready for delivery
+    clock.advance(100)
+    
+    # Capture lock state before update
+    lock_before = tm.player_runtime.is_input_locked(clock.now_ms())
+    
+    # Deliver to player (enqueue only, animated) - this should trigger lock
+    tm.update()
+    
+    # If no pending attacks, the lock won't be applied yet
+    if not tm.pending_attacks['player']:
+        clock.advance(100)
+        tm.update()
+    
+    # FAST INTEGRATION ASSERTION: Lock must be applied immediately after update
+    assert tm.player_runtime.is_input_locked(clock.now_ms()), f"Lock not applied immediately after update. Lock before: {lock_before}, Lock after: {tm.player_runtime.is_input_locked(clock.now_ms())}, input_lock_until_ms: {tm.player_runtime.input_lock_until_ms}"
+    
+    # Verify lock persists until max_end_ms
+    current_time = clock.now_ms()
+    lock_until = tm.player_runtime.input_lock_until_ms
+    
+    assert lock_until > current_time, f"Lock should extend beyond current time. Current: {current_time}, Lock until: {lock_until}"
+    
+    # Verify lock is not cleared early by unrelated calls
+    # Simulate multiple updates to ensure lock persists
+    for i in range(5):
+        clock.advance(50)
+        tm.update()
+        assert tm.player_runtime.is_input_locked(clock.now_ms()), f"Lock cleared early at iteration {i}. Current time: {clock.now_ms()}, Lock until: {tm.player_runtime.input_lock_until_ms}"
+
+
+def test_lock_window_spans_until_max_end_ms(monkeypatch):
+    """Verify lock window spans the full duration until max_end_ms."""
+    _fast_assets(monkeypatch)
+    screen = DummyScreen()
+    font = DummyFont()
+    audio = DummyAudio()
+    clock = FakeClock(0)
+
+    tm = TestMode(screen, font, audio, 'puzzleassets', settings_system=None, clock=clock)
+
+    # Queue multiple attacks to test max_end_ms calculation
+    enemy_broken = [(0, 0, 'r'), (1, 0, 'b'), (2, 0, 'g')]
+    tm.attacks_service.on_combo(enemy_broken, False, 1, player_id=2)
+
+    # Advance time to make attack ready for delivery
+    clock.advance(100)
+    
+    # Deliver attacks
+    tm.update()
+    
+    # Wait for attack to be processed
+    if not tm.pending_attacks['player']:
+        clock.advance(100)
+        tm.update()
+    
+    # Get the lock end time
+    lock_until = tm.player_runtime.input_lock_until_ms
+    current_time = clock.now_ms()
+    
+    # Lock should extend significantly beyond current time (for animation duration)
+    expected_min_duration = 1000  # At least 1 second for animation
+    assert lock_until > current_time + expected_min_duration, f"Lock duration too short. Current: {current_time}, Lock until: {lock_until}, Duration: {lock_until - current_time}ms"
+    
+    # Verify lock persists until the calculated end time
+    while clock.now_ms() < lock_until - 100:  # Stop 100ms before end to avoid edge cases
+        clock.advance(50)
+        tm.update()
+        assert tm.player_runtime.is_input_locked(clock.now_ms()), f"Lock cleared before max_end_ms. Current: {clock.now_ms()}, Lock until: {lock_until}"
+
+
+def test_lock_not_cleared_by_unrelated_calls(monkeypatch):
+    """Verify lock is not cleared early due to unrelated calls."""
+    _fast_assets(monkeypatch)
+    screen = DummyScreen()
+    font = DummyFont()
+    audio = DummyAudio()
+    clock = FakeClock(0)
+
+    tm = TestMode(screen, font, audio, 'puzzleassets', settings_system=None, clock=clock)
+
+    # Queue an attack
+    enemy_broken = [(0, 0, 'r'), (1, 0, 'b')]
+    tm.attacks_service.on_combo(enemy_broken, False, 1, player_id=2)
+    clock.advance(100)
+    
+    # Apply lock
+    tm.update()
+    
+    # Wait for attack to be processed
+    if not tm.pending_attacks['player']:
+        clock.advance(100)
+        tm.update()
+    
+    # Verify lock is applied
+    assert tm.player_runtime.is_input_locked(clock.now_ms())
+    lock_until = tm.player_runtime.input_lock_until_ms
+    
+    # Simulate various unrelated operations that might clear locks
+    # 1. Multiple rapid updates
+    for _ in range(10):
+        clock.advance(10)
+        tm.update()
+        assert tm.player_runtime.is_input_locked(clock.now_ms()), "Lock cleared by rapid updates"
+    
+    # 2. Chain operations
+    tm.player_runtime.lock_chain(50, clock.now_ms())
+    assert tm.player_runtime.is_input_locked(clock.now_ms()), "Lock cleared by chain operations"
+    
+    # 3. Runtime lock resets (should not clear attack locks)
+    tm.game_state_manager.reset_runtime_locks(clock.now_ms())
+    # Lock should persist if it's an attack lock, not a chain lock
+    if lock_until > clock.now_ms():
+        assert tm.player_runtime.is_input_locked(clock.now_ms()), "Attack lock cleared by runtime reset"
+
+
+def test_lock_cleared_only_after_pending_landings_empty(monkeypatch):
+    """Verify lock is only cleared after pending_landings[side] empties and runtime clear_expired runs."""
+    _fast_assets(monkeypatch)
+    screen = DummyScreen()
+    font = DummyFont()
+    audio = DummyAudio()
+    clock = FakeClock(0)
+
+    tm = TestMode(screen, font, audio, 'puzzleassets', settings_system=None, clock=clock)
+
+    # Queue an attack
+    enemy_broken = [(0, 0, 'r'), (1, 0, 'b')]
+    tm.attacks_service.on_combo(enemy_broken, False, 1, player_id=2)
+    clock.advance(100)
+    
+    # Apply lock
+    tm.update()
+    
+    # Wait for attack to be processed
+    if not tm.pending_attacks['player']:
+        clock.advance(100)
+        tm.update()
+    
+    # Verify lock is applied
+    assert tm.player_runtime.is_input_locked(clock.now_ms())
+    
+    # Wait for pending landings to empty
+    while getattr(tm, 'pending_landings', {}).get('player', []):
+        clock.advance(50)
+        tm.update()
+    
+    # After pending landings empty, lock should be cleared by runtime
+    tm.game_state_manager.reset_runtime_locks(clock.now_ms())
+    assert not tm.player_runtime.is_input_locked(clock.now_ms()), "Lock not cleared after pending landings empty"

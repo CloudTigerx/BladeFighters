@@ -272,27 +272,39 @@ class PuzzleRenderer:
         
         # Check if position is valid
         if not (0 <= x < self.engine.grid_width and 0 <= y < self.engine.total_grid_height):
-            return 'white'  # Default color for invalid positions
+            return (128, 128, 128)  # Default to grey for invalid positions
         
         # Get block type at position
         block_type = self.engine.puzzle_grid[y][x]
         if not block_type:
-            return 'white'  # Default color for empty blocks
+            return (128, 128, 128)  # Default to grey for empty blocks
         
-        # Extract color from block type (e.g., "red_breaker" -> "red")
-        color = block_type.split('_')[0]
-        
-        # Map color names to RGB values
+        # Use full block type for color mapping
         color_map = {
+            # Normal blocks
+            'red_block': (255, 0, 0),
+            'blue_block': (0, 0, 255),
+            'green_block': (0, 255, 0),
+            'yellow_block': (255, 255, 0),
+            # Garbage blocks
+            'red_garbage': (255, 100, 100),
+            'blue_garbage': (100, 100, 255),
+            'green_garbage': (100, 255, 100),
+            'yellow_garbage': (255, 255, 100),
+            # Strike blocks
+            'red_strike': (255, 200, 0),
+            'blue_strike': (0, 200, 255),
+            'green_strike': (0, 255, 200),
+            'yellow_strike': (255, 255, 0),
+            # Basic colors (fallback)
             'red': (255, 0, 0),
             'blue': (0, 0, 255),
             'green': (0, 255, 0),
-            'yellow': (255, 255, 0),
-            'gray': (128, 128, 128),
-            'white': (255, 255, 255)
+            'yellow': (255, 255, 0)
         }
         
-        return color_map.get(color, (255, 255, 255))  # Default to white if color not found
+        # Return proper color or default to grey for unknown types
+        return color_map.get(block_type, (128, 128, 128))
     
 
 
@@ -356,18 +368,18 @@ class PuzzleRenderer:
                     
                     # If it's a new cluster, create an animation for it
                     if is_new_cluster and len(new_cluster) >= 4:  # Only animate clusters of 4+ blocks
-                        # CRITICAL FIX: Check if this cluster contains strike blocks - NO GLOW FOR STRIKES
-                        has_strike_blocks = False
+                        # CRITICAL FIX: Check if this cluster contains strike or garbage blocks - NO GLOW FOR ATTACK BLOCKS
+                        has_attack_blocks = False
                         for block_pos in new_cluster:
                             x, y = block_pos
                             if (0 <= x < self.engine.grid_width and 0 <= y < self.engine.total_grid_height):
                                 block_type = self.engine.puzzle_grid[y][x]
-                                if block_type and ('strike_block' in str(block_type) or '_strike' in str(block_type)):
-                                    has_strike_blocks = True
+                                if block_type and ('strike_block' in str(block_type) or '_strike' in str(block_type) or '_garbage' in str(block_type)):
+                                    has_attack_blocks = True
                                     break
                         
-                        # Only add cluster effects if NO strike blocks are present
-                        if not has_strike_blocks:
+                        # Only add cluster effects if NO attack blocks are present
+                        if not has_attack_blocks:
                             cluster_id = self.next_cluster_id
                             self.next_cluster_id += 1
                             
@@ -506,8 +518,8 @@ class PuzzleRenderer:
                             if grid_block_type and hasattr(self.engine, 'puzzle_pieces'):
                                 # Map grid type to asset key used by puzzle_pieces
                                 asset_key = None
-                                if '_garbage' in grid_block_type or grid_block_type == 'garbage_block':
-                                    asset_key = grid_block_type if grid_block_type in self.engine.puzzle_pieces else 'garbage_block'
+                                if '_garbage' in grid_block_type:
+                                    asset_key = grid_block_type if grid_block_type in self.engine.puzzle_pieces else 'blue_garbage'
                                 elif '_strike' in grid_block_type:
                                     asset_key = 'strike_block'
                                 elif '_breaker' in grid_block_type:

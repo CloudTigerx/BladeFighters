@@ -110,9 +110,9 @@ class AnimationStateManager:
     def _initialize_falling_block_state(self):
         """Initialize falling block animation state."""
         self.visual_falling_blocks = {}  # Format: {(x, y): {start_y, target_y, progress, start_time}}
-        # Set fall speed to achieve 1.1 seconds from top to bottom of grid (13 rows)
-        # For a single row drop, we need 1.1/13 = ~0.0846 seconds
-        self.fall_animation_duration = 0.085  # 85ms per row of fall
+        # Set fall speed to achieve 2.2 seconds from top to bottom of grid (13 rows) - SLOWED DOWN 2X
+        # For a single row drop, we need 2.2/13 = ~0.169 seconds
+        self.fall_animation_duration = 0.17  # 170ms per row of fall (2x slower)
         
         # Track garbage block animations
         self.animated_garbage_blocks = set()

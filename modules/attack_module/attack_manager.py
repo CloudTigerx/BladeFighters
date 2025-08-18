@@ -112,8 +112,8 @@ class AttackManager:
         else:
             non_cluster_cells = total_broken
         
-        # Sprinkle (garbage) formula: floor(non_cluster_cells/2) * combo
-        garbage_count = (non_cluster_cells // 2) * max(1, combo_multiplier)
+        # FIXED: Justin's formula: (blocks × combo) ÷ 2
+        garbage_count = (non_cluster_cells * combo_multiplier) // 2
         
         
         # Log cluster detection results
