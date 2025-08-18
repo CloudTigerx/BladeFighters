@@ -51,6 +51,25 @@ from .attack_delivery_committer import AttackDeliveryCommitter
 # Import attack flow manager
 from .attack_flow_manager import AttackFlowManager, AttackFlowConfig
 
+def safe_draw_rect(surface, color, rect, **kwargs):
+    """Safely draw a rectangle with color validation to prevent invalid color argument errors."""
+    try:
+        # Validate color before drawing
+        if not isinstance(color, tuple) or len(color) != 3:
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+            color = (150, 150, 150)  # Fallback to safe gray
+        
+        pygame.draw.rect(surface, color, rect, **kwargs)
+    except Exception as e:
+        # Log error and use fallback
+        print(f"Color error in pygame.draw.rect(): {e}, using fallback color")
+        try:
+            pygame.draw.rect(surface, (150, 150, 150), rect, **kwargs)
+        except Exception:
+            # Ultimate fallback - just skip drawing if even the fallback fails
+            pass
+
 @validate_testmode_interface
 class TestMode(TestModeInterface):
     """Simplified TestMode focusing on core puzzle battle functionality."""
@@ -1525,7 +1544,7 @@ class TestMode(TestModeInterface):
             board_width + (border_size * 2),
             board_height + 35 + border_size
         )
-        pygame.draw.rect(self.screen, (30, 30, 60), player_container, border_radius=5)
+        safe_draw_rect(self.screen, (30, 30, 60), player_container, border_radius=5)
         
         # Draw enemy board container
         enemy_container = pygame.Rect(
@@ -1534,17 +1553,10 @@ class TestMode(TestModeInterface):
             board_width + (border_size * 2),
             board_height + 35 + border_size
         )
-        pygame.draw.rect(self.screen, (30, 30, 60), enemy_container, border_radius=5)
+        safe_draw_rect(self.screen, (30, 30, 60), enemy_container, border_radius=5)
         
-        # Draw puzzle backgrounds if available
-        if self.puzzle_background:
-            scaled_bg = pygame.transform.scale(self.puzzle_background, (board_width, board_height))
-            
-            # Player board background
-            self.screen.blit(scaled_bg, (self.player_grid_position["x"], self.player_grid_position["y"]))
-            
-            # Enemy board background
-            self.screen.blit(scaled_bg, (self.enemy_grid_position["x"], self.enemy_grid_position["y"]))
+        # Background drawing is now handled by individual renderers to prevent duplication
+        # Each renderer draws its own background in draw_game_content()
         
         # Update animations before drawing
         self.player_renderer.update_visual_state()

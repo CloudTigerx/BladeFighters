@@ -11,10 +11,8 @@ from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 import random
 
-# Import our scaling system
-from core.scaling import resolution_manager, ui_scaler, asset_scaler, coordinate_system
+# 4K version - no scaling needed!
 from .menu_system import MenuSystem
-from core.scaling.ui_scaler import UIScaler
 from ..logging_module.error_handler import (
     safe_file_operation
 )
@@ -39,15 +37,14 @@ class ScaledMenuSystem(MenuSystem):
     Provides precise positioning and sizing across all resolutions.
     """
     
-    def __init__(self, screen, font, audio, asset_path: str = "puzzleassets"):
-        super().__init__(screen, font, audio, asset_path)
+    def __init__(self, screen, font, audio, asset_path: str = "puzzleassets", game_mode: str = "default"):
+        super().__init__(screen, font, audio, asset_path, game_mode)
         
         self.width = screen.get_width()
         self.height = screen.get_height()
         
-        # Initialize UI scaler with simplified scaling
-        from core.scaling import resolution_manager
-        self.ui_scaler = UIScaler(resolution_manager)
+        # 4K version - no scaling needed!
+        # self.ui_scaler = None  # Not needed for fixed 4K version
         
         # Colors
         self.BLACK = (0, 0, 0)
@@ -165,8 +162,15 @@ class ScaledMenuSystem(MenuSystem):
                            (particle['x'] - particle['size'], particle['y'] - particle['size']))
     
     def get_scaled_font(self, font_type: str = "body_font") -> pygame.font.Font:
-        """Get a properly scaled font for text rendering."""
-        return self.ui_scaler.get_font(font_type)
+        """Get a fixed font for 4K resolution."""
+        # Fixed font sizes for 4K
+        font_sizes = {
+            "title_font": 72,
+            "body_font": 36,
+            "small_font": 24
+        }
+        size = font_sizes.get(font_type, 36)
+        return pygame.font.SysFont(None, size)
     
     def draw_button(self, button: Dict[str, Any]) -> Dict[str, Any]:
         """Override button drawing to use scaled fonts and proper text positioning."""
@@ -183,9 +187,8 @@ class ScaledMenuSystem(MenuSystem):
             button_image = self.button_normal
         
         if button_image:
-            # Scale the button image to fit the button size
-            scaled_image = pygame.transform.smoothscale(button_image, (width, height))
-            button_surface.blit(scaled_image, (0, 0))
+            # 4K version - no scaling needed!
+            button_surface.blit(button_image, (0, 0))
             
             # Add hover overlay if needed
             if button["hover"]:
@@ -249,17 +252,13 @@ class ScaledMenuSystem(MenuSystem):
         return None
     
     def _get_button_size(self) -> Tuple[int, int]:
-        """Get the scaled button size using responsive scaling."""
-        # Use responsive base sizes (much smaller for better scaling)
-        base_width = 300  # Reduced from 500 for responsive scaling
-        base_height = 50  # Reduced from 90 for responsive scaling
-        scaled_width = int(base_width * self.ui_scaler.get_scale_factor())
-        scaled_height = int(base_height * self.ui_scaler.get_scale_factor())
-        return (scaled_width, scaled_height)
+        """Get the native button size for 4K resolution."""
+        # Native button size for 4K version - no scaling needed!
+        return (600, 180)
     
     def _create_main_menu(self):
-        """Create the main menu with responsive positioning."""
-        # Calculate button size using responsive scaling
+        """Create the main menu for 4K resolution."""
+        # Fixed button size for 4K version
         button_width, button_height = self._get_button_size()
         
         # Create button layout
@@ -273,14 +272,12 @@ class ScaledMenuSystem(MenuSystem):
             ("Quit", "quit")
         ]
         
-        # Calculate total height needed using simplified spacing
-        base_spacing = 20  # Base spacing for 1920x1080
-        spacing = int(base_spacing * self.ui_scaler.get_scale_factor())
+        # Fixed spacing for 4K version - no scaling needed!
+        spacing = 35  # Reduced spacing for better fit
         total_height = len(buttons_data) * button_height + (len(buttons_data) - 1) * spacing
         
-        # Center the button stack using simplified positioning
-        base_start_y = 360  # Base start Y for 1920x1080 (1080 // 3)
-        start_y = int(base_start_y * self.ui_scaler.get_scale_factor())
+        # Fixed positioning for 4K version - better centered
+        start_y = 800  # Moved up from 720 for better centering
         center_x = self.width // 2
         
         self.buttons["main"] = []
@@ -303,8 +300,8 @@ class ScaledMenuSystem(MenuSystem):
             self.buttons["main"].append(button)
     
     def _create_story_menu(self):
-        """Create the story menu with responsive positioning."""
-        # Calculate button size using responsive scaling
+        """Create the story menu for 4K resolution."""
+        # Fixed button size for 4K version
         button_width, button_height = self._get_button_size()
         
         # Create button layout
@@ -313,14 +310,12 @@ class ScaledMenuSystem(MenuSystem):
             ("Back to Main Menu", "back_to_main")
         ]
         
-        # Calculate total height needed using simplified spacing
-        base_spacing = 20  # Base spacing for 1920x1080
-        spacing = int(base_spacing * self.ui_scaler.get_scale_factor())
+        # Fixed spacing for 4K version - no scaling needed!
+        spacing = 35  # Reduced spacing for better fit
         total_height = len(buttons_data) * button_height + (len(buttons_data) - 1) * spacing
         
-        # Center the button stack using simplified positioning
-        base_start_y = 360  # Base start Y for 1920x1080 (1080 // 3)
-        start_y = int(base_start_y * self.ui_scaler.get_scale_factor())
+        # Fixed positioning for 4K version - better centered
+        start_y = 800  # Moved up from 720 for better centering
         center_x = self.width // 2
         
         self.buttons["story"] = []
@@ -358,39 +353,15 @@ class ScaledMenuSystem(MenuSystem):
         # Update particle system (assuming 60 FPS for dt)
         self._update_particles(1/60)
         
-        # Draw background with proper scaling and breathing effect
+        # Draw background for 4K - no scaling needed!
         if self.main_background:
-            # Scale background to fit screen while maintaining aspect ratio
-            bg_width = self.main_background.get_width()
-            bg_height = self.main_background.get_height()
+            # For 4K version, assume background is already 3840x2160
+            # Just center it on screen
+            bg_x = (self.width - self.main_background.get_width()) // 2
+            bg_y = (self.height - self.main_background.get_height()) // 2
             
-            # Calculate scale to fit screen
-            scale_x = self.width / bg_width
-            scale_y = self.height / bg_height
-            scale = max(scale_x, scale_y)  # Use larger scale to cover entire screen
-            
-            # Apply breathing scale to the base scale
-            breathing_scale = scale * current_scale
-            
-            # Calculate scaled dimensions with breathing effect
-            scaled_width = int(bg_width * breathing_scale)
-            scaled_height = int(bg_height * breathing_scale)
-            
-            # Scale the background image with breathing effect
-            scaled_bg = pygame.transform.smoothscale(self.main_background, (scaled_width, scaled_height))
-            
-            # Apply subtle color adjustment for breathing effect
-            if color_adjustment > 0:
-                color_surface = pygame.Surface(scaled_bg.get_size(), pygame.SRCALPHA)
-                color_surface.fill((color_adjustment, color_adjustment, color_adjustment, 0))
-                scaled_bg.blit(color_surface, (0, 0), special_flags=pygame.BLEND_ADD)
-            
-            # Center the background (accounting for breathing scale)
-            bg_x = (self.width - scaled_width) // 2
-            bg_y = (self.height - scaled_height) // 2
-            
-            # Draw the scaled background with breathing effect
-            self.screen.blit(scaled_bg, (bg_x, bg_y))
+            # Draw the background directly - no scaling!
+            self.screen.blit(self.main_background, (bg_x, bg_y))
         
         # Draw katana particles
         self._draw_particles()
@@ -412,30 +383,15 @@ class ScaledMenuSystem(MenuSystem):
         # Clear screen
         self.screen.fill(self.BLACK)
         
-        # Draw background with proper scaling
+        # Draw background for 4K - no scaling needed!
         if self.story_background:
-            # Scale background to fit screen while maintaining aspect ratio
-            bg_width = self.story_background.get_width()
-            bg_height = self.story_background.get_height()
+            # For 4K version, assume background is already 3840x2160
+            # Just center it on screen
+            bg_x = (self.width - self.story_background.get_width()) // 2
+            bg_y = (self.height - self.story_background.get_height()) // 2
             
-            # Calculate scale to fit screen
-            scale_x = self.width / bg_width
-            scale_y = self.height / bg_height
-            scale = max(scale_x, scale_y)  # Use larger scale to cover entire screen
-            
-            # Calculate scaled dimensions
-            scaled_width = int(bg_width * scale)
-            scaled_height = int(bg_height * scale)
-            
-            # Scale the background image
-            scaled_bg = pygame.transform.smoothscale(self.story_background, (scaled_width, scaled_height))
-            
-            # Center the background
-            bg_x = (self.width - scaled_width) // 2
-            bg_y = (self.height - scaled_height) // 2
-            
-            # Draw the scaled background
-            self.screen.blit(scaled_bg, (bg_x, bg_y))
+            # Draw the background directly - no scaling!
+            self.screen.blit(self.story_background, (bg_x, bg_y))
         
         # Draw title
         self._draw_title("Story Mode")
@@ -446,9 +402,8 @@ class ScaledMenuSystem(MenuSystem):
         return self.buttons["story"]
     
     def _draw_title(self, title_text="Blade Fighters"):
-        """Draw the title with precise positioning."""
-        # Calculate button stack position to align title
-        button_scale = self.ui_scaler.get_ui_scale("button")
+        """Draw the title for 4K resolution."""
+        # Fixed positioning for 4K
         button_width, button_height = self._get_button_size()
         
         # Get button data to calculate total height
@@ -462,54 +417,48 @@ class ScaledMenuSystem(MenuSystem):
             ("Quit", "quit")
         ]
         
-        # Calculate button stack position (same as in _create_main_menu)
-        spacing = button_scale.margin
+        # Fixed spacing for 4K
+        spacing = 35
         total_height = len(buttons_data) * button_height + (len(buttons_data) - 1) * spacing
-        button_stack_start_y = (self.height - total_height) // 2
+        button_stack_start_y = 800  # Fixed start Y for 4K - better centered
         
         # Try to use title wordmark image if available
         if hasattr(self, 'title_wordmark') and self.title_wordmark:
             try:
-                # Scale title wordmark to fit screen width
-                max_w = int(self.width * 0.6)
+                # Fixed title size for 4K
+                tw = 480  # Fixed width for 4K
                 ratio = self.title_wordmark.get_height() / max(1, self.title_wordmark.get_width())
-                tw = min(max_w, self.ui_scaler.scale_value(480))
                 th = max(1, int(tw * ratio))
-                scaled = pygame.transform.smoothscale(self.title_wordmark, (tw, th))
                 
-                # Center horizontally and position above button stack with more spacing
+                # Center horizontally and position above button stack
                 tx = (self.width - tw) // 2
-                ty = button_stack_start_y - th - self.ui_scaler.scale_value(30)  # More spacing from button stack
-                self.screen.blit(scaled, (tx, ty))
+                ty = button_stack_start_y - th - 30  # Fixed spacing for 4K
+                self.screen.blit(self.title_wordmark, (tx, ty))
                 return
             except Exception as e:
                 logger.warning(f"Failed to draw title wordmark: {e}")
         
         # Fallback to text title
-        # Get title font
-        title_font = self.ui_scaler.get_font("title_font")
+        title_font = pygame.font.SysFont(None, 72)  # Fixed font size for 4K
         
         # Render title text
         title_surface = title_font.render(title_text, True, self.WHITE)
         title_rect = title_surface.get_rect()
         
-        # Center horizontally and position above button stack with more spacing
+        # Center horizontally and position above button stack
         title_rect.centerx = self.width // 2
-        title_rect.bottom = button_stack_start_y - self.ui_scaler.scale_value(20)  # More spacing from button stack
+        title_rect.bottom = button_stack_start_y - 20  # Fixed spacing for 4K
         
         # Draw title
         self.screen.blit(title_surface, title_rect)
     
     def _draw_buttons(self, menu_type: str):
-        """Draw buttons for the specified menu with precise positioning."""
+        """Draw buttons for the specified menu for 4K resolution."""
         if menu_type not in self.buttons:
             return
         
-        # Get UI scale configuration
-        button_scale = self.ui_scaler.get_ui_scale("button")
-        
-        # Get button font
-        button_font = self.ui_scaler.get_font("body_font")
+        # Fixed font for 4K
+        button_font = pygame.font.SysFont(None, 36)
         
         for button in self.buttons[menu_type]:
             # Determine button appearance
@@ -522,15 +471,14 @@ class ScaledMenuSystem(MenuSystem):
             else:
                 button_image = None
             
-            # Draw button background
+            # Draw button background - no scaling needed for 4K!
             if button_image:
-                # Scale the button image to fit the button rect
-                scaled_image = pygame.transform.smoothscale(button_image, (button.rect.width, button.rect.height))
-                self.screen.blit(scaled_image, button.rect)
+                # Direct blit - button image is already 600x180
+                self.screen.blit(button_image, button.rect)
             else:
                 # Fallback: draw colored rectangle
                 color = self.HOVER_BORDER_COLOR if button.is_hovered else self.BORDER_COLOR
-                pygame.draw.rect(self.screen, color, button.rect, border_radius=button_scale.border_radius)
+                pygame.draw.rect(self.screen, color, button.rect, border_radius=10)
             
             # Draw button text
             text_color = self.WHITE if button.is_hovered else self.LIGHT_GRAY
@@ -539,16 +487,16 @@ class ScaledMenuSystem(MenuSystem):
             self.screen.blit(text_surface, text_rect)
     
     def _draw_version_info(self, version: str):
-        """Draw version info with precise positioning."""
-        # Get small font
-        small_font = self.ui_scaler.get_font("small_font")
+        """Draw version info for 4K resolution."""
+        # Fixed font for 4K
+        small_font = pygame.font.SysFont(None, 24)
         
         # Render version text
         version_surface = small_font.render(f"v{version}", True, self.GRAY)
         version_rect = version_surface.get_rect()
         
-        # Position at bottom right with margin
-        margin = self.ui_scaler.scale_value(20)
+        # Fixed margin for 4K
+        margin = 20
         version_rect.bottomright = (self.width - margin, self.height - margin)
         
         # Draw version
@@ -604,13 +552,6 @@ class ScaledMenuSystem(MenuSystem):
             self.current_menu = menu_type
     
     def update_scale(self):
-        """Update scaling when resolution changes."""
-        self.ui_scaler.update_scale()
-        self.asset_scaler.update_scale()
-        
-        # Recreate menus with new scale
-        self._load_scaled_assets()
-        self._create_main_menu()
-        self._create_story_menu()
-        
-        print(f"Menu scale updated: {self.ui_scaler.get_scale_factor():.2f}") 
+        """4K version - no scaling updates needed."""
+        # This method is kept for compatibility but does nothing
+        print("4K version - no scaling updates needed") 

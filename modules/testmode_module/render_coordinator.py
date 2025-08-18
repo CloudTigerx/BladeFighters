@@ -10,6 +10,9 @@ from typing import Dict, List, Optional, Any, Tuple
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# Import transformation system
+from core.transformation_events import transformation_manager, EventType
+
 class RenderCoordinator:
     """
     Manages visual state coordination and attack indicators.
@@ -21,8 +24,7 @@ class RenderCoordinator:
         self.screen = screen
         self.board_manager = board_manager
         
-        # Garbage block tracking
-        self.garbage_block_brightness = {}
+        # Garbage block tracking removed - ready for new replacement system
         
         # Attack indicators
         self.pending_attacks = {'player': [], 'enemy': []}
@@ -32,6 +34,9 @@ class RenderCoordinator:
         self.character_sprite_manager = None
         self.character_animation_manager = None
         self._initialize_character_system()
+        
+        # Initialize transformation event handlers
+        self._initialize_transformation_handlers()
         
     def _initialize_character_system(self):
         """Initialize the character sprite and animation systems."""
@@ -64,6 +69,25 @@ class RenderCoordinator:
             logger.warning(f"Character system initialization failed: {e}")
             self.character_sprite_manager = None
             self.character_animation_manager = None
+    
+    def _initialize_transformation_handlers(self):
+        """Initialize transformation event handlers for visual updates."""
+        # Register handlers for transformation events
+        transformation_manager.register_handler(EventType.TRANSFORMATION_PROGRESS, self._on_transformation_progress)
+        transformation_manager.register_handler(EventType.TRANSFORMATION_COMPLETE, self._on_transformation_complete)
+        logger.info("Transformation event handlers initialized")
+    
+    def _on_transformation_progress(self, event):
+        """Handle transformation progress events."""
+        logger.debug(f"Transformation progress: {event.position} -> {event.stage.name}")
+        # Trigger visual update for the affected board
+        self.update_renderers()
+    
+    def _on_transformation_complete(self, event):
+        """Handle transformation completion events."""
+        logger.debug(f"Transformation complete: {event.position} -> {event.stage.name}")
+        # Trigger visual update for the affected board
+        self.update_renderers()
         
     def update_renderers(self):
         """Update both renderers."""
@@ -155,8 +179,8 @@ class RenderCoordinator:
             self.screen.blit(indicator_surface, indicator_rect)
             
     def reset_garbage_block_state(self):
-        """Reset garbage block brightness state."""
-        self.garbage_block_brightness = {}
+        """Reset garbage block state - transformation system removed."""
+        # Garbage block tracking removed - ready for new replacement system
         
     def reconcile_garbage_tracking_with_grid(self, player_engine, enemy_engine):
         """Reconcile tracked strike/garbage with actual grid state to avoid visual desyncs."""

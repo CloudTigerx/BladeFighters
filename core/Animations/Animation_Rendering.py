@@ -510,6 +510,7 @@ class AnimationRenderer:
         elif '_breaker' in block_type:
             asset_key = block_type.replace('_breaker', 'breaker')
             block_image = self.engine.puzzle_pieces.get(asset_key)
+
         else:
             # Normal blocks
             asset_key = block_type.replace('_block', 'block')
@@ -536,18 +537,24 @@ class AnimationRenderer:
                 'red_strike': (255, 200, 0),      # Orange-red for strikes
                 'blue_strike': (0, 200, 255),     # Bright blue for strikes
                 'green_strike': (0, 255, 200),    # Bright green for strikes
-                'yellow_strike': (255, 255, 0)    # Bright yellow for strikes
+                'yellow_strike': (255, 255, 0),   # Bright yellow for strikes
+                'red_breaker': (255, 150, 150),   # Light red for breakers
+                'blue_breaker': (150, 150, 255),  # Light blue for breakers
+                'green_breaker': (150, 255, 150), # Light green for breakers
+                'yellow_breaker': (255, 255, 150) # Light yellow for breakers
             }
             color = color_map.get(block_type, (128, 128, 128))
             xi = int(x)
             yi = int(y)
             rect = pygame.Rect(xi, yi, width, height)
             pygame.draw.rect(self.screen, color, rect)
-            # Add high-contrast outline for strike/garbage
+            # Add high-contrast outline for strike/garbage/breaker
             if '_strike' in block_type:
                 pygame.draw.rect(self.screen, (255, 255, 255), rect, 2)
             elif '_garbage' in block_type:
                 pygame.draw.rect(self.screen, (0, 0, 0), rect, 1)
+            elif '_breaker' in block_type:
+                pygame.draw.rect(self.screen, (255, 255, 0), rect, 2)  # Yellow outline for breakers
     
     def _apply_brightness(self, surface: pygame.Surface, brightness: float) -> pygame.Surface:
         """Apply brightness adjustment to a surface."""

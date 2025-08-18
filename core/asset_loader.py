@@ -8,81 +8,73 @@ class AssetLoader:
     This class centralizes image loading, scaling, and caching for better organization.
     """
     
-    def __init__(self, asset_path: str = "puzzleassets", block_size: int = 65):
+    def __init__(self, asset_path: str, block_size: int = 40, game_mode: str = "default"):
         """
         Initialize the asset loader.
         
         Args:
             asset_path: Path to the assets directory
-            block_size: Size for scaling block images
+            block_size: Size of puzzle blocks in pixels
+            game_mode: Game mode to determine which background to load ("quickplay", "test", "default")
         """
         self.asset_path = asset_path
         self.block_size = block_size
+        self.game_mode = game_mode
         
-        # Color constants for fallback rendering
-        self.WHITE = (255, 255, 255)
-        self.BLACK = (0, 0, 0)
-        
-        # Initialize asset storage
+        # Initialize storage
         self.block_images = {}
+        self.puzzle_pieces = {}
         self.background_images = {}
         self.sprite_sheets = {}
-        self.puzzle_pieces = {}
         
-        # Load all standard assets
+        # Load all assets
         self._load_standard_assets()
+        
+        print(f"🎨 AssetLoader initialized for {game_mode} mode with {len(self.block_images)} blocks, {len(self.background_images)} backgrounds")
     
     def _load_standard_assets(self):
         """Load all standard game assets."""
-        # Load standard block types
-        self.block_images.update({
+        # Load block images
+        self.block_images = {
             'red_block': self.load_block("redblock.png"),
             'blue_block': self.load_block("blueblock.png"),
             'green_block': self.load_block("greenblock.png"),
             'yellow_block': self.load_block("yellowblock.png"),
             'garbage_block': self.load_block("strikes/garbage_block.png"),
-            'strike_block': self.load_block("strikes/1x4.png")
-        })
+            'strike_block': self.load_block("strikes/1x4.png"),
+            'red_breaker': self.load_block("redbreaker.png"),
+            'blue_breaker': self.load_block("bluebreaker.png"),
+            'green_breaker': self.load_block("greenbreaker.png"),
+            'yellow_breaker': self.load_block("yellowbreaker.png"),
+        }
         
-        # Load breaker blocks (using dedicated breaker images without X overlay)
-        self.block_images.update({
-            'red_breaker': self.load_block("redbreaker.png", "redblock.png", False),
-            'blue_breaker': self.load_block("bluebreaker.png", "blueblock.png", False),
-            'green_breaker': self.load_block("greenbreaker.png", "greenblock.png", False),
-            'yellow_breaker': self.load_block("yellowbreaker.png", "yellowblock.png", False)
-        })
-        
-        # Create/load colored garbage blocks for better visual distinction
-        # Prefer per-color images if available; otherwise tint the base garbage texture
-        self.block_images.update({
-            'red_garbage': self._create_colored_garbage_block("red"),
-            'blue_garbage': self._create_colored_garbage_block("blue"), 
-            'green_garbage': self._create_colored_garbage_block("green"),
-            'yellow_garbage': self._create_colored_garbage_block("yellow")
-        })
-        
-        # Populate puzzle_pieces dictionary for compatibility
+        # Create puzzle pieces dictionary for compatibility
         self.puzzle_pieces = {
             'redblock': self.block_images.get('red_block'),
             'blueblock': self.block_images.get('blue_block'),
             'greenblock': self.block_images.get('green_block'),
             'yellowblock': self.block_images.get('yellow_block'),
-            'garbage_block': self.block_images.get('garbage_block'),
             'garbageblock': self.block_images.get('garbage_block'),
-            'red_garbage': self.block_images.get('red_garbage'),
-            'blue_garbage': self.block_images.get('blue_garbage'),
-            'green_garbage': self.block_images.get('green_garbage'),
-            'yellow_garbage': self.block_images.get('yellow_garbage'),
+            'strikeblock': self.block_images.get('strike_block'),   # legacy key
+            'strike_block': self.block_images.get('strike_block'),   # renderer key
+            # Add breaker blocks
             'redbreaker': self.block_images.get('red_breaker'),
             'bluebreaker': self.block_images.get('blue_breaker'),
             'greenbreaker': self.block_images.get('green_breaker'),
             'yellowbreaker': self.block_images.get('yellow_breaker'),
-            'strikeblock': self.block_images.get('strike_block'),   # legacy key
-            'strike_block': self.block_images.get('strike_block')   # renderer key
         }
         
-        # Load background images
-        self.background_images['puzzle_background'] = self.load_background("puzzlebackground.png")
+
+        
+        # Load background images based on game mode
+        if self.game_mode == "quickplay":
+            # Use purple_scarlet.png for quickplay mode
+            self.background_images['puzzle_background'] = self.load_background("puzzle_boards/purple_scarlet.png")
+            print("🎨 Loaded purple_scarlet.png for quickplay mode")
+        else:
+            # Use default puzzlebackground.png for test mode and other modes
+            self.background_images['puzzle_background'] = self.load_background("puzzlebackground.png")
+            print("🎨 Loaded puzzlebackground.png for test/default mode")
     
     def load_block(self, filename: str, fallback_filename: Optional[str] = None, is_breaker: bool = False) -> Optional[pygame.Surface]:
         """
@@ -106,6 +98,8 @@ class AssetLoader:
                 # Add breaker indicator if needed
                 if is_breaker:
                     scaled_img = self._add_breaker_indicator(scaled_img)
+                
+
                 
                 return scaled_img
             
@@ -299,7 +293,7 @@ class AssetLoader:
             # Reload with new size
             self._load_standard_assets()
     
-    def scale_background_for_grid(self, background_name: str, grid_width: int, grid_height: int, block_size: int) -> Optional[pygame.Surface]:
+    def scale_background_for_grid(self, background_name: str, grid_width: int, grid_height: int, block_width: int, block_height: int = None) -> Optional[pygame.Surface]:
         """
         Scale a background image to fit a specific grid size.
         
@@ -307,15 +301,16 @@ class AssetLoader:
             background_name: Background identifier
             grid_width: Number of blocks wide
             grid_height: Number of blocks high
-            block_size: Size of each block
+            block_width: Width of each block
+            block_height: Height of each block (if None, uses block_width for square blocks)
             
         Returns:
             Scaled background or None if not found
         """
         background = self.background_images.get(background_name)
         if background:
-            target_width = grid_width * block_size
-            target_height = grid_height * block_size
+            target_width = grid_width * block_width
+            target_height = grid_height * (block_height if block_height else block_width)
             return pygame.transform.scale(background, (target_width, target_height))
         return None
     

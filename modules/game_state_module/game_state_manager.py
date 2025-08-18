@@ -15,6 +15,7 @@ from .performance_profiler import get_performance_profiler, PerformanceProfiler
 from .state_cache import StateCacheManager
 from .state_batcher import StateBatchingManager
 from modules.logging_module.logger import get_logger
+from core.transformation_events import transformation_manager, TransformationState, TransformationStage, BlockType
 
 
 @dataclass
@@ -386,6 +387,139 @@ class GameStateManager:
             report['batching'] = self.batching_manager.get_batching_stats()
         
         return report
+    
+    # ===== TRANSFORMATION SYSTEM INTEGRATION =====
+    
+    def initialize_transformation_tracking(self, position: tuple, player_id: int, 
+                                         block_type: BlockType, color: str) -> TransformationState:
+        """Initialize transformation tracking for a new block."""
+        # Set landings required based on block type
+        if block_type == BlockType.STRIKE:
+            landings_required = 1  # Strike needs 1 landing to become neutral garbage
+        else:  # GARBAGE
+            landings_required = 1  # Garbage needs 1 landing to become colored
+        
+        state = TransformationState(
+            position=position,
+            player_id=player_id,
+            block_type=block_type,
+            current_stage=TransformationStage.INITIAL,
+            color=color,
+            landings_required=landings_required,
+            landings_received=0
+        )
+        
+        transformation_manager.add_transformation_state(state)
+        self.logger.debug(f"Initialized transformation tracking: {position} -> {block_type.value} ({color})")
+        return state
+    
+    def get_transformation_state(self, position: tuple, player_id: int) -> Optional[TransformationState]:
+        """Get transformation state for a specific position and player."""
+        return transformation_manager.get_transformation_state(position, player_id)
+    
+    def update_transformation_on_piece_landed(self, position: tuple, player_id: int) -> bool:
+        """Handle piece landing event for transformation progression."""
+        state = self.get_transformation_state(position, player_id)
+        if not state:
+            return False
+        
+        # Increment landings received
+        state.landings_received += 1
+        
+        # Check if we should progress to next stage
+        if state.landings_received >= state.landings_required:
+            next_stage = transformation_manager.get_next_stage(state)
+            
+            # Update landings required for next stage
+            if state.block_type == BlockType.STRIKE:
+                if next_stage == TransformationStage.NEUTRAL_GARBAGE:
+                    state.landings_required = 1  # 1 landing to become colored garbage
+                elif next_stage == TransformationStage.COLORED_GARBAGE:
+                    state.landings_required = 1  # 1 landing to become normal block
+            else:  # GARBAGE
+                if next_stage == TransformationStage.COLORED_GARBAGE:
+                    state.landings_required = 1  # 1 landing to become normal block
+            
+            transformation_manager.update_transformation_state(position, player_id, next_stage)
+            self.logger.debug(f"Transformation progress: {position} -> {next_stage.name}")
+            return True
+        
+        return False
+    
+    def get_block_display_name(self, position: tuple, player_id: int) -> Optional[str]:
+        """Get the display name for a block based on its transformation state."""
+        state = self.get_transformation_state(position, player_id)
+        if not state:
+            return None
+        
+        return transformation_manager.get_block_display_name(state)
+    
+    def remove_transformation_state(self, position: tuple, player_id: int) -> None:
+        """Remove transformation state for a block."""
+        transformation_manager.remove_transformation_state(position, player_id)
+        self.logger.debug(f"Removed transformation tracking: {position}")
+    
+    def get_all_transformation_states(self) -> Dict[tuple, TransformationState]:
+        """Get all active transformation states."""
+        return transformation_manager.transformation_states
+    
+    def clear_all_transformations(self) -> None:
+        """Clear all transformation states."""
+        transformation_manager.transformation_states.clear()
+        self.logger.info("Cleared all transformation states")
+
+    # ===== BACKWARD COMPATIBILITY METHODS =====
+    
+    def reset_chain_states(self):
+        """Reset all chain-related states."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles chain states differently through the state schema
+        self.logger.debug("reset_chain_states called (backward compatibility)")
+        
+    def reset_runtime_locks(self, current_time: int):
+        """Reset runtime locks for both boards."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles runtime locks differently
+        self.logger.debug(f"reset_runtime_locks called (backward compatibility) at {current_time}")
+        
+    def lock_player_input(self, freeze_ms: int, current_time: int):
+        """Lock player input due to attack received."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles input locking differently
+        self.logger.debug(f"lock_player_input called (backward compatibility) for {freeze_ms}ms at {current_time}")
+        
+    def is_player_input_locked(self, current_time: int) -> bool:
+        """Check if player input is currently locked."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles input locking differently
+        self.logger.debug(f"is_player_input_locked called (backward compatibility) at {current_time}")
+        return False
+        
+    def get_flags(self) -> Dict[str, Any]:
+        """Get the feature flags."""
+        # This method is for backward compatibility with the old GameStateManager
+        # Return default flags for compatibility
+        return {
+            "enable_chain_reactions": True,
+            "enable_attack_animations": True,
+            "enable_particle_effects": True,
+            "enable_sound_effects": True,
+            "enable_debug_overlay": False,
+        }
+        
+    def get_player_items(self):
+        """Get the player item system."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles items differently through the state schema
+        from modules.items_module.item_system import ItemSystem
+        return ItemSystem()
+        
+    def get_enemy_items(self):
+        """Get the enemy item system."""
+        # This method is for backward compatibility with the old GameStateManager
+        # The new system handles items differently through the state schema
+        from modules.items_module.item_system import ItemSystem
+        return ItemSystem()
 
 
 # Convenience functions for common state operations

@@ -1,0 +1,50 @@
+============================================================
+CLUSTER DETECTOR PERFORMANCE REPORT
+============================================================
+Grid Dimensions: 10x20 (total: 25)
+
+METHOD PERFORMANCE PROFILES
+----------------------------------------
+detect_clusters:
+  Average Time: 0.000017s
+  Operations/sec: 60571
+  Result Size: 16
+
+find_all_clusters:
+  Average Time: 0.000029s
+  Operations/sec: 34392
+  Result Size: 3
+
+find_rectangular_clusters_for_render:
+  Average Time: 0.000028s
+  Operations/sec: 36275
+  Result Size: 3
+
+COMPLEXITY SCALING ANALYSIS
+----------------------------------------
+
+EMPTY COMPLEXITY:
+  detect_clusters: 0.000010s avg
+  find_all_clusters: 0.000010s avg
+
+SIMPLE COMPLEXITY:
+  detect_clusters: 0.000010s avg
+  find_all_clusters: 0.000015s avg
+
+MEDIUM COMPLEXITY:
+  detect_clusters: 0.000020s avg
+  find_all_clusters: 0.000030s avg
+
+COMPLEX COMPLEXITY:
+  detect_clusters: 0.000045s avg
+  find_all_clusters: 0.000070s avg
+
+============================================================
+OPTIMIZATION RECOMMENDATIONS
+============================================================
+
+NEXT STEPS:
+1. Implement caching for frequently accessed data
+2. Optimize grid access patterns
+3. Add performance monitoring hooks
+4. Consider algorithm improvements for large grids

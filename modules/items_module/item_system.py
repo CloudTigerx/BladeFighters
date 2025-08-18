@@ -129,6 +129,21 @@ class ItemSystem:
         relative_from_bottom = (grid_height - 1 - grid_row_index) % 12
         base_color = VALID_COLORS[column_index % len(VALID_COLORS)]
         return base_color
+    
+    def get_color_for_position(self, position: tuple) -> str:
+        """Get the color for a position based on equipped weapon pattern."""
+        if not self._equipped_weapon:
+            return VALID_COLORS[0]  # Default to red
+        
+        x, y = position
+        # Use column-based color assignment for transformation system
+        return self._equipped_weapon.pattern.color_for_column(x)
+    
+    def get_weapon_pattern(self) -> Optional[WeaponPattern]:
+        """Get the current weapon pattern for transformation system."""
+        if not self._equipped_weapon:
+            return None
+        return self._equipped_weapon.pattern
 
     # Ownership management
     def set_owned_weapons(self, names: List[str]) -> None:

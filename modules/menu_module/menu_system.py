@@ -17,6 +17,14 @@ from ..logging_module.error_handler import (
 from ..logging_module.logger import get_logger
 # from core.scaling import true_resolution_scaler, resolution_manager  # Disabled - using simple system
 
+# Import asset loader for proper background loading
+try:
+    from core.asset_loader import AssetLoader
+    asset_loader_available = True
+except ImportError:
+    asset_loader_available = False
+    print("⚠️ AssetLoader not available, falling back to direct loading")
+
 logger = get_logger(__name__)
 
 # Try to import the interface contract
@@ -38,12 +46,13 @@ except ImportError:
 class MenuSystem(MenuSystemInterface):
     """Extracted MenuSystem class with interface validation."""
     
-    def __init__(self, screen, font, audio, asset_path: str):
+    def __init__(self, screen, font, audio, asset_path: str, game_mode: str = "default"):
         """Initialize the menu system."""
         self.screen = screen
         self.font = font
         self.audio = audio
         self.asset_path = asset_path
+        self.game_mode = game_mode
         
         # Get screen dimensions
         self.width = screen.get_width()
@@ -69,9 +78,18 @@ class MenuSystem(MenuSystemInterface):
         # Remove glow animation variables
         self.glow_intensity = 0.3  # Static glow intensity
         
-        # Load background images
-        self.main_background = self.load_background("puzzlebackground.png")
-        self.story_background = self.load_background("storybackground.png")
+        # Load background images using asset loader for proper game mode handling
+        if asset_loader_available:
+            # Use asset loader for proper background selection based on game mode
+            self.asset_loader = AssetLoader(asset_path, game_mode=game_mode)
+            self.main_background = self.asset_loader.get_background('puzzle_background')
+            self.story_background = self.load_background("storybackground.png")
+            logger.info(f"🎨 Menu system using asset loader for {game_mode} mode")
+        else:
+            # Fallback to direct loading
+            self.main_background = self.load_background("puzzlebackground.png")
+            self.story_background = self.load_background("storybackground.png")
+            logger.warning("⚠️ Using fallback background loading")
         # Menus asset path and optional assets
         self.menus_path = os.path.join(self.asset_path, "menus")
         self.title_wordmark = self._load_menu_asset("title_wordmark.png")
@@ -196,13 +214,13 @@ class MenuSystem(MenuSystemInterface):
             skin_img = self.button_skin_normal
         if skin_img:
             skinned = True
-            scaled_image = pygame.transform.smoothscale(skin_img, (width, height))
-            button_surface.blit(scaled_image, (0, 0))
+            # 4K version - no scaling needed!
+            button_surface.blit(skin_img, (0, 0))
         else:
             button_image = self.button_images.get(text, self.button_normal)
             if button_image:
-                scaled_image = pygame.transform.scale(button_image, (width, height))
-                button_surface.blit(scaled_image, (0, 0))
+                # 4K version - no scaling needed!
+                button_surface.blit(button_image, (0, 0))
                 if button["hover"]:
                     hover_overlay = pygame.Surface((width, height), pygame.SRCALPHA)
                     hover_overlay.fill((255, 255, 255, 30))
@@ -303,22 +321,14 @@ class MenuSystem(MenuSystemInterface):
             self.height = self.screen.get_height()
         except Exception:
             pass
-        # Draw background (Contain + smoothscale): fit entire image inside screen, no crop
+        # Draw background for 4K - no scaling needed!
         if hasattr(self, 'main_background') and self.main_background:
-            img_w = self.main_background.get_width()
-            img_h = self.main_background.get_height()
-            if img_w > 0 and img_h > 0:
-                scale = min(self.width / img_w, self.height / img_h)
-                bg_width = max(1, int(img_w * scale))
-                bg_height = max(1, int(img_h * scale))
-            else:
-                bg_width, bg_height = self.width, self.height
-            # Center the background
-            bg_x = (self.width - bg_width) // 2
-            bg_y = (self.height - bg_height) // 2
-            # Smooth scaling for sharper downsizing
-            scaled_bg = pygame.transform.smoothscale(self.main_background, (bg_width, bg_height))
-            self.screen.blit(scaled_bg, (bg_x, bg_y))
+            # For 4K version, assume background is already 3840x2160
+            # Just center it on screen
+            bg_x = (self.width - self.main_background.get_width()) // 2
+            bg_y = (self.height - self.main_background.get_height()) // 2
+            # Direct blit - no scaling!
+            self.screen.blit(self.main_background, (bg_x, bg_y))
             # Optional tiled noise overlay
             if getattr(self, 'bg_noise_tile', None):
                 tile = self.bg_noise_tile
@@ -339,20 +349,15 @@ class MenuSystem(MenuSystemInterface):
         title_bottom = 0
         if getattr(self, 'title_wordmark', None):
             try:
-                # Use responsive scaling for title
-                base_max_w = 1152  # 1920 * 0.6
-                base_tw = 480
-                base_ty = 40
-                
+                # Fixed title size for 4K
+                tw = 480  # Fixed width for 4K
                 ratio = self.title_wordmark.get_height() / max(1, self.title_wordmark.get_width())
-                tw = int(base_tw * self.ui_scale)
                 th = max(1, int(tw * ratio))
-                scaled = pygame.transform.smoothscale(self.title_wordmark, (tw, th))
                 
                 # Center the title
                 tx = (self.width - tw) // 2
-                ty = int(base_ty * self.ui_scale)
-                self.screen.blit(scaled, (tx, ty))
+                ty = 40  # Fixed Y position for 4K
+                self.screen.blit(self.title_wordmark, (tx, ty))
                 title_bottom = ty + th
             except Exception:
                 title_bottom = 0

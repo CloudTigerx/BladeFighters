@@ -13,7 +13,7 @@ from modules.loading_module.loading_screen import LoadingScreen
 
 # Import all extracted modules - all are working properly
 from modules.audio_module import AudioSystem
-from modules.menu_module.scaled_menu_system import ScaledMenuSystem  # Use scaled menu system
+from modules.menu_module.draggable_menu_system import DraggableMenuSystem  # Use draggable menu system
 
 from modules.testmode_module import TestMode
 from modules.screen_module import ScreenManager
@@ -245,7 +245,8 @@ class GameClient:
     
     def _initialize_menu_system(self):
         """Initialize the menu system."""
-        self.menu_system = ScaledMenuSystem(self.screen, self.font, self.audio, self.asset_path)
+        # Use quickplay mode for the menu system to get the correct background
+        self.menu_system = DraggableMenuSystem(self.screen, self.font, self.audio, self.asset_path, game_mode="quickplay")
         # Apply initial UI scale
         try:
             self.menu_system.ui_scale = float(self.config.get('ui_scale', 1.0))
@@ -321,7 +322,7 @@ class GameClient:
     def _initialize_puzzle_engine(self):
         """Initialize the puzzle engine."""
         try:
-            self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui)
+            self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui, game_mode="default")
             
             # Provide unified clock to the engine for subsystems (e.g., input handler)
             try:
@@ -567,27 +568,25 @@ class GameClient:
         
         # Ensure components are initialized - create them if missing
         try:
-            # Initialize puzzle engine if missing
-            if not hasattr(self, 'puzzle_engine') or self.puzzle_engine is None:
-                print("🔧 Creating puzzle engine for quickplay...")
-                from core.puzzle_module import PuzzleEngine
-                
-                # Create a basic font if missing
-                if not hasattr(self, 'font') or self.font is None:
-                    import pygame
-                    self.font = pygame.font.Font(None, 36)
-                
-                self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui)
-                if hasattr(self, 'clock'):
-                    setattr(self.puzzle_engine, 'clock', self.clock)
-                print("✅ Puzzle engine created for quickplay")
+            # Always create a new puzzle engine for quickplay mode (replace any existing one)
+            print("🔧 Creating puzzle engine for quickplay...")
+            from core.puzzle_module import PuzzleEngine
             
-            # Initialize puzzle renderer if missing  
-            if not hasattr(self, 'puzzle_renderer') or self.puzzle_renderer is None:
-                print("🔧 Creating puzzle renderer for quickplay...")
-                from core.puzzle_renderer import PuzzleRenderer
-                self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine, clock=getattr(self, 'clock', None))
-                print("✅ Puzzle renderer created for quickplay")
+            # Create a basic font if missing
+            if not hasattr(self, 'font') or self.font is None:
+                import pygame
+                self.font = pygame.font.Font(None, 36)
+            
+            self.puzzle_engine = PuzzleEngine(self.screen, self.font, self.audio, self.asset_path, self.settings_ui, game_mode="quickplay")
+            if hasattr(self, 'clock'):
+                setattr(self.puzzle_engine, 'clock', self.clock)
+            print("✅ Puzzle engine created for quickplay")
+            
+            # Always create a new puzzle renderer for quickplay mode (replace any existing one)
+            print("🔧 Creating puzzle renderer for quickplay...")
+            from core.puzzle_renderer import PuzzleRenderer
+            self.puzzle_renderer = PuzzleRenderer(self.puzzle_engine, clock=getattr(self, 'clock', None))
+            print("✅ Puzzle renderer created for quickplay")
             
             # Configure and start
             print("🎮 Configuring quickplay mode...")
@@ -1214,7 +1213,7 @@ class GameClient:
                         
                         # Handle menu actions
                         if menu_action == "quickplay":
-                            self.set_screen("game")
+                            self.start_quickplay()
                         elif menu_action == "story":
                             self.set_screen("story")
                         elif menu_action == "test":

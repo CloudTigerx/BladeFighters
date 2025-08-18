@@ -9,7 +9,8 @@ import sys
 import os
 
 # Add the project root to the path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, project_root)
 
 def test_refactored_components():
     """Test the refactored TestMode components."""
@@ -23,7 +24,7 @@ def test_refactored_components():
         # Import the refactored components
         from modules.testmode_module.board_manager import BoardManager
         from modules.testmode_module.ai_manager import AIManager
-        from modules.testmode_module.game_state_manager import GameStateManager
+        from modules.game_state_module.game_state_manager import GameStateManager
         from modules.testmode_module.input_handler import InputHandler
 
         print("✅ All refactored components imported successfully")
@@ -129,7 +130,7 @@ def test_component_creation():
         print(f"   ✅ AIManager created with difficulty {ai_manager.get_difficulty()}")
         
         # Test GameStateManager (requires asset_path)
-        from modules.testmode_module.game_state_manager import GameStateManager
+        from modules.game_state_module.game_state_manager import GameStateManager
         game_state = GameStateManager("puzzleassets")
         print(f"   ✅ GameStateManager created")
         

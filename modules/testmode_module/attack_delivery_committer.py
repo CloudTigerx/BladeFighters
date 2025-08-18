@@ -16,6 +16,10 @@ except ImportError:
     # Fallback if import fails
     attack_delivery_monitor = None
 
+# Import transformation system
+from core.transformation_events import transformation_manager, BlockType, TransformationStage
+from modules.game_state_module.game_state_manager import get_game_state_manager
+
 
 @dataclass
 class CommitResult:
@@ -47,17 +51,19 @@ class AttackDeliveryCommitter:
                     callsite = f"{traceback.extract_stack()[-2].filename}:{traceback.extract_stack()[-2].lineno}"
                     attack_delivery_monitor.log_grid_write(player_key, block.column, block.row, f"{block.color}_garbage", callsite, now_ms)
                 
-                # Apply colored garbage directly - NO NEUTRAL GREY STATE
-                engine.puzzle_grid[block.row][block.column] = f"{block.color}_garbage"
+                # Apply initial garbage block (neutral state)
+                engine.puzzle_grid[block.row][block.column] = "garbage_block"
                 
-                # Track for brightness/transformation
-                player_id = 1 if player_key == 'player' else 2
-                if hasattr(engine, 'test_mode') and hasattr(engine.test_mode, 'garbage_block_brightness'):
-                    engine.test_mode.garbage_block_brightness[(block.column, block.row, player_id)] = {
-                        'landings': 0,
-                        'color': block.color,
-                        'is_strike': False
-                    }
+                # Initialize transformation tracking
+                game_state_manager = get_game_state_manager()
+                if game_state_manager:
+                    player_id = 1 if player_key == 'player' else 2
+                    game_state_manager.initialize_transformation_tracking(
+                        position=(block.column, block.row),
+                        player_id=player_id,
+                        block_type=BlockType.GARBAGE,
+                        color=block.color
+                    )
                 
                 written_positions.add((block.column, block.row))
                 blocks_placed += 1
@@ -99,25 +105,26 @@ class AttackDeliveryCommitter:
                         blocks_pierced += 1
                         engine.puzzle_grid[row][col] = None
                     
-                    # Place strike block
+                    # Place initial strike block (1x4.png state)
                     color = pattern.color_map.get((col, row), 'yellow')
-                    block_type = f"{color}_strike"
                     
                     # QA Monitoring: Log the write
                     if attack_delivery_monitor:
                         callsite = f"{traceback.extract_stack()[-2].filename}:{traceback.extract_stack()[-2].lineno}"
-                        attack_delivery_monitor.log_grid_write(player_key, col, row, block_type, callsite, now_ms)
+                        attack_delivery_monitor.log_grid_write(player_key, col, row, "1x4.png", callsite, now_ms)
                     
-                    engine.puzzle_grid[row][col] = block_type
+                    engine.puzzle_grid[row][col] = "1x4.png"
                     
-                    # Track for brightness/transformation
-                    player_id = 1 if player_key == 'player' else 2
-                    if hasattr(engine, 'test_mode') and hasattr(engine.test_mode, 'garbage_block_brightness'):
-                        engine.test_mode.garbage_block_brightness[(col, row, player_id)] = {
-                            'landings': 0,
-                            'color': color,
-                            'is_strike': True
-                        }
+                    # Initialize transformation tracking
+                    game_state_manager = get_game_state_manager()
+                    if game_state_manager:
+                        player_id = 1 if player_key == 'player' else 2
+                        game_state_manager.initialize_transformation_tracking(
+                            position=(col, row),
+                            player_id=player_id,
+                            block_type=BlockType.STRIKE,
+                            color=color
+                        )
                     
                     written_positions.add((col, row))
                     blocks_placed += 1

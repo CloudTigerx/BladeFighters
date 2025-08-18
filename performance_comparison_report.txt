@@ -1,0 +1,114 @@
+================================================================================
+CLUSTER DETECTOR PERFORMANCE COMPARISON REPORT
+================================================================================
+Grid Dimensions: 10x20 (total: 25)
+
+EMPTY COMPLEXITY:
+----------------------------------------
+detect_clusters:
+  Original: 0.010505s (95189 ops/sec)
+  Optimized: 0.003007s (332538 ops/sec)
+  Improvement: 71.4%
+  Results match: True
+
+find_all_clusters:
+  Original: 0.010526s (95003 ops/sec)
+  Optimized: 0.003515s (284475 ops/sec)
+  Improvement: 66.6%
+  Results match: True
+
+find_rectangular_clusters_for_render:
+  Original: 0.009505s (105210 ops/sec)
+  Optimized: 0.027012s (37020 ops/sec)
+  Improvement: -184.2%
+  Results match: True
+
+SIMPLE COMPLEXITY:
+----------------------------------------
+detect_clusters:
+  Original: 0.013510s (74017 ops/sec)
+  Optimized: 0.003998s (250108 ops/sec)
+  Improvement: 70.4%
+  Results match: True
+
+find_all_clusters:
+  Original: 0.017027s (58731 ops/sec)
+  Optimized: 0.010502s (95223 ops/sec)
+  Improvement: 38.3%
+  Results match: True
+
+find_rectangular_clusters_for_render:
+  Original: 0.013800s (72466 ops/sec)
+  Optimized: 0.018019s (55497 ops/sec)
+  Improvement: -30.6%
+  Results match: True
+
+MEDIUM COMPLEXITY:
+----------------------------------------
+detect_clusters:
+  Original: 0.021023s (47566 ops/sec)
+  Optimized: 0.004004s (249780 ops/sec)
+  Improvement: 81.0%
+  Results match: True
+
+find_all_clusters:
+  Original: 0.031051s (32205 ops/sec)
+  Optimized: 0.018955s (52757 ops/sec)
+  Improvement: 39.0%
+  Results match: True
+
+find_rectangular_clusters_for_render:
+  Original: 0.029520s (33875 ops/sec)
+  Optimized: 0.034978s (28589 ops/sec)
+  Improvement: -18.5%
+  Results match: True
+
+COMPLEX COMPLEXITY:
+----------------------------------------
+detect_clusters:
+  Original: 0.047264s (21158 ops/sec)
+  Optimized: 0.009167s (109082 ops/sec)
+  Improvement: 80.6%
+  Results match: True
+
+find_all_clusters:
+  Original: 0.047743s (20946 ops/sec)
+  Optimized: 0.009073s (110217 ops/sec)
+  Improvement: 81.0%
+  Results match: True
+
+find_rectangular_clusters_for_render:
+  Original: 0.030248s (33060 ops/sec)
+  Optimized: 0.036548s (27361 ops/sec)
+  Improvement: -20.8%
+  Results match: True
+
+================================================================================
+OVERALL PERFORMANCE SUMMARY
+================================================================================
+Average improvement across all tests: 22.8%
+Overall time improvement: 36.5%
+Total original time: 0.281722s
+Total optimized time: 0.178779s
+Time saved: 0.102943s
+
+OPTIMIZED DETECTOR STATISTICS:
+  detect_clusters calls: 8080
+  find_all_clusters calls: 4040
+  Cache hits: 8076
+  Cache misses: 4
+  Cache hit rate: 100.0%
+  Total time: 0.000000s
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+EXCELLENT: Significant performance improvements achieved!
+- The optimized version shows substantial gains
+- Consider deploying the optimized version
+
+NEXT STEPS:
+1. Deploy optimized version if improvements are significant
+2. Monitor performance in production
+3. Consider additional optimizations if needed
+4. Update documentation with performance improvements

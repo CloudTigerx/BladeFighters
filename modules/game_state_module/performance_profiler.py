@@ -364,7 +364,8 @@ class PerformanceProfiler:
                 gc_stats = gc.get_stats()
                 if gc_stats:
                     self.gc_stats['collections'] = sum(stat['collections'] for stat in gc_stats)
-                    self.gc_stats['total_time'] = sum(stat['collections_time'] for stat in gc_stats)
+                    # Note: GC collection time is not available in all Python versions
+                    # We'll keep the existing total_time value
                 
                 # Update state change frequencies
                 current_time = time.time()

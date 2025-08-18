@@ -11,6 +11,7 @@ from typing import Dict
 from .Animations.Animation_Rendering import AnimationRenderer
 from .Animations.AnimationStateManagement import AnimationStateManager
 from utils.clock import PygameClock, Clock
+from .cluster_detection import ClusterDetector
 
 # GarbageBlockState removed - no longer needed
 
@@ -21,6 +22,26 @@ def safe_pygame_draw(func, *args, **kwargs):
         return func(*args, **kwargs)
     except Exception as e:
         return None
+
+def safe_draw_rect(surface, color, rect, *args, **kwargs):
+    """Safely draw a rectangle with color validation to prevent invalid color argument errors."""
+    try:
+        # Validate color before drawing
+        if not isinstance(color, tuple) or len(color) != 3:
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+            color = (150, 150, 150)  # Fallback to safe gray
+        
+        # Pass through all arguments including border width
+        pygame.draw.rect(surface, color, rect, *args, **kwargs)
+    except Exception as e:
+        # Log error and use fallback
+        print(f"Color error in pygame.draw.rect(): {e}, using fallback color")
+        try:
+            pygame.draw.rect(surface, (150, 150, 150), rect, *args, **kwargs)
+        except Exception:
+            # Ultimate fallback - just skip drawing if even the fallback fails
+            pass
 
 # Global exception handler for any pygame-related errors
 import sys
@@ -78,6 +99,13 @@ class PuzzleRenderer:
         
         # Set a reference to this renderer in the engine
         self.engine.renderer = self
+        
+        # Initialize cluster detection for glow effects
+        self.cluster_detector = ClusterDetector(
+            grid_width=self.engine.grid_width,
+            grid_height=self.engine.grid_height,
+            total_grid_height=self.engine.total_grid_height
+        )
 
         # Screen shake removed
         
@@ -305,10 +333,7 @@ class PuzzleRenderer:
         
         if should_check_clusters:
             # Use stricter rectangular detection for UI so incomplete shapes don't glow
-            if hasattr(self.engine, 'find_rectangular_clusters_for_render'):
-                current_clusters = self.engine.find_rectangular_clusters_for_render()
-            elif hasattr(self.engine, 'find_all_clusters'):
-                current_clusters = self.engine.find_all_clusters()
+            current_clusters = self.cluster_detector.find_rectangular_clusters_for_render(self.engine.puzzle_grid)
             self.last_cluster_check_time = current_time
         elif hasattr(self, 'previous_clusters'):
             # Use cached clusters from previous frame
@@ -665,17 +690,15 @@ class PuzzleRenderer:
             self.update_coordinate_offsets()
             
             # Compute clipping rect to constrain drawing to this board only
-            # Expand clipping area to allow for falling pieces and preview pieces
+            # FIXED: Tight clipping to prevent overlap with other boards
             grid_width_px = self.engine.grid_width * self.block_width
             grid_height_px = self.engine.grid_height * self.block_height
-            # Add extra space for falling pieces and preview pieces
-            extra_width = self.block_width * 2  # Space for preview pieces
-            extra_height = self.block_height * 4  # Space for falling pieces above grid
+            # Use exact grid boundaries with minimal padding for falling pieces
             clip_rect = pygame.Rect(
-                self.current_x_offset - extra_width, 
-                self.current_y_offset - extra_height, 
-                grid_width_px + extra_width * 2, 
-                grid_height_px + extra_height * 2
+                self.current_x_offset, 
+                max(0, self.current_y_offset - self.block_height),  # Small space above for falling pieces
+                grid_width_px, 
+                grid_height_px + self.block_height  # Add one block height for falling pieces
             )
             # Save previous clip to restore later
             prev_clip = self.screen.get_clip()
@@ -718,29 +741,32 @@ class PuzzleRenderer:
         # Calculate the starting position to center the grid
         start_x = self.current_x_offset
         start_y = self.current_y_offset
-    
-        # Draw the background image if it exists
-        if hasattr(self.engine, 'puzzle_background') and self.engine.puzzle_background:
-            self.screen.blit(self.engine.puzzle_background, (start_x, start_y))
-        else:
-            # Fallback to a solid color if no background image
-            grid_width = self.engine.grid_width * self.block_width
-            grid_height = self.engine.grid_height * self.block_height
-            pygame.draw.rect(self.screen, (100, 100, 100), (start_x, start_y, grid_width, grid_height))
 
-        # Draw grid lines
         grid_width = self.engine.grid_width * self.block_width
         grid_height = self.engine.grid_height * self.block_height
         
-        # Draw horizontal lines
-        for i in range(self.engine.grid_height + 1):
-            pygame.draw.line(self.screen, (50, 50, 50), (start_x, start_y + i * self.block_height),
-                             (start_x + grid_width, start_y + i * self.block_height))
+        # Draw the background image if available
+        if hasattr(self.engine, 'puzzle_background') and self.engine.puzzle_background:
+            # The background is already scaled to the correct size in the asset loader
+            self.screen.blit(self.engine.puzzle_background, (start_x, start_y))
+        else:
+            # Draw fallback background if no background image is provided
+            pygame.draw.rect(self.screen, (100, 100, 100), (start_x, start_y, grid_width, grid_height))
         
-        # Draw vertical lines
-        for i in range(self.engine.grid_width + 1):
-            pygame.draw.line(self.screen, (50, 50, 50), (start_x + i * self.block_width, start_y),
-                             (start_x + i * self.block_width, start_y + grid_height))
+        # Check if we should hide grid lines (for quickplay mode with custom backgrounds)
+        hide_grid_lines = getattr(self.engine, 'hide_grid_lines', False)
+        
+        # Draw grid lines (unless hidden)
+        if not hide_grid_lines:
+            # Draw horizontal lines
+            for i in range(self.engine.grid_height + 1):
+                pygame.draw.line(self.screen, (50, 50, 50), (start_x, start_y + i * self.block_height),
+                                 (start_x + grid_width, start_y + i * self.block_height))
+            
+            # Draw vertical lines
+            for i in range(self.engine.grid_width + 1):
+                pygame.draw.line(self.screen, (50, 50, 50), (start_x + i * self.block_width, start_y),
+                                 (start_x + i * self.block_width, start_y + grid_height))
     
     def draw_grid_blocks(self):
         """Draws all blocks in the puzzle grid."""
@@ -978,7 +1004,6 @@ class PuzzleRenderer:
             glow_r = min(255, int(r * (1 + current_intensity)))
             glow_g = min(255, int(g * (1 + current_intensity)))
             glow_b = min(255, int(b * (1 + current_intensity)))
-            glow_color = (glow_r, glow_g, glow_b)
             
             # Draw glow effect for each block in the cluster
             for block_x, block_y in cluster_blocks:
@@ -986,28 +1011,41 @@ class PuzzleRenderer:
                 screen_x = start_x + block_x * self.block_width
                 screen_y = start_y + block_y * self.block_height
                 
+                # Calculate center of the block
+                block_center_x = screen_x + self.block_width // 2
+                block_center_y = screen_y + self.block_height // 2
+                
                 # Draw multiple glow layers for better effect
                 glow_sizes = [8, 12, 16]  # Different glow radii
                 glow_alphas = [80, 50, 30]  # Different alpha values
                 
                 for glow_size, alpha in zip(glow_sizes, glow_alphas):
-                    # Create glow surface with alpha
-                    glow_surface = pygame.Surface((self.block_width + glow_size * 2, 
-                                                 self.block_height + glow_size * 2), 
-                                                pygame.SRCALPHA)
-                    
                     # Calculate glow alpha based on intensity
                     current_alpha = int(alpha * current_intensity)
                     
-                    # Draw glow rectangle (without alpha - pygame.draw.rect doesn't support alpha)
-                    glow_rect = pygame.Rect(glow_size, glow_size, self.block_width, self.block_height)
-                    pygame.draw.rect(glow_surface, glow_color, glow_rect)
+                    # Create glow surface with alpha
+                    glow_surface = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
                     
-                    # Draw glow border (without alpha - pygame.draw.rect doesn't support alpha)
-                    for i in range(glow_size):
-                        border_rect = pygame.Rect(glow_size - i, glow_size - i, 
-                                                self.block_width + i * 2, self.block_height + i * 2)
-                        pygame.draw.rect(glow_surface, glow_color, border_rect, 1)
+                    # Create proper glow effect using alpha transparency
+                    # Fill the surface with transparent glow color
+                    glow_color_with_alpha = (glow_r, glow_g, glow_b, current_alpha)
+                    glow_surface.fill(glow_color_with_alpha)
                     
-                    # Blit glow surface to screen
-                    self.screen.blit(glow_surface, (screen_x - glow_size, screen_y - glow_size))
+                    # Create a circular mask for the glow (more efficient than pixel-by-pixel)
+                    # Draw multiple circles with decreasing alpha to create a glow effect
+                    for i in range(glow_size, 0, -1):
+                        # Calculate alpha for this circle layer
+                        layer_alpha = int(current_alpha * (i / glow_size) ** 2)  # Square for smoother falloff
+                        if layer_alpha > 0:
+                            # Create a circle surface for this layer
+                            circle_surface = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
+                            circle_color = (glow_r, glow_g, glow_b, layer_alpha)
+                            
+                            # Draw a filled circle
+                            pygame.draw.circle(circle_surface, circle_color, (glow_size, glow_size), i)
+                            
+                            # Blit this layer to the glow surface
+                            glow_surface.blit(circle_surface, (0, 0))
+                    
+                    # Blit glow surface to screen, centered on the block
+                    self.screen.blit(glow_surface, (block_center_x - glow_size, block_center_y - glow_size))

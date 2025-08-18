@@ -13,8 +13,30 @@ from ..logging_module.error_handler import (
     safe_file_operation
 )
 from ..logging_module.logger import get_logger
+from core.transformation_events import transformation_manager, EventType
+from modules.game_state_module.game_state_manager import get_game_state_manager
 
 logger = get_logger(__name__)
+
+
+def safe_draw_rect(surface, color, rect, **kwargs):
+    """Safely draw a rectangle with color validation to prevent invalid color argument errors."""
+    try:
+        # Validate color before drawing
+        if not isinstance(color, tuple) or len(color) != 3:
+            color = (150, 150, 150)  # Fallback to safe gray
+        elif not all(isinstance(x, int) and 0 <= x <= 255 for x in color):
+            color = (150, 150, 150)  # Fallback to safe gray
+        
+        pygame.draw.rect(surface, color, rect, **kwargs)
+    except Exception as e:
+        # Log error and use fallback
+        print(f"Color error in pygame.draw.rect(): {e}, using fallback color")
+        try:
+            pygame.draw.rect(surface, (150, 150, 150), rect, **kwargs)
+        except Exception:
+            # Ultimate fallback - just skip drawing if even the fallback fails
+            pass
 
 
 class BoardManager:
@@ -63,12 +85,12 @@ class BoardManager:
         """Create player and enemy puzzle engines."""
         # Create player puzzle engine
         self.player_engine = PuzzleEngine(
-            self.screen, self.font, self.audio, self.asset_path, self.settings_system
+            self.screen, self.font, self.audio, self.asset_path, self.settings_system, game_mode="test"
         )
         
         # Create enemy puzzle engine (no audio to avoid conflicts)
         self.enemy_engine = PuzzleEngine(
-            self.screen, self.font, None, self.asset_path, self.settings_system
+            self.screen, self.font, None, self.asset_path, self.settings_system, game_mode="test"
         )
         
         # Set test_mode attribute so puzzle module knows to use landing-based transformation
@@ -138,15 +160,13 @@ class BoardManager:
             layout = asset_scaler.calculate_dual_grid_layout((self.width, self.height))
             player_x, player_y = layout['player']
             enemy_x, enemy_y = layout['enemy']
-            # Ensure attached pieces visible across resolutions
-            extra_height_for_attached = int(cell_height * 2.5)
-            player_y = player_y + extra_height_for_attached
-            enemy_y = enemy_y + extra_height_for_attached
+            # FIXED: Don't manually adjust Y positions when using asset scaler
+            # The asset scaler already accounts for proper spacing and positioning
         except Exception:
-            # Fallback manual layout
+            # Fallback manual layout - FIXED: Increased spacing to prevent overlap
             border_size = 10
             board_width = grid_width * cell_width
-            board_spacing = 60
+            board_spacing = board_width + 20  # Ensure boards are separated by at least 20px
             screen_width = self.width
             total_width_needed = (board_width * 2) + board_spacing + (border_size * 4)
             start_x = (screen_width - total_width_needed) // 2
@@ -178,8 +198,49 @@ class BoardManager:
     
     def set_piece_landed_callbacks(self, player_callback, enemy_callback):
         """Set callbacks for when pieces land on each board."""
-        self.player_engine.on_piece_landed = player_callback
-        self.enemy_engine.on_piece_landed = enemy_callback
+        # Wrap callbacks with transformation logic
+        def player_landing_wrapper():
+            self._handle_piece_landing(1)  # Player ID 1
+            if player_callback:
+                player_callback()
+        
+        def enemy_landing_wrapper():
+            self._handle_piece_landing(2)  # Player ID 2
+            if enemy_callback:
+                enemy_callback()
+        
+        self.player_engine.on_piece_landed = player_landing_wrapper
+        self.enemy_engine.on_piece_landed = enemy_landing_wrapper
+    
+    def _handle_piece_landing(self, player_id: int):
+        """Handle piece landing events for transformation system."""
+        game_state_manager = get_game_state_manager()
+        if not game_state_manager:
+            return
+        
+        # Get the appropriate engine
+        engine = self.player_engine if player_id == 1 else self.enemy_engine
+        grid = engine.puzzle_grid
+        
+        # Check all positions for transformation states
+        for y in range(len(grid)):
+            for x in range(len(grid[0])):
+                position = (x, y)
+                state = game_state_manager.get_transformation_state(position, player_id)
+                
+                if state:
+                    # Update transformation state
+                    game_state_manager.update_transformation_on_piece_landed(position, player_id)
+                    
+                    # Get new display name and update grid
+                    new_display_name = game_state_manager.get_block_display_name(position, player_id)
+                    if new_display_name:
+                        grid[y][x] = new_display_name
+                        
+                        # Emit transformation event
+                        event = transformation_manager.create_piece_landed_event(position, player_id)
+                        if event:
+                            transformation_manager.emit_event(event)
     
     def set_blocks_broken_handlers(self, player_handler, enemy_handler):
         """Set handlers for when blocks are broken on each board."""
@@ -259,7 +320,7 @@ class BoardManager:
             board_width + (border_size * 2),
             board_height + 35 + border_size
         )
-        pygame.draw.rect(self.screen, (30, 30, 60), player_container, border_radius=5)
+        safe_draw_rect(self.screen, (30, 30, 60), player_container, border_radius=5)
         
         # Draw enemy board container
         enemy_container = pygame.Rect(
@@ -268,17 +329,10 @@ class BoardManager:
             board_width + (border_size * 2),
             board_height + 35 + border_size
         )
-        pygame.draw.rect(self.screen, (30, 30, 60), enemy_container, border_radius=5)
+        safe_draw_rect(self.screen, (30, 30, 60), enemy_container, border_radius=5)
         
-        # Draw puzzle backgrounds if available
-        if self.puzzle_background:
-            scaled_bg = pygame.transform.scale(self.puzzle_background, (board_width, board_height))
-            
-            # Player board background
-            self.screen.blit(scaled_bg, (self.player_grid_position["x"], self.player_grid_position["y"]))
-            
-            # Enemy board background
-            self.screen.blit(scaled_bg, (self.enemy_grid_position["x"], self.enemy_grid_position["y"]))
+        # Background drawing is now handled by individual renderers to prevent duplication
+        # Each renderer draws its own background in draw_game_content()
         
         # Update animations before drawing
         self.update_renderers()

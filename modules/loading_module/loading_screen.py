@@ -42,11 +42,51 @@ class LoadingScreen:
         self.progress = 0.0
         self.current_task = "Initializing..."
         
+        # Funny loading messages
+        self.loading_messages = [
+            "Building Your Blade...",
+            "Assembling Blocks...", 
+            "Deny Defend Depose...",
+            "Sharpening Swords...",
+            "Forging the Future...",
+            "Loading Legendary Loot...",
+            "Preparing Puzzle Pieces...",
+            "Crafting Combat Code...",
+            "Summoning Sword Spirits...",
+            "Loading Lethal Logic...",
+            "Preparing for Battle...",
+            "Sharpening Your Skills...",
+            "Loading the Legend...",
+            "Preparing the Arena...",
+            "Summoning Your Sword...",
+            "Loading Combat Code...",
+            "Preparing Puzzle Power...",
+            "Sharpening Your Strategy...",
+            "Loading Lethal Moves...",
+            "Preparing for Glory..."
+        ]
+        
+        self.current_message_index = 0
+        self.message_change_timer = 0
+        self.message_change_interval = 1500  # 1.5 seconds per message
+        
         # Load loading background image
         self.loading_image = None
         self._load_loading_image()
         
         logger.info("LoadingScreen initialized")
+    
+    def _update_loading_message(self) -> None:
+        """Update the loading message periodically."""
+        current_time = pygame.time.get_ticks()
+        
+        if current_time - self.message_change_timer > self.message_change_interval:
+            self.current_message_index = (self.current_message_index + 1) % len(self.loading_messages)
+            self.message_change_timer = current_time
+
+    def get_current_loading_message(self) -> str:
+        """Get the current loading message."""
+        return self.loading_messages[self.current_message_index]
     
     def _load_loading_image(self):
         """Load the loading background image."""
@@ -160,6 +200,16 @@ class LoadingScreen:
             self.progress_bar_y - 30
         ))
         self.screen.blit(task_surface, task_rect)
+        
+        # Draw funny loading message
+        self._update_loading_message()
+        loading_message = self.get_current_loading_message()
+        message_surface = progress_font.render(loading_message, True, self.LIGHT_BLUE)
+        message_rect = message_surface.get_rect(center=(
+            self.width // 2, 
+            self.progress_bar_y + self.progress_bar_height + 80  # Below progress text
+        ))
+        self.screen.blit(message_surface, message_rect)
         
         # Update display
         pygame.display.flip()
