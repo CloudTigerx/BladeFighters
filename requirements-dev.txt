@@ -1,0 +1,6 @@
+pytest>=8.0.0
+pytest-cov>=5.0.0
+
+# Build tools (Windows EXE)
+pyinstaller>=6.0.0
+pillow>=10.0.0

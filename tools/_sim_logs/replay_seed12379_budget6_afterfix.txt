@@ -1,0 +1,123 @@
+seed=12379 budget_ms=6.0 defeated_at=12000
+
+last_8_locks:
+
+--- 1/8 frame=11491 lock plan=[b,g] spawn=(3,0) lock=(-999,-999) -> tgt=(4,1) pre_h=[9, 9, 8, 12, 11, 11] post_h=[9, 9, 8, 12, 11, 12]
+heights=[9, 9, 8, 12, 11, 12] max_h=12
+...g.b
+...ybg
+...yyb
+gy.ygg
+gyygy*
+rygby*
+yyrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 2/8 frame=11500 lock plan=[r,g] spawn=(3,0) lock=(-999,-999) -> tgt=(5,0) pre_h=[9, 9, 8, 12, 11, 12] post_h=[9, 9, 8, 12, 12, 12]
+heights=[9, 9, 8, 12, 12, 12] max_h=12
+...grb
+...ybg
+...yyb
+gy.ygg
+gyygy*
+rygby*
+yyrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 3/8 frame=11527 lock plan=[y,y] spawn=(3,0) lock=(-999,-999) -> tgt=(4,0) pre_h=[9, 9, 8, 12, 12, 12] post_h=[9, 10, 9, 12, 12, 12]
+heights=[9, 10, 9, 12, 12, 12] max_h=12
+...grb
+...ybg
+.y.yyb
+gyyygg
+gyygy*
+rygby*
+yyrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 4/8 frame=11551 lock plan=[y*,g] spawn=(3,0) lock=(-999,-999) -> tgt=(1,1) pre_h=[9, 10, 9, 12, 12, 12] post_h=[10, 11, 9, 12, 12, 12]
+heights=[10, 11, 9, 12, 12, 12] max_h=12
+...grb
+.g.ybg
+*y.yyb
+gyyygg
+gyygy*
+rygby*
+yyrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 5/8 frame=11908 lock plan=[y,g] spawn=(3,0) lock=(-999,-999) -> tgt=(0,1) pre_h=[8, 6, 7, 9, 11, 12] post_h=[8, 6, 7, 11, 11, 12]
+heights=[8, 6, 7, 11, 11, 12] max_h=12
+.....b
+...grg
+...ybb
+...ggg
+g..gy*
+g.gby*
+rgrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 6/8 frame=11932 lock plan=[g,g] spawn=(3,0) lock=(-999,-999) -> tgt=(3,0) pre_h=[8, 6, 7, 11, 11, 12] post_h=[8, 8, 7, 11, 11, 12]
+heights=[8, 8, 7, 11, 11, 12] max_h=12
+.....b
+...grg
+...ybb
+...ggg
+gg.gy*
+gggby*
+rgrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 7/8 frame=11971 lock plan=[y,r*] spawn=(3,0) lock=(-999,-999) -> tgt=(1,0) pre_h=[8, 8, 7, 11, 11, 12] post_h=[8, 8, 8, 12, 11, 12]
+heights=[8, 8, 8, 12, 11, 12] max_h=12
+...*.b
+...grg
+...ybb
+...ggg
+ggygy*
+gggby*
+rgrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr
+
+--- 8/8 frame=11989 lock plan=[g,y*] spawn=(3,0) lock=(-999,-999) -> tgt=(2,1) pre_h=[8, 8, 8, 12, 11, 12] post_h=[8, 8, 10, 12, 11, 12]
+heights=[8, 8, 10, 12, 11, 12] max_h=12
+...*.b
+...grg
+..gybb
+..*ggg
+ggygy*
+gggby*
+rgrygr
+gryyyb
+ggryyr
+ggrygb
+ggyrrr
+yryrrr

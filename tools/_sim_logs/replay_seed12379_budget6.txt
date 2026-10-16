@@ -1,0 +1,93 @@
+seed=12379 budget_ms=6.0 defeated_at=5674
+
+last_6_locks:
+
+--- 1/6 frame=5284 lock plan=[r*,r] cur=(3,0) -> tgt=(5,0) pre_h=[6, 5, 9, 11, 10, 9] post_h=[6, 5, 11, 11, 10, 9]
+heights=[6, 5, 11, 11, 10, 9] max_h=11
+......
+..rb..
+..*bb.
+..ryby
+..rgbr
+..ybbg
+b.rbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg
+
+--- 2/6 frame=5449 lock plan=[b,r] cur=(3,0) -> tgt=(2,0) pre_h=[6, 5, 7, 11, 10, 9] post_h=[6, 5, 7, 11, 12, 9]
+heights=[6, 5, 7, 11, 12, 9] max_h=12
+....r.
+...bb.
+...bb.
+...yby
+...gbr
+..ybbg
+b.rbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg
+
+--- 3/6 frame=5486 lock plan=[y,g*] cur=(3,0) -> tgt=(4,0) pre_h=[6, 5, 7, 11, 12, 9] post_h=[6, 6, 8, 11, 12, 9]
+heights=[6, 6, 8, 11, 12, 9] max_h=12
+....r.
+...bb.
+...bb.
+...yby
+..*gbr
+..ybbg
+byrbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg
+
+--- 4/6 frame=5650 lock plan=[b,g] cur=(3,0) -> tgt=(1,1) pre_h=[6, 6, 7, 10, 12, 9] post_h=[6, 6, 7, 12, 12, 9]
+heights=[6, 6, 7, 12, 12, 9] max_h=12
+...gr.
+...bb.
+...bb.
+...bby
+...ybr
+..ybbg
+byrbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg
+
+--- 5/6 frame=5671 lock plan=[r,g] cur=(3,0) -> tgt=(3,0) pre_h=[6, 6, 7, 12, 12, 9] post_h=[6, 6, 9, 12, 12, 9]
+heights=[6, 6, 9, 12, 12, 9] max_h=12
+...gr.
+...bb.
+...bb.
+..gbby
+..rybr
+..ybbg
+byrbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg
+
+--- 6/6 frame=5674 DEFEAT
+heights=[6, 6, 9, 12, 12, 9] max_h=12
+...gr.
+...bb.
+...bb.
+..gbby
+..rybr
+..ybbg
+byrbrb
+rybggb
+**bygg
+yrrygr
+rbyrrg
+r*yrrg

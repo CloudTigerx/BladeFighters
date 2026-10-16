@@ -1,0 +1,153 @@
+seed=10069 budget_ms=10.0 defeated_at=2680
+
+last_10_locks:
+
+--- 1/10 frame=2275 lock plan=[y,y] spawn=(3,0) lock=(-999,-999) -> tgt=(3,2) pre_h=[9, 9, 9, 11, 8, 5] post_h=[9, 9, 9, 11, 8, 7]
+heights=[9, 9, 9, 11, 8, 7] max_h=11
+......
+...g..
+...b..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 2/10 frame=2290 lock plan=[r,g] spawn=(3,0) lock=(-999,-999) -> tgt=(5,0) pre_h=[9, 9, 9, 11, 8, 7] post_h=[9, 11, 9, 11, 8, 7]
+heights=[9, 11, 9, 11, 8, 7] max_h=11
+......
+.g.g..
+.r.b..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 3/10 frame=2315 lock plan=[b,g] spawn=(3,0) lock=(-999,-999) -> tgt=(1,0) pre_h=[9, 11, 9, 11, 8, 7] post_h=[9, 11, 10, 12, 8, 7]
+heights=[9, 11, 10, 12, 8, 7] max_h=12
+...g..
+.g.g..
+.rbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 4/10 frame=2332 lock plan=[g*,r] spawn=(3,0) lock=(-999,-999) -> tgt=(2,1) pre_h=[9, 11, 10, 12, 8, 7] post_h=[11, 11, 10, 12, 8, 7]
+heights=[11, 11, 10, 12, 8, 7] max_h=12
+...g..
+*g.g..
+rrbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 5/10 frame=2458 lock plan=[y,y] spawn=(3,0) lock=(-999,-999) -> tgt=(0,2) pre_h=[10, 10, 10, 12, 8, 7] post_h=[10, 12, 10, 12, 8, 7]
+heights=[10, 12, 10, 12, 8, 7] max_h=12
+.y.g..
+.y.g..
+rrbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 6/10 frame=2470 lock plan=[r,y*] spawn=(3,0) lock=(-999,-999) -> tgt=(1,0) pre_h=[10, 12, 10, 12, 8, 7] post_h=[10, 12, 12, 12, 8, 7]
+heights=[10, 12, 12, 12, 8, 7] max_h=12
+.y*g..
+.yrg..
+rrbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 7/10 frame=2638 lock plan=[g,g] spawn=(3,0) lock=(-999,-999) -> tgt=(2,0) pre_h=[10, 10, 11, 12, 8, 7] post_h=[11, 11, 11, 12, 8, 7]
+heights=[11, 11, 11, 12, 8, 7] max_h=12
+...g..
+ggrg..
+rrbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 8/10 frame=2650 lock plan=[b*,g] spawn=(3,0) lock=(-999,-999) -> tgt=(0,1) pre_h=[11, 11, 11, 12, 8, 7] post_h=[11, 12, 12, 12, 8, 7]
+heights=[11, 12, 12, 12, 8, 7] max_h=12
+.*gg..
+ggrg..
+rrbb..
+rr**..
+ygg*g.
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 9/10 frame=2677 lock plan=[y,y] spawn=(3,0) lock=(-999,-999) -> tgt=(1,1) pre_h=[11, 12, 12, 12, 8, 7] post_h=[11, 12, 12, 12, 9, 8]
+heights=[11, 12, 12, 12, 9, 8] max_h=12
+.*gg..
+ggrg..
+rrbb..
+rr**y.
+ygg*gy
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb
+
+--- 10/10 frame=2680 DEFEAT
+heights=[11, 12, 12, 12, 9, 8] max_h=12
+.*gg..
+ggrg..
+rrbb..
+rr**y.
+ygg*gy
+bggyyy
+*ggyyy
+bbybyr
+bbrbry
+rgybgr
+bryygg
+gyyybb

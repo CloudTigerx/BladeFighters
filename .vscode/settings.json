@@ -1,0 +1,10 @@
+{
+    "CodeGPT.apiKey": "Anthropic",
+    "chat.tools.terminal.autoApprove": {
+        "/^C:/BladeFighters_1\\.5/bladefighters2/BladeFighters-bf1\\.5/swordfighting_new6/\\.venv/Scripts/python\\.exe -c \"from swordfighting_new\\.attacks\\.garbage_pattern import SWORD_PATTERNS, SwordType; p=SWORD_PATTERNS\\[SwordType\\.DAGGER\\]\\.pattern; m=\\{'red':'R','blue':'B','yellow':'Y','green':'G'\\}; print\\('DAGGER rows=',len\\(p\\)\\); print\\('top->bottom:'\\); print\\('\\\\\\\\n'\\.join\\(''\\.join\\(m\\.get\\(c,'\\?'\\) for c in row\\) for row in p\\[::-1\\]\\)\\);\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "C:/BladeFighters_1.5/bladefighters2/BladeFighters-bf1.5/swordfighting_new6/.venv/Scripts/python.exe": true
+    }
+}

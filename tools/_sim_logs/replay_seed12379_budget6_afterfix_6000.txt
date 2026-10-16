@@ -1,0 +1,93 @@
+seed=12379 budget_ms=6.0 defeated_at=6000
+
+last_6_locks:
+
+--- 1/6 frame=5587 lock plan=[y,g*] spawn=(3,0) lock=(-999,-999) -> tgt=(2,1) pre_h=[7, 8, 3, 8, 10, 9] post_h=[9, 8, 3, 8, 10, 9]
+heights=[9, 8, 3, 8, 10, 9] max_h=10
+......
+......
+....*.
+*...yy
+yb.rrr
+by.ybb
+bb.bbr
+bb.bgr
+gy.bgb
+ggbbgg
+ggyrrg
+rryrrg
+
+--- 2/6 frame=5620 lock plan=[b,g] spawn=(3,0) lock=(-999,-999) -> tgt=(0,0) pre_h=[9, 8, 3, 8, 10, 9] post_h=[9, 8, 5, 8, 10, 9]
+heights=[9, 8, 5, 8, 10, 9] max_h=10
+......
+......
+....*.
+*...yy
+yb.rrr
+by.ybb
+bb.bbr
+bbgbgr
+gybbgb
+ggbbgg
+ggyrrg
+rryrrg
+
+--- 3/6 frame=5647 lock plan=[r,g] spawn=(3,0) lock=(-999,-999) -> tgt=(2,0) pre_h=[9, 8, 5, 8, 10, 9] post_h=[10, 9, 5, 8, 10, 9]
+heights=[10, 9, 5, 8, 10, 9] max_h=10
+......
+......
+r...*.
+*g..yy
+yb.rrr
+by.ybb
+bb.bbr
+bbgbgr
+gybbgb
+ggbbgg
+ggyrrg
+rryrrg
+
+--- 4/6 frame=5773 lock plan=[g,b] spawn=(3,0) lock=(-999,-999) -> tgt=(0,1) pre_h=[9, 8, 5, 8, 10, 9] post_h=[9, 8, 5, 8, 12, 9]
+heights=[9, 8, 5, 8, 12, 9] max_h=12
+....b.
+....g.
+....*.
+r...yy
+yb.rrr
+by.ybb
+bb.bbr
+bbgbgr
+gybbgb
+ggbbgg
+ggyrrg
+rryrrg
+
+--- 5/6 frame=5949 lock plan=[y,b] spawn=(3,0) lock=(-999,-999) -> tgt=(4,0) pre_h=[9, 8, 5, 8, 10, 9] post_h=[9, 8, 6, 9, 10, 9]
+heights=[9, 8, 6, 9, 10, 9] max_h=10
+......
+......
+....b.
+r..byy
+yb.rrr
+by.ybb
+bbybbr
+bbgbgr
+gybbgb
+ggbbgg
+ggyrrg
+rryrrg
+
+--- 6/6 frame=5974 lock plan=[b,r*] spawn=(3,0) lock=(-999,-999) -> tgt=(2,1) pre_h=[9, 8, 6, 9, 10, 9] post_h=[9, 8, 8, 9, 10, 9]
+heights=[9, 8, 8, 9, 10, 9] max_h=10
+......
+......
+....b.
+r..byy
+yb*rrr
+bybybb
+bbybbr
+bbgbgr
+gybbgb
+ggbbgg
+ggyrrg
+rryrrg

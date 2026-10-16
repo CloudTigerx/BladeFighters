@@ -1,0 +1,42 @@
+{
+  "button_quickplay": {
+    "x": 1542,
+    "y": 496,
+    "type": "button"
+  },
+  "button_story_mode": {
+    "x": 1542,
+    "y": 677,
+    "type": "button"
+  },
+  "button_test_mode": {
+    "x": 1543,
+    "y": 857,
+    "type": "button"
+  },
+  "button_smithing": {
+    "x": 1540,
+    "y": 1039,
+    "type": "button"
+  },
+  "button_inventory": {
+    "x": 1540,
+    "y": 1215,
+    "type": "button"
+  },
+  "button_settings": {
+    "x": 1540,
+    "y": 1390,
+    "type": "button"
+  },
+  "button_quit": {
+    "x": 1542,
+    "y": 1564,
+    "type": "button"
+  },
+  "title": {
+    "x": 1464,
+    "y": 32,
+    "type": "title"
+  }
+}

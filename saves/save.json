@@ -1,0 +1,318 @@
+{
+  "last_profile": {
+    "appearance": {
+      "eye_style": 0,
+      "eye_y_offset": 14,
+      "hair": [
+        0.7,
+        0.2,
+        0.35,
+        1.0
+      ],
+      "hair_style": 0,
+      "mouth_style": 1,
+      "nose_style": 1,
+      "outfit": [
+        0.55,
+        0.3,
+        0.75,
+        1.0
+      ],
+      "skin": [
+        0.98,
+        0.84,
+        0.72,
+        1.0
+      ]
+    },
+    "char_type": "Rogue",
+    "name": "As",
+    "preset_model_path": null,
+    "race": "Elf"
+  },
+  "profiles": [
+    {
+      "id": "1768098660",
+      "profile": {
+        "appearance": {
+          "eye_style": 0,
+          "eye_y_offset": 14,
+          "hair": [
+            0.7,
+            0.2,
+            0.35,
+            1.0
+          ],
+          "hair_style": 0,
+          "mouth_style": 1,
+          "nose_style": 1,
+          "outfit": [
+            0.55,
+            0.3,
+            0.75,
+            1.0
+          ],
+          "skin": [
+            0.98,
+            0.84,
+            0.72,
+            1.0
+          ]
+        },
+        "char_type": "Rogue",
+        "name": "As",
+        "preset_model_path": null,
+        "race": "Elf"
+      },
+      "saved_at": 1768098660
+    },
+    {
+      "id": "1767930320",
+      "profile": {
+        "appearance": {
+          "eye_style": 1,
+          "eye_y_offset": 8,
+          "hair": [
+            0.1,
+            0.1,
+            0.12,
+            1.0
+          ],
+          "hair_style": 3,
+          "mouth_style": 1,
+          "nose_style": 1,
+          "outfit": [
+            0.18,
+            0.22,
+            0.3,
+            1.0
+          ],
+          "skin": [
+            0.52,
+            0.36,
+            0.26,
+            1.0
+          ]
+        },
+        "char_type": "Rogue",
+        "name": "As",
+        "preset_model_path": null,
+        "race": "Elf"
+      },
+      "saved_at": 1767930320
+    },
+    {
+      "id": "1767910564",
+      "profile": {
+        "appearance": {
+          "eye_style": 1,
+          "eye_y_offset": 0,
+          "hair": [
+            0.75,
+            0.58,
+            0.22,
+            1.0
+          ],
+          "hair_style": 1,
+          "mouth_style": 1,
+          "nose_style": 0,
+          "outfit": [
+            0.75,
+            0.18,
+            0.18,
+            1.0
+          ],
+          "skin": [
+            0.7,
+            0.52,
+            0.4,
+            1.0
+          ]
+        },
+        "char_type": "Mage",
+        "name": "Vaxin",
+        "preset_model_path": null,
+        "race": "Orc"
+      },
+      "saved_at": 1767910564
+    },
+    {
+      "id": "1767907449",
+      "profile": {
+        "appearance": {
+          "eye_style": 1,
+          "hair": [
+            0.75,
+            0.58,
+            0.22,
+            1.0
+          ],
+          "hair_style": 1,
+          "mouth_style": 1,
+          "nose_style": 0,
+          "outfit": [
+            0.75,
+            0.18,
+            0.18,
+            1.0
+          ],
+          "skin": [
+            0.7,
+            0.52,
+            0.4,
+            1.0
+          ]
+        },
+        "char_type": "Rogue",
+        "name": "Ass",
+        "preset_model_path": null,
+        "race": "Elf"
+      },
+      "saved_at": 1767907449
+    },
+    {
+      "id": "1767906143",
+      "profile": {
+        "appearance": {
+          "eye_style": 0,
+          "hair": [
+            0.1,
+            0.1,
+            0.12,
+            1.0
+          ],
+          "hair_style": 3,
+          "outfit": [
+            0.18,
+            0.22,
+            0.3,
+            1.0
+          ],
+          "skin": [
+            0.98,
+            0.84,
+            0.72,
+            1.0
+          ]
+        },
+        "char_type": "Rogue",
+        "name": "as",
+        "preset_model_path": null,
+        "race": "Elf"
+      },
+      "saved_at": 1767906143
+    },
+    {
+      "id": "1767830825",
+      "profile": {
+        "appearance": {
+          "eye_style": 3,
+          "hair": [
+            0.75,
+            0.58,
+            0.22,
+            1.0
+          ],
+          "hair_style": 2,
+          "outfit": [
+            0.18,
+            0.22,
+            0.3,
+            1.0
+          ],
+          "skin": [
+            0.7,
+            0.52,
+            0.4,
+            1.0
+          ]
+        },
+        "char_type": "Mage",
+        "name": "Vaxin",
+        "preset_model_path": "None",
+        "race": "Elf"
+      },
+      "saved_at": 1767830825
+    }
+  ],
+  "progress": {
+    "defeats": 9,
+    "endless_combo_best_chain": 8,
+    "enemy_sword": "deep_current",
+    "equipped_sword": "azure_rapier",
+    "gold": 24728,
+    "story_player_name": "d",
+    "story_swift_tutorial_complete": true,
+    "victories": 14
+  },
+  "settings": {
+    "fullscreen": false,
+    "game_volume": 0.2,
+    "horizontal_move_repeat_ms": 50
+  },
+  "ui": {
+    "coin_panel_size_override": {
+      "hud": [
+        155,
+        105
+      ],
+      "menu": [
+        171,
+        111
+      ],
+      "story": [
+        408,
+        366
+      ]
+    },
+    "coin_panel_size_override_frac": {
+      "hud": [
+        0.08072916666666667,
+        0.09722222222222222
+      ],
+      "menu": [
+        0.0890625,
+        0.10277777777777777
+      ],
+      "story": [
+        0.10625,
+        0.17672621921776918
+      ]
+    },
+    "preview_piece_offset_px": {
+      "left": [
+        0,
+        0
+      ],
+      "right": [
+        0,
+        0
+      ]
+    },
+    "preview_sword_offset_px": {
+      "left": [
+        -23,
+        -6
+      ],
+      "right": [
+        25,
+        -5
+      ]
+    },
+    "preview_sword_scale": 1.25,
+    "preview_sword_scale_by_weapon": {
+      "azure_rapier": 0.5999999999999996,
+      "crimson_divider": 1.9000000000000008,
+      "cutlass": 2.2,
+      "dagger": 1.6000000000000005,
+      "deep_current": 1.7500000000000007,
+      "ember_blade": 1.8000000000000007,
+      "fists": 2.1500000000000004,
+      "forest_cleaver": 1.6500000000000006,
+      "rusty_sword": 1.6500000000000006,
+      "saber": 2.3499999999999996,
+      "verdant_wall": 1.4500000000000004
+    }
+  },
+  "version": 1
+}

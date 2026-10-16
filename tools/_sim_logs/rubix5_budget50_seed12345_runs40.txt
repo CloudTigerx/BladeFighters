@@ -1,0 +1,152 @@
+  heartbeat run 1/40 seed=12345 frame=5000 elapsed_s=2.3 fps=2137.5 max_h=3
+  heartbeat run 1/40 seed=12345 frame=10000 elapsed_s=5.7 fps=1760.1 max_h=7
+  heartbeat run 1/40 seed=12345 frame=15000 elapsed_s=9.5 fps=1571.7 max_h=10
+run 1/40 seed=12345 defeated_at 17335 final_max_h 12 clr 263 ch 161 mc 2 atk S46 T50 locks 161 heights [10, 11, 9, 12, 12, 4]
+  heartbeat run 2/40 seed=12346 frame=5000 elapsed_s=3.9 fps=1283.3 max_h=6
+  heartbeat run 2/40 seed=12346 frame=10000 elapsed_s=7.3 fps=1374.6 max_h=3
+  heartbeat run 2/40 seed=12346 frame=15000 elapsed_s=11.0 fps=1366.0 max_h=12
+run 2/40 seed=12346 defeated_at 15658 final_max_h 12 clr 225 ch 138 mc 2 atk S43 T50 locks 138 heights [6, 10, 12, 12, 5, 5]
+  heartbeat run 3/40 seed=12347 frame=5000 elapsed_s=3.7 fps=1360.0 max_h=3
+  heartbeat run 3/40 seed=12347 frame=10000 elapsed_s=6.3 fps=1578.1 max_h=7
+  heartbeat run 3/40 seed=12347 frame=15000 elapsed_s=8.2 fps=1825.2 max_h=2
+  heartbeat run 3/40 seed=12347 frame=20000 elapsed_s=11.3 fps=1762.2 max_h=10
+  heartbeat run 3/40 seed=12347 frame=25000 elapsed_s=14.2 fps=1760.3 max_h=11
+run 3/40 seed=12347 defeated_at 27084 final_max_h 12 clr 430 ch 245 mc 3 atk S94 T86 locks 245 heights [8, 11, 8, 12, 12, 9]
+  heartbeat run 4/40 seed=12348 frame=5000 elapsed_s=2.9 fps=1696.3 max_h=11
+  heartbeat run 4/40 seed=12348 frame=10000 elapsed_s=5.0 fps=2000.9 max_h=5
+  heartbeat run 4/40 seed=12348 frame=15000 elapsed_s=7.7 fps=1951.4 max_h=8
+  heartbeat run 4/40 seed=12348 frame=20000 elapsed_s=11.2 fps=1791.9 max_h=8
+run 4/40 seed=12348 defeated_at 22069 final_max_h 12 clr 343 ch 199 mc 3 atk S57 T118 locks 199 heights [7, 10, 12, 12, 7, 7]
+  heartbeat run 5/40 seed=12349 frame=5000 elapsed_s=3.8 fps=1306.7 max_h=5
+run 5/40 seed=12349 defeated_at 9244 final_max_h 12 clr 136 ch 92 mc 2 atk S24 T34 locks 92 heights [5, 9, 12, 12, 4, 5]
+  heartbeat run 6/40 seed=12350 frame=5000 elapsed_s=4.4 fps=1130.0 max_h=6
+  heartbeat run 6/40 seed=12350 frame=10000 elapsed_s=8.9 fps=1128.7 max_h=11
+run 6/40 seed=12350 defeated_at 13531 final_max_h 12 clr 221 ch 142 mc 2 atk S53 T28 locks 142 heights [8, 12, 10, 12, 12, 7]
+  heartbeat run 7/40 seed=12351 frame=5000 elapsed_s=4.0 fps=1246.3 max_h=7
+  heartbeat run 7/40 seed=12351 frame=10000 elapsed_s=7.3 fps=1363.8 max_h=5
+  heartbeat run 7/40 seed=12351 frame=15000 elapsed_s=11.0 fps=1358.9 max_h=4
+run 7/40 seed=12351 defeated_at 19211 final_max_h 12 clr 304 ch 183 mc 3 atk S53 T73 locks 183 heights [9, 9, 9, 12, 12, 10]
+  heartbeat run 8/40 seed=12352 frame=5000 elapsed_s=4.2 fps=1182.2 max_h=8
+  heartbeat run 8/40 seed=12352 frame=10000 elapsed_s=7.6 fps=1324.4 max_h=6
+run 8/40 seed=12352 defeated_at 13864 final_max_h 12 clr 196 ch 130 mc 2 atk S52 T22 locks 130 heights [10, 12, 12, 12, 8, 8]
+  heartbeat run 9/40 seed=12353 frame=5000 elapsed_s=3.1 fps=1625.9 max_h=2
+  heartbeat run 9/40 seed=12353 frame=10000 elapsed_s=6.8 fps=1479.9 max_h=4
+  heartbeat run 9/40 seed=12353 frame=15000 elapsed_s=10.3 fps=1455.1 max_h=3
+  heartbeat run 9/40 seed=12353 frame=20000 elapsed_s=13.9 fps=1438.4 max_h=5
+  heartbeat run 9/40 seed=12353 frame=25000 elapsed_s=18.0 fps=1392.1 max_h=7
+run 9/40 seed=12353 defeated_at 27544 final_max_h 12 clr 433 ch 247 mc 2 atk S86 T86 locks 247 heights [7, 7, 10, 12, 12, 12]
+  heartbeat run 10/40 seed=12354 frame=5000 elapsed_s=4.4 fps=1134.3 max_h=10
+run 10/40 seed=12354 defeated_at 6844 final_max_h 12 clr 92 ch 75 mc 2 atk S21 T8 locks 75 heights [7, 8, 12, 12, 9, 9]
+  heartbeat run 11/40 seed=12355 frame=5000 elapsed_s=4.1 fps=1206.6 max_h=9
+run 11/40 seed=12355 defeated_at 8014 final_max_h 12 clr 108 ch 85 mc 3 atk S20 T12 locks 85 heights [12, 12, 4, 12, 12, 7]
+  heartbeat run 12/40 seed=12356 frame=5000 elapsed_s=3.9 fps=1284.3 max_h=6
+  heartbeat run 12/40 seed=12356 frame=10000 elapsed_s=7.1 fps=1402.5 max_h=3
+  heartbeat run 12/40 seed=12356 frame=15000 elapsed_s=11.1 fps=1348.0 max_h=9
+run 12/40 seed=12356 defeated_at 19795 final_max_h 12 clr 299 ch 179 mc 3 atk S59 T54 locks 179 heights [6, 7, 12, 12, 10, 8]
+  heartbeat run 13/40 seed=12357 frame=5000 elapsed_s=3.9 fps=1293.3 max_h=6
+  heartbeat run 13/40 seed=12357 frame=10000 elapsed_s=8.3 fps=1197.6 max_h=9
+  heartbeat run 13/40 seed=12357 frame=15000 elapsed_s=12.2 fps=1230.6 max_h=10
+  heartbeat run 13/40 seed=12357 frame=20000 elapsed_s=16.5 fps=1208.6 max_h=12
+  heartbeat run 13/40 seed=12357 frame=25000 elapsed_s=20.2 fps=1238.3 max_h=8
+run 13/40 seed=12357 survived_frames 30000 final_max_h 3 clr 496 ch 256 mc 3 atk S116 T94 locks 257 heights [2, 3, 3, 1, 2, 2]
+  heartbeat run 14/40 seed=12358 frame=5000 elapsed_s=4.4 fps=1125.6 max_h=7
+  heartbeat run 14/40 seed=12358 frame=10000 elapsed_s=7.7 fps=1290.4 max_h=2
+  heartbeat run 14/40 seed=12358 frame=15000 elapsed_s=11.5 fps=1299.5 max_h=5
+  heartbeat run 14/40 seed=12358 frame=20000 elapsed_s=14.5 fps=1379.7 max_h=2
+  heartbeat run 14/40 seed=12358 frame=25000 elapsed_s=18.5 fps=1350.1 max_h=6
+run 14/40 seed=12358 defeated_at 29413 final_max_h 12 clr 479 ch 270 mc 2 atk S80 T140 locks 270 heights [4, 9, 12, 12, 11, 9]
+  heartbeat run 15/40 seed=12359 frame=5000 elapsed_s=3.2 fps=1545.1 max_h=2
+  heartbeat run 15/40 seed=12359 frame=10000 elapsed_s=6.3 fps=1590.4 max_h=2
+  heartbeat run 15/40 seed=12359 frame=15000 elapsed_s=9.9 fps=1520.2 max_h=6
+  heartbeat run 15/40 seed=12359 frame=20000 elapsed_s=14.5 fps=1374.6 max_h=11
+run 15/40 seed=12359 defeated_at 20789 final_max_h 12 clr 308 ch 188 mc 2 atk S55 T43 locks 188 heights [8, 12, 12, 12, 11, 9]
+  heartbeat run 16/40 seed=12360 frame=5000 elapsed_s=4.0 fps=1244.8 max_h=6
+  heartbeat run 16/40 seed=12360 frame=10000 elapsed_s=7.5 fps=1341.9 max_h=6
+run 16/40 seed=12360 defeated_at 11104 final_max_h 12 clr 159 ch 106 mc 2 atk S34 T20 locks 106 heights [3, 7, 12, 12, 12, 6]
+  heartbeat run 17/40 seed=12361 frame=5000 elapsed_s=4.2 fps=1183.8 max_h=5
+  heartbeat run 17/40 seed=12361 frame=10000 elapsed_s=8.6 fps=1162.3 max_h=9
+  heartbeat run 17/40 seed=12361 frame=15000 elapsed_s=12.4 fps=1205.7 max_h=10
+run 17/40 seed=12361 defeated_at 16813 final_max_h 12 clr 244 ch 153 mc 2 atk S62 T24 locks 153 heights [4, 6, 9, 12, 12, 11]
+  heartbeat run 18/40 seed=12362 frame=5000 elapsed_s=3.9 fps=1298.4 max_h=6
+  heartbeat run 18/40 seed=12362 frame=10000 elapsed_s=7.3 fps=1361.3 max_h=7
+  heartbeat run 18/40 seed=12362 frame=15000 elapsed_s=11.3 fps=1325.5 max_h=10
+run 18/40 seed=12362 defeated_at 18844 final_max_h 12 clr 293 ch 178 mc 2 atk S51 T66 locks 178 heights [8, 11, 9, 12, 12, 9]
+  heartbeat run 19/40 seed=12363 frame=5000 elapsed_s=3.8 fps=1304.7 max_h=8
+  heartbeat run 19/40 seed=12363 frame=10000 elapsed_s=7.4 fps=1360.0 max_h=4
+  heartbeat run 19/40 seed=12363 frame=15000 elapsed_s=12.2 fps=1231.8 max_h=11
+run 19/40 seed=12363 defeated_at 16180 final_max_h 12 clr 250 ch 153 mc 2 atk S45 T61 locks 153 heights [4, 5, 11, 12, 12, 10]
+  heartbeat run 20/40 seed=12364 frame=5000 elapsed_s=4.2 fps=1194.3 max_h=10
+  heartbeat run 20/40 seed=12364 frame=10000 elapsed_s=8.7 fps=1147.9 max_h=11
+run 20/40 seed=12364 defeated_at 11764 final_max_h 12 clr 174 ch 111 mc 2 atk S30 T36 locks 111 heights [4, 5, 7, 12, 12, 8]
+  heartbeat run 21/40 seed=12365 frame=5000 elapsed_s=3.3 fps=1530.2 max_h=3
+  heartbeat run 21/40 seed=12365 frame=10000 elapsed_s=7.3 fps=1372.8 max_h=4
+  heartbeat run 21/40 seed=12365 frame=15000 elapsed_s=11.3 fps=1324.4 max_h=7
+  heartbeat run 21/40 seed=12365 frame=20000 elapsed_s=15.7 fps=1270.0 max_h=11
+run 21/40 seed=12365 defeated_at 20062 final_max_h 12 clr 319 ch 185 mc 2 atk S77 T50 locks 185 heights [5, 6, 9, 12, 12, 5]
+  heartbeat run 22/40 seed=12366 frame=5000 elapsed_s=3.9 fps=1297.6 max_h=7
+  heartbeat run 22/40 seed=12366 frame=10000 elapsed_s=8.2 fps=1216.1 max_h=12
+run 22/40 seed=12366 defeated_at 10579 final_max_h 12 clr 147 ch 105 mc 2 atk S26 T28 locks 105 heights [8, 12, 12, 12, 11, 5]
+  heartbeat run 23/40 seed=12367 frame=5000 elapsed_s=3.3 fps=1515.9 max_h=3
+  heartbeat run 23/40 seed=12367 frame=10000 elapsed_s=7.3 fps=1369.2 max_h=8
+run 23/40 seed=12367 defeated_at 11625 final_max_h 12 clr 167 ch 111 mc 2 atk S29 T32 locks 111 heights [5, 7, 11, 12, 12, 6]
+  heartbeat run 24/40 seed=12368 frame=5000 elapsed_s=4.3 fps=1155.8 max_h=7
+  heartbeat run 24/40 seed=12368 frame=10000 elapsed_s=8.0 fps=1253.8 max_h=8
+run 24/40 seed=12368 defeated_at 12829 final_max_h 12 clr 187 ch 125 mc 3 atk S38 T37 locks 125 heights [9, 12, 9, 12, 12, 8]
+  heartbeat run 25/40 seed=12369 frame=5000 elapsed_s=3.3 fps=1503.6 max_h=3
+  heartbeat run 25/40 seed=12369 frame=10000 elapsed_s=6.7 fps=1503.3 max_h=4
+run 25/40 seed=12369 defeated_at 13564 final_max_h 12 clr 201 ch 122 mc 2 atk S37 T36 locks 122 heights [3, 3, 6, 12, 12, 6]
+  heartbeat run 26/40 seed=12370 frame=5000 elapsed_s=4.3 fps=1160.2 max_h=7
+  heartbeat run 26/40 seed=12370 frame=10000 elapsed_s=8.2 fps=1219.9 max_h=8
+  heartbeat run 26/40 seed=12370 frame=15000 elapsed_s=12.0 fps=1254.9 max_h=5
+run 26/40 seed=12370 defeated_at 17344 final_max_h 12 clr 279 ch 170 mc 4 atk S70 T58 locks 170 heights [7, 8, 10, 12, 12, 11]
+  heartbeat run 27/40 seed=12371 frame=5000 elapsed_s=4.7 fps=1056.3 max_h=8
+run 27/40 seed=12371 defeated_at 8977 final_max_h 12 clr 112 ch 88 mc 2 atk S19 T0 locks 88 heights [10, 8, 8, 12, 12, 10]
+  heartbeat run 28/40 seed=12372 frame=5000 elapsed_s=3.6 fps=1377.1 max_h=4
+  heartbeat run 28/40 seed=12372 frame=10000 elapsed_s=8.3 fps=1198.3 max_h=11
+  heartbeat run 28/40 seed=12372 frame=15000 elapsed_s=11.5 fps=1302.7 max_h=5
+  heartbeat run 28/40 seed=12372 frame=20000 elapsed_s=15.5 fps=1293.0 max_h=6
+  heartbeat run 28/40 seed=12372 frame=25000 elapsed_s=19.9 fps=1253.5 max_h=12
+run 28/40 seed=12372 survived_frames 30000 final_max_h 9 clr 501 ch 268 mc 3 atk S123 T119 locks 269 heights [4, 9, 7, 5, 3, 3]
+  heartbeat run 29/40 seed=12373 frame=5000 elapsed_s=4.1 fps=1208.5 max_h=7
+  heartbeat run 29/40 seed=12373 frame=10000 elapsed_s=9.1 fps=1100.4 max_h=11
+run 29/40 seed=12373 defeated_at 12124 final_max_h 12 clr 174 ch 123 mc 2 atk S42 T18 locks 123 heights [12, 12, 10, 12, 12, 10]
+  heartbeat run 30/40 seed=12374 frame=5000 elapsed_s=3.6 fps=1390.0 max_h=3
+  heartbeat run 30/40 seed=12374 frame=10000 elapsed_s=6.8 fps=1465.1 max_h=1
+  heartbeat run 30/40 seed=12374 frame=15000 elapsed_s=11.1 fps=1349.8 max_h=9
+run 30/40 seed=12374 defeated_at 18316 final_max_h 12 clr 281 ch 168 mc 3 atk S58 T52 locks 168 heights [7, 8, 12, 12, 10, 6]
+  heartbeat run 31/40 seed=12375 frame=5000 elapsed_s=3.7 fps=1351.1 max_h=4
+run 31/40 seed=12375 defeated_at 8983 final_max_h 12 clr 124 ch 90 mc 2 atk S28 T4 locks 90 heights [7, 6, 12, 12, 12, 6]
+  heartbeat run 32/40 seed=12376 frame=5000 elapsed_s=4.0 fps=1264.6 max_h=7
+  heartbeat run 32/40 seed=12376 frame=10000 elapsed_s=7.4 fps=1359.7 max_h=5
+  heartbeat run 32/40 seed=12376 frame=15000 elapsed_s=11.6 fps=1288.9 max_h=12
+run 32/40 seed=12376 defeated_at 15112 final_max_h 12 clr 220 ch 138 mc 2 atk S45 T32 locks 138 heights [7, 9, 12, 12, 8, 6]
+  heartbeat run 33/40 seed=12377 frame=5000 elapsed_s=3.3 fps=1515.5 max_h=3
+  heartbeat run 33/40 seed=12377 frame=10000 elapsed_s=6.8 fps=1476.0 max_h=6
+  heartbeat run 33/40 seed=12377 frame=15000 elapsed_s=9.6 fps=1567.7 max_h=4
+run 33/40 seed=12377 defeated_at 19768 final_max_h 12 clr 297 ch 177 mc 3 atk S50 T49 locks 177 heights [9, 8, 12, 12, 9, 7]
+  heartbeat run 34/40 seed=12378 frame=5000 elapsed_s=3.6 fps=1377.9 max_h=5
+  heartbeat run 34/40 seed=12378 frame=10000 elapsed_s=6.4 fps=1567.6 max_h=1
+  heartbeat run 34/40 seed=12378 frame=15000 elapsed_s=11.1 fps=1357.4 max_h=10
+  heartbeat run 34/40 seed=12378 frame=20000 elapsed_s=14.6 fps=1371.5 max_h=7
+run 34/40 seed=12378 defeated_at 24301 final_max_h 12 clr 382 ch 222 mc 2 atk S71 T66 locks 222 heights [7, 9, 12, 12, 12, 7]
+  heartbeat run 35/40 seed=12379 frame=5000 elapsed_s=5.1 fps=983.0 max_h=9
+run 35/40 seed=12379 defeated_at 5767 final_max_h 12 clr 81 ch 68 mc 1 atk S18 T0 locks 68 heights [4, 7, 10, 12, 12, 8]
+  heartbeat run 36/40 seed=12380 frame=5000 elapsed_s=3.9 fps=1280.7 max_h=5
+  heartbeat run 36/40 seed=12380 frame=10000 elapsed_s=7.0 fps=1436.1 max_h=2
+  heartbeat run 36/40 seed=12380 frame=15000 elapsed_s=11.0 fps=1365.4 max_h=8
+  heartbeat run 36/40 seed=12380 frame=20000 elapsed_s=15.4 fps=1295.6 max_h=12
+run 36/40 seed=12380 defeated_at 20156 final_max_h 12 clr 309 ch 183 mc 3 atk S59 T96 locks 183 heights [8, 6, 8, 12, 12, 10]
+  heartbeat run 37/40 seed=12381 frame=5000 elapsed_s=3.6 fps=1394.0 max_h=8
+run 37/40 seed=12381 defeated_at 9424 final_max_h 12 clr 130 ch 95 mc 2 atk S25 T24 locks 95 heights [7, 12, 12, 12, 9, 6]
+  heartbeat run 38/40 seed=12382 frame=5000 elapsed_s=3.8 fps=1299.2 max_h=3
+run 38/40 seed=12382 defeated_at 9604 final_max_h 12 clr 140 ch 108 mc 1 atk S20 T26 locks 108 heights [10, 12, 12, 12, 12, 12]
+  heartbeat run 39/40 seed=12383 frame=5000 elapsed_s=4.7 fps=1058.1 max_h=8
+run 39/40 seed=12383 defeated_at 7444 final_max_h 12 clr 106 ch 83 mc 2 atk S25 T12 locks 83 heights [8, 6, 12, 12, 12, 8]
+  heartbeat run 40/40 seed=12384 frame=5000 elapsed_s=3.8 fps=1326.2 max_h=1
+  heartbeat run 40/40 seed=12384 frame=10000 elapsed_s=7.4 fps=1355.1 max_h=5
+  heartbeat run 40/40 seed=12384 frame=15000 elapsed_s=11.9 fps=1263.9 max_h=9
+  heartbeat run 40/40 seed=12384 frame=20000 elapsed_s=15.1 fps=1328.5 max_h=6
+  heartbeat run 40/40 seed=12384 frame=25000 elapsed_s=19.4 fps=1289.3 max_h=12
+run 40/40 seed=12384 defeated_at 26044 final_max_h 12 clr 410 ch 242 mc 3 atk S94 T106 locks 242 heights [10, 12, 12, 12, 12, 11]
+summary min 5767 p10 8977 p50 16180 p90 27084 max 30000
+telemetry clr_p50 244 ch_p50 153 mc_p50 2 S_p50 50 T_p50 43 locks_p50 153

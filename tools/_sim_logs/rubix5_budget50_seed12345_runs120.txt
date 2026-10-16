@@ -1,0 +1,12 @@
+  heartbeat run 1/120 seed=12345 frame=5000 elapsed_s=2.4 fps=2111.9 max_h=3
+  heartbeat run 1/120 seed=12345 frame=10000 elapsed_s=5.8 fps=1728.2 max_h=7
+  heartbeat run 1/120 seed=12345 frame=15000 elapsed_s=9.6 fps=1564.9 max_h=10
+run 1/120 seed=12345 defeated_at 17335 final_max_h 12 clr 263 ch 161 mc 2 atk S46 T50 locks 161 heights [10, 11, 9, 12, 12, 4]
+  heartbeat run 2/120 seed=12346 frame=5000 elapsed_s=3.9 fps=1298.6 max_h=6
+  heartbeat run 2/120 seed=12346 frame=10000 elapsed_s=7.4 fps=1355.2 max_h=3
+  heartbeat run 2/120 seed=12346 frame=15000 elapsed_s=11.2 fps=1342.6 max_h=12
+run 2/120 seed=12346 defeated_at 15658 final_max_h 12 clr 225 ch 138 mc 2 atk S43 T50 locks 138 heights [6, 10, 12, 12, 5, 5]
+  heartbeat run 3/120 seed=12347 frame=5000 elapsed_s=3.8 fps=1320.8 max_h=3
+  heartbeat run 3/120 seed=12347 frame=10000 elapsed_s=7.5 fps=1335.8 max_h=7
+  heartbeat run 3/120 seed=12347 frame=15000 elapsed_s=10.0 fps=1495.0 max_h=2
+  heartbeat run 3/120 seed=12347 frame=20000 elapsed_s=14.6 fps=1371.6 max_h=10
