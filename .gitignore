@@ -6,4 +6,3 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.py[cod]
-/Blade Fighters.exe
